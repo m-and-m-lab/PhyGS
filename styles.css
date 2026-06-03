@@ -40,16 +40,16 @@ a:hover{ color:var(--link-h); text-decoration:underline; }
 /* ===================== HERO ===================== */
 .hero{ padding:64px 0 30px; text-align:center; }
 .venue{ font-size:15px; letter-spacing:.04em; color:var(--accent); font-weight:700; margin-bottom:18px; text-transform:uppercase; }
-.title{ font-weight:900; color:var(--head); letter-spacing:-.015em; line-height:1.12;
-  font-size:clamp(30px,4.6vw,46px); max-width:24ch; margin:0 auto 6px; }
+.title{ font-family:"Google Sans","Noto Sans",system-ui,sans-serif; font-weight:600; color:var(--head);
+  line-height:1.125; font-size:3rem; max-width:24ch; margin:0 auto 6px; }
 .title .hl{ color:var(--accent); }
 .subtitle{ font-weight:400; color:var(--text); font-size:clamp(17px,2vw,21px); max-width:50ch; margin:10px auto 26px; }
 
-.authors{ font-size:18px; line-height:1.9; color:var(--head); margin-bottom:6px; }
-.authors a{ color:var(--link); font-weight:400; text-decoration:underline; text-underline-offset:2px; }
-.authors a:hover{ color:var(--link-h); text-decoration:underline; }
-.authors sup{ color:var(--text); font-weight:400; font-size:.72em; }
-.affil{ font-size:16px; color:var(--text); margin-bottom:4px; }
+.authors{ font-family:"Google Sans","Noto Sans",system-ui,sans-serif; font-size:1.25rem; line-height:1.5; color:var(--head); margin-bottom:6px; }
+.authors a{ color:hsl(204,86%,53%); font-weight:400; text-decoration:none; }
+.authors a:hover{ color:hsl(204,86%,53%); text-decoration:underline; }
+.authors sup{ color:var(--head); font-weight:400; font-size:.72em; }
+.affil{ font-family:"Google Sans","Noto Sans",system-ui,sans-serif; font-size:1.25rem; color:var(--head); margin-bottom:4px; }
 .hero-gap{ height:1.6em; line-height:1.6em; }
 .affil sup{ font-size:.72em; }
 .note-eq{ font-size:14px; color:var(--muted); margin-bottom:24px; }
@@ -160,8 +160,9 @@ pre .cm{ color:#9aa39d; }
 /* ===================== FOOTER ===================== */
 footer{ padding:36px 0 56px; text-align:center; color:var(--muted); font-size:14px; line-height:1.7; }
 footer a{ color:var(--text); }
-.foot-links{ font-size:15px; margin-bottom:14px; }
-.foot-links a{ color:var(--link); font-weight:400; }
+.foot-links{ margin-bottom:14px; display:flex; gap:20px; justify-content:center; }
+.foot-links .icon-link{ font-size:25px; color:var(--head); text-decoration:none; line-height:1; }
+.foot-links .icon-link:hover{ color:var(--accent); }
 .foot-links .muted{ color:var(--muted); }
 
 /* ===================== RESPONSIVE ===================== */

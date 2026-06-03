@@ -25,8 +25,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 
@@ -48,6 +49,7 @@
       <a href="https://bucherb.github.io" target="_blank" rel="noopener">Bernadette Bucher</a><sup>1</sup>
     </p>
     <p class="affil"><sup>1</sup>University of Michigan, Ann Arbor</p>
+    <p class="venue">CVPR Workshop on Multi-Agent Embodied Intelligent Systems, 2026</p>
 
     <div class="hero-gap" aria-hidden="true">&nbsp;</div>
 
@@ -205,12 +207,13 @@
     <h2 class="sec">BibTeX</h2>
     <div class="codeblock">
       <button class="copy" data-copy="bib">copy</button>
-      <pre id="bib">@misc{saha2026phygs,
-  title  = {PhyGS: Physically-Grounded Controllable Scene Generation},
-  author = {Saha, Aparajito and Gan, Zhen Hao and Guo, Jinjia and
-            Skwirsk, Jacob and Acheampong, Jeremy and Arapin, Anton and
-            Ku, Chahyon and Hu, Yue and Fazeli, Nima and Bucher, Bernadette},
-  year   = {2026}
+      <pre id="bib">@inproceedings{saha2026phygs,
+  title     = {PhyGS: Physically-Grounded Controllable Scene Generation},
+  author    = {Saha, Aparajito and Gan, Zhen Hao and Guo, Jinjia and
+               Skwirsk, Jacob and Acheampong, Jeremy and Arapin, Anton and
+               Ku, Chahyon and Hu, Yue and Fazeli, Nima and Bucher, Bernadette},
+  booktitle = {CVPR Workshop on Multi-Agent Embodied Intelligent Systems},
+  year      = {2026}
 }</pre>
     </div>
   </div>
@@ -218,11 +221,11 @@
 
 <footer>
   <div class="container">
-    <p class="foot-links">
-      <a href="assets/papers/phygs.pdf">Paper</a> ·
-      <a href="https://github.com/m-and-m-lab/PhyGS" target="_blank" rel="noopener">Code (beta)</a> ·
-      <a href="https://m-and-m-lab.github.io/ForageBench/">ForageBench</a>
-    </p>
+    <div class="foot-links">
+      <a class="icon-link" href="assets/papers/phygs.pdf" title="Paper" aria-label="Paper"><i class="fas fa-file-pdf"></i></a>
+      <a class="icon-link" href="https://github.com/m-and-m-lab/PhyGS" target="_blank" rel="noopener" title="Code (beta)" aria-label="Code"><i class="fab fa-github"></i></a>
+      <a class="icon-link" href="https://m-and-m-lab.github.io/ForageBench/" title="ForageBench" aria-label="ForageBench"><i class="fas fa-arrow-up-right-from-square"></i></a>
+    </div>
     <p>University of Michigan, Ann Arbor.</p>
     <p>The design of this page follows the conventions of the
       <a href="https://github.com/nerfies/nerfies.github.io" target="_blank" rel="noopener">Nerfies</a> project page.</p>
