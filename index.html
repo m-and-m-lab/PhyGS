@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhyGS: Physically-Grounded Controllable Scene Generation</title>
+<meta name="description" content="PhyGS is a simulation framework for the controllable generation of photorealistic, physically grounded, building-scale indoor scenes in IsaacSim, with a Boston Dynamics Spot hardware abstraction.">
+<meta name="keywords" content="PhyGS, scene generation, simulation, IsaacSim, Infinigen, procedural generation, Spot, mobile manipulation, embodied AI">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PhyGS">
+<meta property="og:title" content="PhyGS: Physically-Grounded Controllable Scene Generation">
+<meta property="og:description" content="A simulation framework for controllable, photorealistic, physically grounded indoor scene generation in IsaacSim.">
+<meta property="og:url" content="https://m-and-m-lab.github.io/PhyGS/">
+<meta property="og:image" content="https://m-and-m-lab.github.io/PhyGS/assets/images/social_preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PhyGS">
+<meta name="twitter:description" content="Physically-grounded controllable scene generation for robot simulation.">
+<meta name="twitter:image" content="https://m-and-m-lab.github.io/PhyGS/assets/images/social_preview.png">
+
+<link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ====================== HERO ====================== -->
+<header class="hero">
+  <div class="container">
+    <h1 class="title">Phy<span class="hl">GS</span></h1>
+    <p class="subtitle">Physically-Grounded Controllable Scene Generation</p>
+
+    <!-- Authors. To hyperlink a name: <a href="https://homepage">Name</a> -->
+    <p class="authors">
+      <a href="https://aparajitosaha.github.io" target="_blank" rel="noopener">Aparajito Saha</a><sup>1</sup>,
+      <a href="https://ganzh6880.github.io" target="_blank" rel="noopener">Zhen Hao Gan</a><sup>1</sup>,
+      Jinjia Guo<sup>1</sup>, Jacob Skwirsk<sup>1</sup>, Jeremy Acheampong<sup>1</sup>,<br>
+      <a href="https://anton-arapin.github.io" target="_blank" rel="noopener">Anton Arapin</a><sup>1</sup>,
+      <a href="https://chahyon-ku.github.io" target="_blank" rel="noopener">Chahyon Ku</a><sup>1</sup>,
+      <a href="https://phyllish.github.io" target="_blank" rel="noopener">Yue Hu</a><sup>1</sup>,
+      <a href="https://www.mmintlab.com/people/nima-fazeli/" target="_blank" rel="noopener">Nima Fazeli</a><sup>1</sup>,
+      <a href="https://bucherb.github.io" target="_blank" rel="noopener">Bernadette Bucher</a><sup>1</sup>
+    </p>
+    <p class="affil"><sup>1</sup>University of Michigan, Ann Arbor</p>
+
+    <div class="hero-gap" aria-hidden="true">&nbsp;</div>
+
+    <div class="links">
+      <a class="lbtn" href="assets/papers/phygs.pdf"><i class="fas fa-file-pdf"></i> Paper</a>
+      <a class="lbtn" href="https://github.com/m-and-m-lab/PhyGS" target="_blank" rel="noopener"><i class="fab fa-github"></i> Code <small>(beta)</small></a>
+      <a class="lbtn" href="https://m-and-m-lab.github.io/ForageBench/"><i class="fas fa-arrow-up-right-from-square"></i> ForageBench</a>
+    </div>
+  </div>
+</header>
+
+<!-- ====================== TEASER ====================== -->
+<section style="padding-top:8px">
+  <div class="container">
+    <figure class="fig-wide">
+      <!-- TEASER: export PhyGS paper Figure 1 -> assets/images/teaser.png -->
+      <div class="media ratio-16-7 placeholder">
+        <div class="ph-in"><div class="pi"><i class="fas fa-image"></i></div>
+          Teaser (paper Figure 1)<br><code>assets/images/teaser.png</code></div>
+      </div>
+    </figure>
+    <p class="lead-line">PhyGS generates <b>photorealistic, physically interactable</b>, building-scale indoor
+      scenes in IsaacSim — and ships a <b>Boston Dynamics Spot</b> hardware abstraction for sim-to-real transfer.</p>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== ABSTRACT ====================== -->
+<section id="abstract">
+  <div class="container">
+    <h2 class="sec">Abstract</h2>
+    <div class="prose justify">
+      <p>The pursuit of generalist robot policies requires evaluation spanning variations of visual environments
+      and physical interactions intractable for a robot to execute in the real world. We introduce
+      <strong>PhyGS</strong>, a simulation framework designed for the controllable generation of photorealistic,
+      building-scale indoor environments with high-fidelity low-level physics that bridges the gap between
+      procedural scene synthesis and robotic control. By extending Infinigen-Indoors within the IsaacSim
+      ecosystem, PhyGS transforms static visual backdrops into fully interactable environments through automated
+      object articulation, the assignment of rigid-body physical properties, and the integration of ray-traced
+      lighting.</p>
+      <p>Unlike recent agent-based generative tools that rely on stochastic language models, PhyGS employs a
+      rule-based approach to ensure the controllability required for rigorous benchmarking. Finally, we provide a
+      hardware abstraction layer via a unified API and USD model for the Boston Dynamics Spot robot, demonstrating
+      a seamless transition between simulated evaluation and physical deployment to help identify critical
+      performance gaps in state-of-the-art generalist robotic agents.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== OVERVIEW / PIPELINE ====================== -->
+<section id="overview">
+  <div class="container">
+    <h2 class="sec">Four capabilities, one pipeline</h2>
+    <div class="prose justify" style="margin-bottom:24px">
+      <p>To train and evaluate generalist robots, a simulator must be <strong>extensible</strong> for diverse
+      environment generation, <strong>photorealistic</strong>, <strong>physically interactable</strong>, and
+      capable of <strong>continuous robotic control</strong>. PhyGS unifies all four by bridging procedural scene
+      generation in Infinigen with control in IsaacSim and IsaacLab, and automating object population from
+      Objaverse-XL.</p>
+    </div>
+    <figure class="fig-wide">
+      <!-- PhyGS paper Figure 2 (generation overview) -> assets/images/pipeline.png -->
+      <div class="media ratio-16-7 placeholder">
+        <div class="ph-in"><div class="pi"><i class="fas fa-diagram-project"></i></div>
+          Generation overview (paper Figure 2)<br><code>assets/images/pipeline.png</code></div>
+      </div>
+      <figcaption class="cap">Constraints &rarr; floor plan &amp; furniture (Infinigen-Indoors) &rarr; part-based articulation &rarr; manipuland population (Objaverse-XL).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== FEATURES (2x2) ====================== -->
+<section id="how">
+  <div class="container">
+    <h2 class="sec">How it works</h2>
+    <div class="grid-2">
+      <div class="feat"><h3>Procedural scene generation</h3><p>Rule-based Infinigen-Indoors builds architectural elements and large furniture within OpenUSD; config and constraint files keep arrangements physically plausible and accessible — controllable enough for standardized benchmarking.</p></div>
+      <div class="feat"><h3>Automated articulation</h3><p>A custom exporter intercepts articulated assets (doors, cabinets, drawers) and re-injects their joints, geometry, and material properties — which the standard Blender&rarr;USD bake would otherwise collapse into static meshes.</p></div>
+      <div class="feat"><h3>Semantic object population</h3><p>Manipulands from Objaverse-XL are placed by semantic and volumetric relevance, then given collision meshes and rigid-body physics in IsaacSim (baseline: 0.8 static friction, 1.0&nbsp;kg targets — within Spot Arm's 7&nbsp;kg payload).</p></div>
+      <div class="feat"><h3>Hardware abstraction</h3><p>A unified USD model and API for the Boston Dynamics Spot-with-Arm that mirrors the official SDK, so policies developed in IsaacLab deploy to the physical robot with minimal modification.</p></div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== EXPORT PIPELINE ====================== -->
+<section id="export">
+  <div class="container">
+    <h2 class="sec">From Blender to a physics-ready USD</h2>
+    <div class="prose justify" style="margin-bottom:24px">
+      <p>Infinigen renders in Blender, but the default export to simulators discards articulations, collision
+      meshes, and lighting. PhyGS's exporter intercepts articulated assets, adds joint parameters, gives every
+      asset mesh colliders and rigid-body properties, and corrects the lighting scheme to retain visual fidelity.</p>
+    </div>
+    <figure class="fig-wide">
+      <!-- PhyGS paper Figure 3 (export process) -> assets/images/export.png -->
+      <div class="media ratio-16-7 placeholder">
+        <div class="ph-in"><div class="pi"><i class="fas fa-arrow-right-arrow-left"></i></div>
+          Export process (paper Figure 3)<br><code>assets/images/export.png</code></div>
+      </div>
+      <figcaption class="cap">Blendfile &rarr; intercept articulated assets &rarr; add mesh colliders &amp; rigid-body parameters &rarr; scene USD with physics &amp; interactable objects.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== ROLLOUTS ====================== -->
+<section id="rollouts">
+  <div class="container">
+    <h2 class="sec">Scenes &amp; deployment</h2>
+    <p class="subhead">Generated scenes (IsaacSim)</p>
+    <div class="vrow">
+      <!-- Replace .placeholder with: <video class="media ratio-16-9" controls muted loop playsinline preload="metadata"
+           poster="assets/images/scene_01.jpg"><source src="assets/videos/scene_01.mp4" type="video/mp4"></video> -->
+      <figure><div class="media ratio-16-9 placeholder"><div class="ph-in"><div class="pi"><i class="fas fa-play"></i></div><code>assets/videos/scene_01.mp4</code></div></div><figcaption>Walkthrough</figcaption></figure>
+      <figure><div class="media ratio-16-9 placeholder"><div class="ph-in"><div class="pi"><i class="fas fa-play"></i></div><code>assets/videos/scene_02.mp4</code></div></div><figcaption>Articulated interaction</figcaption></figure>
+      <figure><div class="media ratio-16-9 placeholder"><div class="ph-in"><div class="pi"><i class="fas fa-play"></i></div><code>assets/videos/scene_03.mp4</code></div></div><figcaption>Object diversity</figcaption></figure>
+    </div>
+
+    <p class="subhead" style="margin-top:30px">Spot hardware abstraction</p>
+    <div class="vrow">
+      <figure><div class="media ratio-16-9 placeholder"><div class="ph-in"><div class="pi"><i class="fas fa-play"></i></div><code>assets/videos/spot_sim_01.mp4</code></div></div><figcaption>In simulation</figcaption></figure>
+      <figure><div class="media ratio-16-9 placeholder"><div class="ph-in"><div class="pi"><i class="fas fa-play"></i></div><code>assets/videos/spot_real_01.mp4</code></div></div><figcaption>On hardware</figcaption></figure>
+      <figure><div class="media ratio-16-9 placeholder"><div class="ph-in"><div class="pi"><i class="fas fa-play"></i></div><code>assets/videos/spot_real_02.mp4</code></div></div><figcaption>Sim-to-real</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== RELATED (cross-link) ====================== -->
+<section id="related">
+  <div class="container related">
+    <h2 class="sec">Built for benchmarking</h2>
+    <p class="lead">We use PhyGS to construct <strong>ForageBench</strong>, a benchmark for interactive object search
+      on a mobile manipulator. The interactive-search code is coming soon.</p>
+    <div class="links">
+      <a class="lbtn" href="https://m-and-m-lab.github.io/ForageBench/"><i class="fas fa-arrow-up-right-from-square"></i> ForageBench project page</a>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== BIBTEX ====================== -->
+<section id="bibtex">
+  <div class="container">
+    <h2 class="sec">BibTeX</h2>
+    <div class="codeblock">
+      <button class="copy" data-copy="bib">copy</button>
+      <pre id="bib">@misc{saha2026phygs,
+  title  = {PhyGS: Physically-Grounded Controllable Scene Generation},
+  author = {Saha, Aparajito and Gan, Zhen Hao and Guo, Jinjia and
+            Skwirsk, Jacob and Acheampong, Jeremy and Arapin, Anton and
+            Ku, Chahyon and Hu, Yue and Fazeli, Nima and Bucher, Bernadette},
+  year   = {2026}
+}</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p class="foot-links">
+      <a href="assets/papers/phygs.pdf">Paper</a> ·
+      <a href="https://github.com/m-and-m-lab/PhyGS" target="_blank" rel="noopener">Code (beta)</a> ·
+      <a href="https://m-and-m-lab.github.io/ForageBench/">ForageBench</a>
+    </p>
+    <p>University of Michigan, Ann Arbor.</p>
+    <p>The design of this page follows the conventions of the
+      <a href="https://github.com/nerfies/nerfies.github.io" target="_blank" rel="noopener">Nerfies</a> project page.</p>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>
