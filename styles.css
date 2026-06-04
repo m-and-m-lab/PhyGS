@@ -81,6 +81,7 @@ strong{ color:var(--head); }
 figure{ margin:0 auto; }
 .fig-wide{ max-width:var(--maxw); }
 .media{ width:100%; border-radius:8px; border:1px solid var(--line-2); background:var(--soft-bg); display:block; object-fit:cover; }
+img.media{ border:none; }
 .ratio-16-9{ aspect-ratio:16/9; }
 .ratio-16-7{ aspect-ratio:16/7; }
 .ratio-3-4{ aspect-ratio:3/4; }
