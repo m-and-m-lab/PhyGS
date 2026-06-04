@@ -69,38 +69,23 @@ phygs/
 
 ## Installation
 
-PhyGS has two install paths that are independent of each other. The scene generation component can be executed either in a Docker container or a conda environment, while the simulation component must be run inside the base IsaacLab container. Refer to the installation instructions for further information.
+PhyGS has two install paths that are independent of each other. The scene generation component can be executed either in a Docker container or a conda environment, while the simulation component must be run inside the base IsaacLab container.
 
-<!-- ### Component 1 — Scene generation (Blender / Infinigen)
+Step-by-step instructions live under [`docs/installation/`](docs/installation/):
 
-```bash
-cd scene_gen
-# create the Infinigen environment (see docs/installation.md)
-pip install -e .
-```
+| Guide | When to follow it |
+| --- | --- |
+| [Installation overview](docs/installation/README.md) | Prerequisites, repo clone with submodules, environment-split rationale. Start here. |
+| [Scene generation](docs/installation/scene_generation.md) | Installing the Infinigen-Indoors fork in `scene_generation/infinigen/` (conda env, `[sim]` extra). |
+| [PhyGS simulation](docs/installation/phygs_simulation.md) | Building the IsaacLab Docker container (IsaacSim 5.1.0 / IsaacLab 2.3.0), AO-Grasp sidecars, smoke tests. |
 
-### Components 2–3 — Agent and deployment (IsaacSim / IsaacLab, Docker)
-
-```bash
-cd docker
-docker compose build
-docker compose up
-# inside the container, phygs_agents is installed as an IsaacLab extension
-```
-
-Full, step-by-step instructions for both paths — including asset downloads and the Infinigen fork sync procedure — are in [`docs/installation.md`](docs/installation.md).
-
-## Quick start
+PhyGS uses git submodules for AO-Grasp + Contact-GraspNet and cuRobo. Clone recursively, or initialize after the fact:
 
 ```bash
-# 1. Generate a scene (Component 1 environment)
-#    -> see docs/scene_generation.md
-
-# 2. Load the scene and run an agent in IsaacSim (Components 2–3 environment)
-#    -> see docs/running_in_isaac.md
+git clone --recursive https://github.com/m-and-m-lab/PhyGS.git
+# Or, on an existing checkout:
+git submodule update --init --recursive
 ```
-
-See [`examples/`](examples/) for a full pipeline from scene generation to agent execution. -->
 
 ## Citation
 
