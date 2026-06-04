@@ -5,7 +5,7 @@
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-supported-76b900.svg)](https://developer.nvidia.com/isaac/sim)
 [![License](https://img.shields.io/badge/license-TBD-lightgrey.svg)](LICENSE)
 
-**Project page:** https://m-and-m-lab.github.io/PhyGS/ &nbsp;·&nbsp; **Paper (CVPR 2026 MEIS Workshop):** [phygs.pdf](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
+**[Project page](https://m-and-m-lab.github.io/PhyGS)** &nbsp;·&nbsp; **[Paper (CVPR 2026 MEIS Workshop)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)**
 
 PhyGS is a simulation framework for the controllable generation of photorealistic, building-scale indoor environments with high-fidelity low-level physics, paired with a full agent stack and hardware abstraction layer for the Boston Dynamics Spot with Arm. It is built to generate and evaluate mobile manipulation tasks that are intractable to run at scale in the real world.
 
