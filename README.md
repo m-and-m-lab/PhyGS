@@ -1,8 +1,11 @@
 # PhyGS: Physically-Grounded Controllable Scene Generation
 
-[![Paper](https://img.shields.io/badge/paper-CVPR%202026%20MEIS%20Workshop-b31b1b.svg)](#)
+[![Paper](https://img.shields.io/badge/paper-CVPR%202026%20MEIS%20Workshop-b31b1b.svg)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
+[![Website](https://img.shields.io/badge/project-page-1f6feb.svg)](https://m-and-m-lab.github.io/PhyGS/)
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-supported-76b900.svg)](https://developer.nvidia.com/isaac/sim)
 [![License](https://img.shields.io/badge/license-TBD-lightgrey.svg)](LICENSE)
+
+**Project page:** https://m-and-m-lab.github.io/PhyGS/ &nbsp;·&nbsp; **Paper (CVPR 2026 MEIS Workshop):** [phygs.pdf](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
 
 PhyGS is a simulation framework for the controllable generation of photorealistic, building-scale indoor environments with high-fidelity low-level physics, paired with a full agent stack and hardware abstraction layer for the Boston Dynamics Spot with Arm. It is built to generate and evaluate mobile manipulation tasks that are intractable to run at scale in the real world.
 
@@ -37,35 +40,34 @@ These run in **two separate Python environments** that should not be mixed (see 
 
 ## Repository structure
 
-<!-- ```
-phygs/
-├── scene_generation/       # Component 1 — scene generation (Blender / Infinigen env)
-│   ├── infinigen/          # vendored Infinigen-Indoors fork (upstream code)
-├── phygs_simulation/       # Component 2 — controllers, planners, Spot model
-│   └── phygs_agents/
-│       ├── controllers/    # locomotion (RL) + manipulation (LulaIK + cuRobo)
-│       ├── planners/       # VLFM, AOGrasp
-│       └── robots/         # Spot with Arm USD reference + BD-SDK-mirroring API
-├── deployment/       # Component 3 — task/env definitions, physics configs, launch scripts
-├── docker/           # container used to run components 2–3
-├── assets/           # USD models, meshes, checkpoints (git-lfs / release artifacts)
-├── examples/         # end-to-end: generate scene → load in sim → run agent
-└── docs/             # installation and usage guides
-``` -->
-
 ```
-phygs/
-├── scene_generation/       # Component 1 — scene generation (Blender / Infinigen env)
-│   ├── infinigen/          # vendored Infinigen-Indoors fork (upstream code)
-├── phygs_simulation/       # Component 2 — controllers, planners, Spot model
-├── examples/         # end-to-end: generate scene → load in sim → run agent
-└── docs/             # installation and usage guides
+PhyGS/
+├── docs/                          # Top-level documentation
+│   └── installation/              # Per-component install guides + overview
+│
+├── scene_generation/              # Component 1 — Blender / Infinigen Python env
+│   └── infinigen/                 # Vendored Infinigen-Indoors fork
+│       ├── infinigen/             # Infinigen Python package (assets, core, tools)
+│       ├── infinigen_examples/    # `generate_indoors.py` and other entry points
+│       ├── scripts/               # Install helpers, USD/articulation export tools
+│       ├── docs/                  # Upstream Infinigen docs (Installation, HelloRoom, …)
+│       ├── generate_multi.sh      # Batch tmux driver for parallel seed generation
+│       └── export_isaacsim_multi.sh  # Batch tmux driver for parallel USD export
+│
+└── phygs_simulation/              # Component 2 — IsaacLab/IsaacSim container env
+    ├── scripts/                   # IsaacLab launchers + the `skills` package
+    │   ├── interactive_search.py  # Main launcher (Spot + scene + manipulation)
+    │   ├── skills/                # Spot SDK facade + locomotion + manipulation skills
+    │   └── helpers/               # Camera, point-cloud, viz helpers
+    ├── tests/                     # Pure-Python unit tests + `isaaclab_test/` smoke tests
+    ├── docker/                    # IsaacLab cuRobo patch + AO-Grasp sidecar compose
+    ├── spot_model/                # Spot USDs, URDFs, cuRobo robot config
+    ├── policies/                  # Learned locomotion policy checkpoints
+    ├── docs/                      # Component-specific notes and asset catalogs
+    └── third_party/               # Git submodules: `ao-grasp/`, `curobo/`
 ```
 
-<!-- > The two environments are intentionally isolated: scene generation depends on the Blender
-> Python and Infinigen stack, while the agent and deployment side depend on
-> IsaacSim/IsaacLab, cuRobo, and PyTorch. Their dependency sets conflict, so each component
-> is installed and run independently. -->
+The two components live in **two intentionally isolated Python environments** — Infinigen's Blender/`bpy` stack conflicts with IsaacSim/IsaacLab/cuRobo pins. Install and run each independently per the [Installation](#installation) guides. Scene USDs cross the boundary as files only — never as Python imports.
 
 ## Installation
 
