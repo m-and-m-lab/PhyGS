@@ -78,7 +78,7 @@ Step-by-step instructions live under [`docs/installation/`](docs/installation/):
 | [Scene generation](docs/installation/scene_generation.md) | Installing the Infinigen-Indoors fork in `scene_generation/infinigen/` (conda env, `[sim]` extra). |
 | [PhyGS simulation](docs/installation/phygs_simulation.md) | Building the IsaacLab Docker container (IsaacSim 5.1.0 / IsaacLab 2.3.0), AO-Grasp sidecars, smoke tests. |
 
-PhyGS uses git submodules for AO-Grasp + Contact-GraspNet and cuRobo. Clone recursively, or initialize after the fact:
+PhyGS uses git submodules for [AO-Grasp + Contact-GraspNet](https://github.com/m-and-m-lab/ao-grasp) and [cuRobo](https://github.com/m-and-m-lab/curobo). Clone recursively, or initialize after the fact:
 
 ```bash
 git clone --recursive https://github.com/m-and-m-lab/PhyGS.git
