@@ -16,11 +16,11 @@ from typing import Any
 import yaml
 
 
-INTERACTIVE_SEARCH_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS_ROOT = INTERACTIVE_SEARCH_ROOT / "scripts"
+PHYGS_SIMULATION_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_ROOT = PHYGS_SIMULATION_ROOT / "scripts"
 MANIPULATION_MODULE_ROOT = SCRIPTS_ROOT / "skills" / "manipulation"
 if not SCRIPTS_ROOT.is_dir():
-    raise FileNotFoundError(f"Expected interactive-search scripts directory at {SCRIPTS_ROOT}")
+    raise FileNotFoundError(f"Expected phygs_simulation scripts directory at {SCRIPTS_ROOT}")
 if not MANIPULATION_MODULE_ROOT.is_dir():
     raise FileNotFoundError(f"Expected manipulation module directory at {MANIPULATION_MODULE_ROOT}")
 for path in (SCRIPTS_ROOT, MANIPULATION_MODULE_ROOT):

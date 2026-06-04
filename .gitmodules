@@ -1,0 +1,6 @@
+[submodule "phygs_simulation/third_party/ao-grasp"]
+	path = phygs_simulation/third_party/ao-grasp
+	url = https://github.com/m-and-m-lab/ao-grasp.git
+[submodule "phygs_simulation/third_party/curobo"]
+	path = phygs_simulation/third_party/curobo
+	url = https://github.com/m-and-m-lab/curobo.git

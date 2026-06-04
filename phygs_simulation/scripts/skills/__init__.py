@@ -1,4 +1,4 @@
-"""Skills package for interactive-search scripts."""
+"""Skills package for phygs_simulation scripts."""
 
 from __future__ import annotations
 

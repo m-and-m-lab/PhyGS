@@ -24,7 +24,7 @@ Launch IsaacLab scripts from the Isaac Lab root:
 
 ```bash
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/interactive-search/scripts/interactive_search.py --enable_cameras
+./isaaclab.sh -p scripts/phygs_simulation/scripts/interactive_search.py --enable_cameras
 ```
 
 Keep benchmark configuration in YAML when possible. Use CLI arguments for temporary debugging only.

@@ -16,10 +16,10 @@ from typing import Any
 import yaml
 
 
-INTERACTIVE_SEARCH_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS_ROOT = INTERACTIVE_SEARCH_ROOT / "scripts"
+PHYGS_SIMULATION_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_ROOT = PHYGS_SIMULATION_ROOT / "scripts"
 if not SCRIPTS_ROOT.is_dir():
-    raise FileNotFoundError(f"Expected interactive-search scripts directory at {SCRIPTS_ROOT}")
+    raise FileNotFoundError(f"Expected phygs_simulation scripts directory at {SCRIPTS_ROOT}")
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 

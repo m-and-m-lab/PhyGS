@@ -41,7 +41,7 @@ def main() -> None:
     parser.add_argument(
         "--usd_path",
         type=str,
-        default="scripts/interactive-search/spot_model/spot_arm_w_cam.usd",
+        default="scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd",
         help="Robot USD file to reference (local path or Nucleus path).",
     )
     parser.add_argument(

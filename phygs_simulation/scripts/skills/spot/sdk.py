@@ -1,4 +1,4 @@
-"""Small simulation-backed Spot SDK facade used by interactive-search."""
+"""Small simulation-backed Spot SDK facade used by phygs_simulation."""
 
 from __future__ import annotations
 

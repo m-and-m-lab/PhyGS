@@ -1,10 +1,10 @@
 # Architecture
 
-This document describes the Interactive Search benchmark architecture, with emphasis on the Spot SDK facade, IsaacLab backends, AO-Grasp pipeline, CuRobo planning pipeline, and smoke-test lifecycle.
+This document describes the `phygs_simulation` benchmark architecture, with emphasis on the Spot SDK facade, IsaacLab backends, AO-Grasp pipeline, CuRobo planning pipeline, and smoke-test lifecycle.
 
 ## System Overview
 
-Interactive Search is organized around four layers:
+`phygs_simulation` is organized around four layers:
 
 | Layer | Responsibility | Representative modules |
 | --- | --- | --- |
@@ -191,8 +191,9 @@ Assets come from several sources:
 | `spot_model` | Spot robot, cameras, URDF/USD, CuRobo config. |
 | `.scene_usd/articulations` under the broader IsaacLab scripts tree | Task assets such as drawers. |
 | `docs/assets` | Generated or curated scene assets used during development. |
-| `third_party/infinigen` | Scene/object generation source. |
-| `scripts/generate` and `scripts/blender` | Asset generation, Blender conversion, and scene export helpers. |
+| `third_party/ao-grasp` | AO-Grasp + Contact-GraspNet vendored source (git submodule) used by the sidecar Dockerfiles. |
+| `third_party/curobo` | cuRobo vendored source (git submodule) copied into the IsaacLab container by `Dockerfile.curobofix`. |
+| `scene_generation/infinigen/` (sibling component) | Scene/object generation source. Runs in a separate Python environment — see the top-level PhyGS repo. |
 
 Benchmark launchers should reference assets explicitly through YAML config when possible.
 

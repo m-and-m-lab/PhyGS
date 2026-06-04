@@ -18,9 +18,9 @@ import omni.usd
 np.random.seed(42)
 
 # ================== 配置 ==================
-USD_PATH = "/workspace/isaaclab/scripts/interactive-search/spot_model/spot_arm_w_cam.usd"
-WHOLE_SPOT_URDF = "/workspace/isaaclab/scripts/interactive-search/spot_model/spot.urdf"
-WHOLE_SPOT_YAML = "/workspace/isaaclab/scripts/interactive-search/spot_model/whole_spot_arm/whole_spot.yaml"
+USD_PATH = "/workspace/isaaclab/scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd"
+WHOLE_SPOT_URDF = "/workspace/isaaclab/scripts/phygs_simulation/spot_model/spot.urdf"
+WHOLE_SPOT_YAML = "/workspace/isaaclab/scripts/phygs_simulation/spot_model/whole_spot_arm/whole_spot.yaml"
 
 SPOT_ROOT = "/spot"
 BODY_PATH = "/spot/body"

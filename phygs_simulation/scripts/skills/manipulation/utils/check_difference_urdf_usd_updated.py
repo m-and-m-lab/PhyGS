@@ -14,8 +14,8 @@ from scipy.spatial.transform import Rotation as R
 
 
 # ============ 配置区域：改成你自己的路径 ============
-SPOT_USD_PATH  = "/workspace/isaaclab/scripts/interactive-search/spot_model/spot_arm_w_cam.usd"
-URDF_PATH      = "/workspace/isaaclab/scripts/interactive-search/spot_model/spot.urdf"
+SPOT_USD_PATH  = "/workspace/isaaclab/scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd"
+URDF_PATH      = "/workspace/isaaclab/scripts/phygs_simulation/spot_model/spot.urdf"
 SPOT_ROOT_PRIM = "/spot"   # 你的 spot 根 prim
 # 只检查这几个关节（如果想要更多，可以自己加）
 TARGET_JOINTS = [

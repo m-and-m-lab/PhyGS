@@ -1,4 +1,4 @@
-"""Shared generic types for interactive-search skills."""
+"""Shared generic types for phygs_simulation skills."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class SkillStatus(str, Enum):
-    """Lifecycle status for skills managed by the interactive-search API."""
+    """Lifecycle status for skills managed by the phygs_simulation API."""
 
     IDLE = "idle"
     PLANNING = "planning"

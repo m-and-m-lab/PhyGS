@@ -1,4 +1,4 @@
-"""Base skill interfaces and shared helpers for interactive-search skills."""
+"""Base skill interfaces and shared helpers for phygs_simulation skills."""
 
 from __future__ import annotations
 

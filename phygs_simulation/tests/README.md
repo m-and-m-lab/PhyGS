@@ -24,7 +24,7 @@ This directory contains two kinds of tests: pure Python unit tests and full Isaa
 Run from the project root:
 
 ```bash
-cd /workspace/isaaclab/scripts/interactive-search
+cd /workspace/isaaclab/scripts/phygs_simulation
 pytest -q tests
 ```
 
@@ -40,12 +40,12 @@ Run smoke tests from the Isaac Lab root:
 
 ```bash
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_locomotion_wasd.py
+./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_locomotion_wasd.py
 ```
 
 ```bash
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras
+./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras
 ```
 
 Smoke tests require:

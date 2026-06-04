@@ -1,6 +1,6 @@
 # Plans
 
-This file tracks project status, milestones, and implementation priorities for the Interactive Search robotics benchmark.
+This file tracks project status, milestones, and implementation priorities for the PhyGS simulation (`phygs_simulation`) robotics benchmark.
 
 ## North Star
 
@@ -68,7 +68,7 @@ Exit criteria:
 
 Goal:
 
-Combine locomotion, perception, search, and manipulation into full interactive-search tasks.
+Combine locomotion, perception, search, and manipulation into full interactive-search-style tasks.
 
 Tasks:
 

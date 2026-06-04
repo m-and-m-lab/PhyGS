@@ -1,6 +1,8 @@
 # Docs and Generated Asset Notes
 
-This directory contains asset notes, generated markdown catalogs, and supporting assets used while building Interactive Search scenes.
+This directory contains asset notes, generated markdown catalogs, and supporting assets used while building PhyGS simulation scenes.
+
+> **Historical content.** The catalog markdown below was produced by Infinigen-side helpers that have moved to `scene_generation/infinigen/`. Commands referencing `scripts/generate_indoors.py` etc. are kept as historical references; run the equivalent commands from inside `scene_generation/infinigen/` instead. See [`docs/installation/scene_generation.md`](../../docs/installation/scene_generation.md) for the current scene-generation workflow.
 
 ## Files
 
@@ -20,18 +22,7 @@ This directory contains asset notes, generated markdown catalogs, and supporting
 
 ## Related Scripts
 
-Markdown and asset catalog helpers live under:
-
-```text
-scripts/docs/
-```
-
-Scene and object generation helpers live under:
-
-```text
-scripts/generate/
-scripts/blender/
-```
+Scene-generation, Blender, and Infinigen asset-catalog helpers now live in the sibling component at `scene_generation/infinigen/` (separate Python environment).
 
 ## Benchmark Use
 
