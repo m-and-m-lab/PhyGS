@@ -1,0 +1,34 @@
+robot_config_path: ../../../../spot_model/configuration/spot_arm_curobo.yaml
+
+use_depth_collision: true
+
+offset_min: [0.05, -0.10, -0.05]
+offset_max: [0.15, 0.10, 0.10]
+retries: 10
+close_steps: 30
+
+gripper:
+  # Keep open slightly inside the USD joint limit. The authored lower limit displays
+  # as -1.570 rad, but IsaacLab validates against the exact value.
+  open_rad: -1.56
+  closed_rad: -0.4
+  tolerance_rad: 0.02
+  open_timeout_sec: 3.0
+  camera_settle_steps: 10
+
+depth_voxel_size: 0.025
+depth_min_m: 0.18
+depth_max_m: 3.5
+voxel_bounds_min: [0.0, -0.75, 0.0]
+voxel_bounds_max: [1.35, 0.75, 1.20]
+truncation_distance_vox: 2.0
+raycast_subsampling: 1
+accumulate_frames: false
+import_invert_sign: true
+import_add_half_voxel: true
+frustum_padding_xyz: [0.10, 0.10, 0.08]
+
+local_esdf_voxel_size: 0.05
+local_esdf_margin_xyz: [0.20, 0.20, 0.20]
+local_esdf_max_voxels: 150000
+guarded_approach_steps: 6

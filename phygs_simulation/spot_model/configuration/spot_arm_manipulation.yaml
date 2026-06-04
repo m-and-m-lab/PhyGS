@@ -1,0 +1,16 @@
+usd_path: ../spot_arm_w_cam_static.usd
+
+arm_joint_names: [arm_sh0, arm_sh1, arm_el0, arm_el1, arm_wr0, arm_wr1]
+gripper_joint_names: [arm_f1x]
+ee_body_name: arm_link_fngr
+
+disable_gravity: true
+fix_root_link: true
+
+retract_joint_pos:
+  arm_sh0: 0.0
+  arm_sh1: -3.14
+  arm_el0: 3.14
+  arm_el1: 0.0
+  arm_wr0: 0.0
+  arm_wr1: 0.0

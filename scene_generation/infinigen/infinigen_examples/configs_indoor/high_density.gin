@@ -1,0 +1,18 @@
+# Disable outdoor terrain generation
+compose_indoors.terrain_enabled = False
+
+# Force the use of realistic, high-fidelity geometry over low-poly proxies
+# (Note: You will also pass real_geometry.gin in the command line, but this ensures displacement is handled)
+import infinigen.assets.materials
+infinigen.assets.materials.displacement.apply_displacement = True
+
+# Increase solver steps to pack more objects into the scene.
+# The defaults are typically around 30. Raising these forces the solver to 
+# attempt more placements, resulting in a denser environment.
+compose_indoors.solve_steps_large = 80
+compose_indoors.solve_steps_medium = 80
+compose_indoors.solve_steps_small = 100
+
+# Ensure all object scales are active
+compose_indoors.solve_medium_enabled = True
+compose_indoors.solve_small_enabled = True

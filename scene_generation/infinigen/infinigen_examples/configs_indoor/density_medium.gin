@@ -1,0 +1,11 @@
+# Moderate object density (close to stock defaults), with fullness pinned for
+# repeatable tiers. Pair with a bedrooms_N.gin config for a full single-storey house.
+
+compose_indoors.solve_steps_large = 300
+compose_indoors.solve_steps_medium = 200
+compose_indoors.solve_steps_small = 50
+
+sample_home_constraint_params.furniture_fullness_pct = ("uniform", 0.55, 0.70)
+sample_home_constraint_params.obj_interior_obj_pct = ("uniform", 0.50, 0.70)
+sample_home_constraint_params.obj_on_storage_pct = ("uniform", 0.50, 0.70)
+sample_home_constraint_params.obj_on_nonstorage_pct = ("uniform", 0.30, 0.50)

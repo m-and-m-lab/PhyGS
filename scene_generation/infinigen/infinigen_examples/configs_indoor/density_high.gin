@@ -1,0 +1,11 @@
+# Cluttered object density: more solver placement steps + high surface/storage fill.
+# Pair with a bedrooms_N.gin config for a full single-storey house.
+
+compose_indoors.solve_steps_large = 400
+compose_indoors.solve_steps_medium = 300
+compose_indoors.solve_steps_small = 120
+
+sample_home_constraint_params.furniture_fullness_pct = ("uniform", 0.80, 0.95)
+sample_home_constraint_params.obj_interior_obj_pct = ("uniform", 0.80, 1.00)
+sample_home_constraint_params.obj_on_storage_pct = ("uniform", 0.80, 1.00)
+sample_home_constraint_params.obj_on_nonstorage_pct = ("uniform", 0.60, 0.90)

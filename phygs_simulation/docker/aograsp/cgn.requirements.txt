@@ -1,0 +1,9 @@
+# Keep the sidecar image inference-only. Training and rendering extras remain in the fork
+# but are lazy-imported so they do not inflate the runtime container.
+numpy==1.23.5
+scipy==1.10.1
+PyYAML==6.0.2
+h5py==3.10.0
+opencv-python-headless==4.10.0.84
+protobuf==3.19.6
+tensorflow==2.10.1

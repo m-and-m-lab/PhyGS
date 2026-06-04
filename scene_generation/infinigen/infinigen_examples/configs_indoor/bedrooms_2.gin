@@ -1,0 +1,4 @@
+# Force exactly 2 bedrooms (hard constraint). Single-storey by default
+# (RoomConstants.n_stories = 1 from base_indoors.gin).
+
+home_room_constraints.n_bedrooms = 2

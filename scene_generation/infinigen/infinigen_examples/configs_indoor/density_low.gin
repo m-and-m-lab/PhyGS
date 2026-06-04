@@ -1,0 +1,11 @@
+# Sparse object density: fewer solver placement steps + low surface/storage fill.
+# Pair with a bedrooms_N.gin config for a full single-storey house.
+
+compose_indoors.solve_steps_large = 150
+compose_indoors.solve_steps_medium = 80
+compose_indoors.solve_steps_small = 20
+
+sample_home_constraint_params.furniture_fullness_pct = ("uniform", 0.30, 0.50)
+sample_home_constraint_params.obj_interior_obj_pct = ("uniform", 0.20, 0.40)
+sample_home_constraint_params.obj_on_storage_pct = ("uniform", 0.20, 0.40)
+sample_home_constraint_params.obj_on_nonstorage_pct = ("uniform", 0.10, 0.30)

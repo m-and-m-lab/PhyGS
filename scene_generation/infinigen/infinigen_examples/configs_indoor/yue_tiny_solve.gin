@@ -1,0 +1,4 @@
+# 0.5h generation: objects
+compose_indoors.solve_steps_large = 30
+compose_indoors.solve_steps_medium = 20
+compose_indoors.solve_steps_small = 5
