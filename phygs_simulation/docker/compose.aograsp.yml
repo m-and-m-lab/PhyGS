@@ -1,0 +1,42 @@
+services:
+  ao-pointscore:
+    build:
+      context: ..
+      dockerfile: docker/aograsp/pointscore.Dockerfile
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${AO_GRASP_VISIBLE_DEVICES:-all}
+      POINTSCORE_DEVICE: ${POINTSCORE_DEVICE:-cuda:0}
+      POINTSCORE_PORT: 8001
+      POINTSCORE_EXPECTED_POINTS: ${AO_GRASP_EXPECTED_POINTS:-16384}
+    ports:
+      - "${AO_POINTSCORE_PORT:-18081}:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    gpus: all
+
+  ao-cgn:
+    build:
+      context: ..
+      dockerfile: docker/aograsp/cgn.Dockerfile
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${AO_GRASP_VISIBLE_DEVICES:-all}
+      CGN_PORT: 8002
+      CGN_EXPECTED_POINTS: ${AO_GRASP_EXPECTED_POINTS:-16384}
+      CGN_CHECKPOINT_DIR: ${AO_CGN_CHECKPOINT_DIR:-/models/scene_test_2048_bs3_hor_sigma_001}
+    ports:
+      - "${AO_CGN_PORT:-18082}:8002"
+    volumes:
+      - ${AO_GRASP_MODELS_DIR:-./artifacts/ao-grasp-models}:/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/healthz').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    gpus: all

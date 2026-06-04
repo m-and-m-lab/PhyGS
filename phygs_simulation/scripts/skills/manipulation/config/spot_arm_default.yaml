@@ -1,0 +1,9 @@
+robot_config_path: ../../../../spot_model/configuration/spot_arm_manipulation.yaml
+camera_rig_config_path: ../../../helpers/config/spot_arm_cameras.yaml
+ao_grasp_config_path: aograsp.yaml
+curobo_config_path: curobo_spot_runtime.yaml
+
+sdk:
+  name: spot-manipulation-smoke
+  robot_address: sim://spot-drawer
+  robot_name: spot-sim

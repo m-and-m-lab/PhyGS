@@ -1,0 +1,4 @@
+services:
+  isaac-lab-base:
+    build:
+      dockerfile: scripts/interactive-search/docker/Dockerfile.curobofix

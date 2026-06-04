@@ -1,0 +1,27 @@
+robot:
+  position: [-0.40, 0.0, 0.5]
+  rotation_wxyz: [1.0, 0.0, 0.0, 0.0]
+
+drawer:
+  usd_path: ../../../.scene_usd/articulations/usd/drawer/1003/drawer.usda
+  position: [1.18, 0.0, 0.0]
+  rotation_wxyz: [0.0, 0.0, 0.0, 1.0]
+  joint_name: drawer_slider_0
+  prim_name: Drawer
+
+request:
+  debug: true
+
+scene:
+  env_spacing: 2.5
+  physics_dt: 0.02
+  render_interval: 1
+  dome_light_intensity: 2500.0
+  dome_light_color: [0.75, 0.75, 0.75]
+  viewer_eye: [2.2, 2.0, 1.6]
+  viewer_target: [0.7, 0.0, 0.6]
+
+timeouts:
+  manipulation_sec: 45.0
+  pre_manipulation_delay_sec: 5.0
+  sensor_warmup_steps: 8
