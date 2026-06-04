@@ -15,10 +15,10 @@ scene + robot performance can be isolated.
 
 .. code-block:: bash
 
-  ./isaaclab.sh -p scripts/interactive-search/scripts/interactive_search_scene_robot_test.py \\
+  ./isaaclab.sh -p scripts/phygs_simulation/scripts/interactive_search_scene_robot_test.py \\
     --enable_cameras \\
     --scene_usd scripts/bedroom1/export_scene.blend/export_scene.usdc \\
-    --robot_usd scripts/interactive-search/spot_model/spot_arm_w_cam.usd
+    --robot_usd scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd
 """
 
 """Launch Isaac Sim Simulator first."""
@@ -66,7 +66,7 @@ parser.add_argument(
 parser.add_argument(
     "--robot_usd",
     type=str,
-    default="scripts/interactive-search/spot_model/spot_arm_w_cam.usd",
+    default="scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd",
     help="Robot USD file to reference (local path or Nucleus path).",
 )
 parser.add_argument("--robot_prim_path", type=str, default="/World/Robot", help="Prim path for the robot articulation.")

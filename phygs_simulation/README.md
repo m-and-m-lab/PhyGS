@@ -1,6 +1,6 @@
-# Interactive Search
+# PhyGS Simulation
 
-Interactive Search is a robotics benchmark workspace for evaluating embodied search, locomotion, perception, grasp proposal, and manipulation policies in Isaac Lab. The current benchmark centers on a simulated Boston Dynamics Spot robot with arm and mounted RGB-D cameras, a Spot-SDK-shaped skills API, AO-Grasp proposal services, and CuRobo motion generation.
+The `phygs_simulation` component is a robotics benchmark workspace for evaluating embodied search, locomotion, perception, grasp proposal, and manipulation policies in Isaac Lab. The current benchmark centers on a simulated Boston Dynamics Spot robot with arm and mounted RGB-D cameras, a Spot-SDK-shaped skills API, AO-Grasp proposal services, and CuRobo motion generation.
 
 The repository is intentionally structured as a benchmark stack, not a one-off demo. Scripts should fail fast when required assets, services, cameras, CUDA resources, or target geometry are missing. The public control surface should look like robot SDK code, while the implementation remains simulation-backed and testable.
 
@@ -42,25 +42,23 @@ Use a Linux workstation or server with:
 | --- | --- |
 | NVIDIA GPU | Required for Isaac Sim, Isaac Lab, CuRobo, and AO-Grasp service inference. |
 | NVIDIA driver and container runtime | Docker workflows expect GPU passthrough. |
-| Isaac Lab workspace | This project is located under `isaaclab/scripts/interactive-search` and is launched with `./isaaclab.sh`. |
-| Git submodules | Required for `third_party/ao-grasp`, `third_party/infinigen`, and Spot model dependencies. |
+| Isaac Lab workspace | This component is mounted under `isaaclab/scripts/phygs_simulation` and is launched with `./isaaclab.sh`. |
+| Git submodules | Required for `third_party/ao-grasp` and `third_party/curobo` (registered at the PhyGS repo root). |
 | Docker Compose | Required for AO-Grasp sidecars. |
 
 ## Installation
 
-We use [IsaacLab Docker](https://isaac-sim.github.io/IsaacLab/main/source/deployment/docker.html) to provide a standardized environment for evaluation.
+We use [IsaacLab Docker](https://isaac-sim.github.io/IsaacLab/main/source/deployment/docker.html) (IsaacSim 5.1.0 / IsaacLab 2.3.0) to provide a standardized environment for evaluation. See [`docs/installation/phygs_simulation.md`](../docs/installation/phygs_simulation.md) for the full guide.
 
-For interactive-search, use the included compose patch instead of editing docker/docker-compose.yaml by hand:
+Use the included compose patch instead of editing `docker/docker-compose.yaml` by hand:
 
-From the Isaac Lab root (remember to clone [isaaclab](https://github.com/isaac-sim/IsaacLab)):
+From the Isaac Lab root (clone [IsaacLab](https://github.com/isaac-sim/IsaacLab) separately, then mount this directory into `IsaacLab/scripts/phygs_simulation` — see the installation guide):
 
 ```bash
-cd IsaacLab/scripts
-git clone --recursive https://github.com/m-and-m-lab/interactive-search.git -b zhenhao-spot-depth
 cd IsaacLab/docker
 
 # Build and start Isaac Lab with the patched cuRobo Dockerfile.
-./container.py start base --files ../scripts/interactive-search/docker/docker-compose.curobofix.patch.yaml
+./container.py start base --files ../scripts/phygs_simulation/docker/docker-compose.curobofix.patch.yaml
 
 # Enter the running container.
 ./container.py enter base
@@ -80,7 +78,7 @@ cd /workspace/isaaclab
 Install the project package in editable mode if you want direct imports:
 
 ```bash
-cd /workspace/isaaclab/scripts/interactive-search
+cd /workspace/isaaclab/scripts/phygs_simulation
 python -m pip install -e .
 ```
 
@@ -90,9 +88,9 @@ Run the general interactive manipulation script:
 
 ```bash
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/interactive-search/scripts/interactive_search.py \
+./isaaclab.sh -p scripts/phygs_simulation/scripts/interactive_search.py \
   --enable_cameras \
-  --robot_usd scripts/interactive-search/spot_model/spot_arm_w_cam.usd \
+  --robot_usd scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd \
   --scene_usd <path/to/export_scene.usdc>
 ```
 
@@ -100,7 +98,7 @@ cd /workspace/isaaclab
 
 ```bash
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_locomotion_wasd.py
+./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_locomotion_wasd.py
 ```
 
 ### Run the Spot drawer manipulation smoke test:
@@ -108,7 +106,7 @@ cd /workspace/isaaclab
 Start AO-Grasp services from the host or from a Docker-capable environment:
 
 ```bash
-cd /workspace/isaaclab/scripts/interactive-search
+cd /workspace/isaaclab/scripts/phygs_simulation
 docker compose -f docker/compose.aograsp.yml up --build
 ```
 
@@ -123,13 +121,13 @@ If Isaac Lab runs outside the AO-Grasp Docker network, point configs at `http://
 
 ```bash
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras
+./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras
 ```
 
 <!-- ### Run unit tests that do not require a full Isaac Sim app:
 
 ```bash
-cd /workspace/isaaclab/scripts/interactive-search
+cd /workspace/isaaclab/scripts/phygs_simulation
 pytest -q tests/test_spot_command_api.py tests/test_spot_sdk_api.py tests/test_spot_manipulation_api.py
 ``` -->
 
@@ -169,10 +167,10 @@ Agent-specific rules are in [AGENTS.md](AGENTS.md). -->
 | Goal | Command |
 | --- | --- |
 | Run all lightweight unit tests | `pytest -q tests` |
-| Run Spot locomotion smoke | `./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_locomotion_wasd.py` |
-| Run Spot drawer manipulation smoke | `./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras` |
+| Run Spot locomotion smoke | `./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_locomotion_wasd.py` |
+| Run Spot drawer manipulation smoke | `./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras` |
 | Start AO-Grasp sidecars | `docker compose -f docker/compose.aograsp.yml up --build` |
-| Launch generic manipulation scene | `./isaaclab.sh -p scripts/interactive-search/scripts/interactive_search.py --enable_cameras ...` |
+| Launch generic manipulation scene | `./isaaclab.sh -p scripts/phygs_simulation/scripts/interactive_search.py --enable_cameras ...` |
 
 ## Current Status
 

@@ -20,7 +20,7 @@ From the IsaacLab Docker directory:
 
 ```bash
 cd /workspace/isaaclab/docker
-./container.py start base --files ../scripts/interactive-search/docker/docker-compose.curobofix.patch.yaml
+./container.py start base --files ../scripts/phygs_simulation/docker/docker-compose.curobofix.patch.yaml
 ./container.py enter base
 ```
 
@@ -36,7 +36,7 @@ cd /workspace/isaaclab
 Start sidecars:
 
 ```bash
-cd /workspace/isaaclab/scripts/interactive-search
+cd /workspace/isaaclab/scripts/phygs_simulation
 docker compose -f docker/compose.aograsp.yml up --build
 ```
 

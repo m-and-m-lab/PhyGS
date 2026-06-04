@@ -48,7 +48,7 @@ def test_build_policy_to_runtime_indices_fails_fast_on_missing_joint() -> None:
 
 def test_load_spot_arm_policy_config_resolves_leg_only_joint_subset_from_env_yaml() -> None:
     workspace_root = Path(__file__).resolve().parents[3]
-    asset_path = workspace_root / "scripts" / "interactive-search" / "spot_model" / "spot_arm_w_cam.usda"
+    asset_path = workspace_root / "scripts" / "phygs_simulation" / "spot_model" / "spot_arm_w_cam.usda"
     env_config_path = (
         workspace_root / "logs" / "rsl_rl" / "spot_arm_w_cam_flat" / "2026-04-23_14-29-35" / "params" / "env.yaml"
     )

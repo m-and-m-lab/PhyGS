@@ -2,9 +2,9 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name="interactive-search",
+    name="phygs-simulation",
     version="0.1.0",
-    description="Interactive Search benchmark helpers and Spot skills for Isaac Lab.",
+    description="PhyGS simulation: benchmark helpers and Spot skills for Isaac Lab.",
     package_dir={"": "scripts"},
     packages=find_packages(
         where="scripts",

@@ -58,15 +58,15 @@ arm_link_fngr
 General manipulation:
 
 ```bash
-./isaaclab.sh -p scripts/interactive-search/scripts/interactive_search.py \
-  --robot_usd scripts/interactive-search/spot_model/spot_arm_w_cam.usd \
+./isaaclab.sh -p scripts/phygs_simulation/scripts/interactive_search.py \
+  --robot_usd scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd \
   --enable_cameras
 ```
 
 Fixed-base drawer manipulation smoke:
 
 ```bash
-./isaaclab.sh -p scripts/interactive-search/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras
+./isaaclab.sh -p scripts/phygs_simulation/tests/isaaclab_test/spot_manipulation_drawer.py --enable_cameras
 ```
 
 ## Rules

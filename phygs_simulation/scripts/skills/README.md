@@ -20,7 +20,7 @@ Benchmark scripts should prefer SDK-shaped code:
 ```python
 from skills.spot import create_standard_sdk
 
-sdk = create_standard_sdk("interactive-search")
+sdk = create_standard_sdk("phygs-simulation")
 robot = sdk.create_robot("sim://spot", name="spot-sim")
 lease_client = robot.ensure_client("lease")
 command_client = robot.ensure_client("robot-command")

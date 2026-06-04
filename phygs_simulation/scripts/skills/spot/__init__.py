@@ -1,4 +1,4 @@
-"""Spot-style command helpers used by the interactive-search skills API."""
+"""Spot-style command helpers used by the phygs_simulation skills API."""
 
 from .frame_helpers import BODY_FRAME_NAME, GRAV_ALIGNED_BODY_FRAME_NAME, ODOM_FRAME_NAME, VISION_FRAME_NAME
 from .geometry import EulerZXY

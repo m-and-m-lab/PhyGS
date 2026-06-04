@@ -6,9 +6,9 @@ robot_cfg:
     ee_link: "arm_link_wr1"
   
     # Paths are absolute to avoid relying on curobo's internal asset root.
-    usd_path: /workspace/isaaclab/scripts/interactive-search/spot_model/spot_arm_only.usd
+    usd_path: /workspace/isaaclab/scripts/phygs_simulation/spot_model/spot_arm_only.usd
     usd_robot_root: /spot
-    urdf_path: /workspace/isaaclab/scripts/interactive-search/spot_model/spot_arm_only.urdf
+    urdf_path: /workspace/isaaclab/scripts/phygs_simulation/spot_model/spot_arm_only.urdf
     # Optional: set if the robot prim in USD is nested under a custom root.
     use_usd_kinematics: false
     use_global_cumul: true

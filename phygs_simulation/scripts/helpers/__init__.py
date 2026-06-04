@@ -1,2 +1,2 @@
-"""Shared utility package for interactive-search scripts."""
+"""Shared utility package for phygs_simulation scripts."""
 

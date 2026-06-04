@@ -72,7 +72,7 @@ class PickPlace(tasks.PickPlace):
         return
 
     def set_robot(self) -> SingleManipulator:
-        asset_path = "/workspace/isaaclab/scripts/interactive-search/spot_model/spot_arm_w_cam.usd"
+        asset_path = "/workspace/isaaclab/scripts/phygs_simulation/spot_model/spot_arm_w_cam.usd"
         add_reference_to_stage(usd_path=asset_path, prim_path="/spot")
         stage = omni.usd.get_context().get_stage()
         spot_prim = stage.GetPrimAtPath("/spot")
@@ -112,9 +112,9 @@ class RMPFlowController(mg.MotionPolicyController):
             # robot_description_path=os.path.join(os.path.dirname(__file__), "../spot/whole_spot_arm/whole_spot.yaml"),
             # rmpflow_config_path=os.path.join(os.path.dirname(__file__), "../spot/standalone_arm/spot_arm_rmpflow_common.yaml"),
             # urdf_path=os.path.join(os.path.dirname(__file__), "../spot/whole_spot_arm/whole_spot.urdf"),
-            robot_description_path="/workspace/isaaclab/scripts/interactive-search/spot_model/whole_spot_arm/whole_spot.yaml",
-            rmpflow_config_path="/workspace/isaaclab/scripts/interactive-search/spot_model/whole_spot_arm/spot_arm_rmpflow_common.yaml",
-            urdf_path="/workspace/isaaclab/scripts/interactive-search/spot_model/spot.urdf",
+            robot_description_path="/workspace/isaaclab/scripts/phygs_simulation/spot_model/whole_spot_arm/whole_spot.yaml",
+            rmpflow_config_path="/workspace/isaaclab/scripts/phygs_simulation/spot_model/whole_spot_arm/spot_arm_rmpflow_common.yaml",
+            urdf_path="/workspace/isaaclab/scripts/phygs_simulation/spot_model/spot.urdf",
             end_effector_frame_name="arm_link_fngr",
             maximum_substep_size=0.00334,
         )

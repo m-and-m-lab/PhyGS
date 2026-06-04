@@ -174,8 +174,10 @@ RUN set -euo pipefail && \
     done && \
     test -f "${pkg_dst}/_structures.py"
 
-# Install cuRobo from source (pinned commit); needs CUDA env and Torch
-RUN git clone https://github.com/m-and-m-lab/curobo.git ${ISAACLAB_PATH}/curobo && \
+# Install cuRobo from the vendored submodule at phygs_simulation/third_party/curobo.
+# The submodule is checked out by `git submodule update --init --recursive` on the host
+# and copied into the IsaacLab tree above (COPY ../ ${ISAACLAB_PATH}). Needs CUDA env and Torch.
+RUN cp -a ${ISAACLAB_PATH}/scripts/phygs_simulation/third_party/curobo ${ISAACLAB_PATH}/curobo && \
     cd ${ISAACLAB_PATH}/curobo && \
     ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e . --no-build-isolation
 
