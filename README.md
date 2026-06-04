@@ -9,10 +9,9 @@
 
 PhyGS is a simulation framework for the controllable generation of photorealistic, building-scale indoor environments with high-fidelity low-level physics, paired with a full agent stack and hardware abstraction layer for the Boston Dynamics Spot with Arm. It is built to generate and evaluate mobile manipulation tasks that are intractable to run at scale in the real world.
 
-<!-- Drop the Figure 1 teaser here once assets are in place
 <p align="center">
   <img src="docs/assets/teaser.png" alt="PhyGS generated scenes rendered in IsaacSim and Spot sim-to-real" width="100%">
-</p> -->
+</p>
 
 ## Abstract
 
