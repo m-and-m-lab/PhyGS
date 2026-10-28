@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spot Robot UI</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand"><span class="mark" aria-hidden="true"></span><b>Spot</b> <span class="muted">Robot UI</span></div>
+  <span id="status" class="pill s-idle">CONNECTING</span>
+  <span id="episode" class="muted">Episode –</span>
+  <div id="task" title="Task">–</div>
+  <dl id="clocks" class="clocks">
+    <div><dt>Sim</dt><dd id="clock-sim">–</dd></div>
+    <div><dt>Wall</dt><dd id="clock-wall">–</dd></div>
+    <div><dt>Speed</dt><dd id="clock-rtf">–</dd></div>
+  </dl>
+  <span id="task-chip" class="task-chip" hidden></span>
+  <div id="replay-bar" class="replay-bar" hidden>
+    <span class="pill s-armed">Replay</span>
+    <button type="button" id="replay-play" title="Pause or play">Pause</button>
+    <div id="replay-speed" class="segmented" role="group" aria-label="Replay speed"></div>
+    <span id="replay-clock" class="mono small">–</span>
+    <button type="button" id="replay-restart">Restart</button>
+  </div>
+  <button id="telemetry-toggle" type="button" title="Telemetry: health, motion, mission, command details (key T)">Telemetry <kbd>T</kbd></button>
+  <span id="connection" class="conn off" title="Connection to the simulation">offline</span>
+  <button id="end-episode" type="button" hidden title="End the episode now; the report is written">End episode</button>
+  <button id="estop" type="button" title="Emergency stop: ends the episode (key: Pause)">E-STOP</button>
+</header>
+
+<main id="app">
+  <section id="left" aria-label="Skills">
+    <div class="panel" id="skills-panel">
+      <div class="panel-head"><h2>Skills</h2><span class="muted small">select, then fill in</span></div>
+      <div id="skill-groups"></div>
+    </div>
+    <div class="panel" id="skill-panel" aria-live="polite"></div>
+  </section>
+
+  <section id="center" aria-label="Views">
+    <nav id="tabs" role="tablist" aria-label="Views"></nav>
+    <div id="stage">
+      <canvas id="main-view" aria-label="Main view"></canvas>
+      <div id="pick-banner" hidden></div>
+      <div class="overlay top-left"><span id="view-chip" class="chip"></span></div>
+      <div class="overlay top-right">
+        <div id="mode-switch" class="segmented" role="group" aria-label="Image mode">
+          <button type="button" id="mode-rgb" data-mode="rgb" class="on">RGB</button>
+          <button type="button" id="mode-depth" data-mode="depth">Depth</button>
+        </div>
+        <div id="legend" class="legend"></div>
+      </div>
+      <div class="overlay bottom-left">
+        <div id="map-tools" class="segmented" role="group" aria-label="Map view" hidden>
+          <button type="button" id="map-fit">Fit</button><button type="button" id="map-follow">Follow robot</button>
+        </div>
+        <span id="cursor-chip" class="chip mono" hidden></span>
+      </div>
+      <div id="toasts" aria-live="polite"></div>
+      <div id="start-card" class="episode-card" hidden>
+        <div class="kicker">Episode <span id="start-episode">–</span> · ready</div>
+        <h1 id="start-task">–</h1>
+        <dl id="start-facts" class="card-facts"></dl>
+        <p class="small muted">The simulation waits until you press Start. Then it runs continuously; the robot stands when idle.
+          The robot can only walk where its cameras have seen floor: turn on the spot with Drive (hold Q or E) to look around first.</p>
+        <button type="button" id="start-button" class="primary">Start  ⏎</button>
+      </div>
+      <div id="connection-card" class="episode-card" hidden>
+        <div class="kicker">Not connected</div>
+        <h1 id="connection-title">–</h1>
+        <p id="connection-text" class="small"></p>
+        <pre id="connection-command" class="mono small" hidden></pre>
+      </div>
+      <div id="result-card" class="episode-card" hidden>
+        <div class="kicker">Episode <span id="result-episode">–</span> · ended</div>
+        <h1 id="result-outcome">–</h1>
+        <p id="result-reason" class="mono small"></p>
+        <dl id="result-facts" class="card-facts"></dl>
+        <p class="small muted">The report is <code>report.json</code> in the episode's output folder; <code>ui_replay.py</code> plays the recording back.</p>
+        <button type="button" id="result-close">Look at the last state</button>
+      </div>
+      <canvas id="pip" title="Click to swap with the main view"></canvas>
+    </div>
+  </section>
+
+  <section id="right" aria-label="Status">
+    <div class="panel channel" id="card-base">
+      <div class="panel-head"><h2>Base</h2><span class="pill s-idle">idle</span></div>
+      <div class="what">No command yet.</div>
+      <div class="step mono small"></div>
+      <div class="progress" hidden><span></span></div>
+      <div class="meta small muted"></div>
+      <button type="button" class="cancel" hidden>Cancel</button>
+    </div>
+    <div class="panel channel" id="card-arm">
+      <div class="panel-head"><h2>Arm</h2><span class="pill s-idle">idle</span></div>
+      <div class="what">No command yet.</div>
+      <div class="step mono small"></div>
+      <div class="progress" hidden><span></span></div>
+      <div class="meta small muted"></div>
+      <button type="button" class="cancel" hidden>Cancel</button>
+    </div>
+    <div class="panel" id="robot-panel">
+      <div class="panel-head"><h2>Robot</h2><span id="robot-loc" class="muted small"></span></div>
+      <dl class="facts">
+        <div><dt>Position</dt><dd id="r-pos">–</dd></div>
+        <div><dt>Heading</dt><dd class="with-dial"><svg id="compass" viewBox="-12 -12 24 24" aria-hidden="true"><circle r="10.5"></circle><path id="needle" d="M0,-8 L3.2,4 L0,2 L-3.2,4 Z"></path></svg><span id="r-yaw">–</span></dd></div>
+        <div><dt>Base speed</dt><dd id="r-speed">–</dd></div>
+        <div><dt>Arm</dt><dd id="r-arm">–</dd></div>
+        <div><dt>Gripper</dt><dd class="with-bar"><span class="bar"><span id="r-grip-bar"></span></span><span id="r-grip">–</span></dd></div>
+        <div><dt>Holding</dt><dd id="r-hold">–</dd></div>
+      </dl>
+    </div>
+    <div class="panel" id="log-panel">
+      <div class="panel-head"><h2>Log</h2>
+        <div id="log-filter" class="segmented small" role="group" aria-label="Log filter">
+          <button type="button" data-filter="all" class="on">All</button><button type="button" data-filter="base">Base</button><button type="button" data-filter="arm">Arm</button><button type="button" data-filter="errors">Errors</button>
+        </div>
+      </div>
+      <ol id="log" class="mono"></ol>
+    </div>
+  </section>
+</main>
+
+<aside id="telemetry" aria-label="Telemetry" hidden>
+  <div class="panel-head"><h2>Telemetry</h2><button type="button" id="telemetry-close" title="Close (T)">Close</button></div>
+  <div id="telemetry-tabs" class="segmented" role="tablist">
+    <button type="button" data-tab="health" class="on">Health</button><button type="button" data-tab="base">Base</button><button type="button" data-tab="arm">Arm</button><button type="button" data-tab="mission">Mission</button><button type="button" data-tab="command">Command</button>
+  </div>
+  <div id="telemetry-body"></div>
+  <p class="small muted">From the agent view only; the last 60 s of simulated time. Saved to telemetry.jsonl in the output folder.</p>
+</aside>
+
+<footer id="timeline-panel">
+  <canvas id="timeline" aria-label="Timeline of commands over simulated time"></canvas>
+  <div id="timeline-tip" class="chip" hidden></div>
+</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

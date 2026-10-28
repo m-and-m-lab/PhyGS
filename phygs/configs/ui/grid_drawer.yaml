@@ -1,0 +1,29 @@
+# The robot UI's default episode (an episode spec, docs/design/episode_harness/spec.html): retrieve the
+# small box from the grid storage unit's top drawer. Tier motion, so the page offers Drive to
+# look around (unknown floor is blocked). Only gt_localization is granted: the page shows the
+# true pose and maps the cameras' depth with it; the map and the drawers come from the cameras.
+schema: 3
+id: ui_grid_drawer
+scene:
+  id: grid_storage
+  ground: true  # The file has no floor of its own.
+robot:
+  model: spot  # phygs/robots/spot; the base spawns at the robot's own height.
+  start: [-1.6, -0.2, 0.0]  # x, y, heading [m, m, rad]; the arm starts stowed.
+# Moved before the episode, in the top drawer's frame [m]: on its floor (top 0.0125 m) where a
+# 0.30 m opening shows it.
+objects:
+  target: {frame: corner_nightstand_tier_2_drawer, position: [0.0, -0.134, 0.0725]}
+task:
+  goal: retrieve
+  description: the small green box
+  target: target  # Scene name, for the evaluator; never shown on the page.
+actions: motion
+observations:
+  camera_roles: [planning]  # The robot's arm-planning cameras (Spot: frontleft, frontright, hand).
+  joint_state: true
+  imu: false
+grants: [gt_localization]
+budget:
+  sim_seconds: 900
+seed: 0

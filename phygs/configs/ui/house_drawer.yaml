@@ -1,0 +1,26 @@
+# Robot UI episode in the Bear house (an episode spec, docs/design/episode_harness/spec.html): retrieve
+# the small cardboard box from the kitchen island's bottom drawer, as dev_house_drawer, but with
+# the UI's tier and grants: tier motion (Drive to look around) and only gt_localization (the page
+# shows the true pose and maps the cameras' depth with it).
+schema: 3
+id: ui_house_drawer
+scene:
+  id: bear_loop_house_storage_revision
+  name: house
+  ground: false  # The house has its own floors.
+robot:
+  model: spot  # phygs/robots/spot; the base spawns at the robot's own height.
+  start: [10.2, 6.0, 0.0]  # x, y, heading [m, m, rad]; the arm starts stowed.
+task:
+  goal: retrieve
+  description: the small cardboard box
+  target: kitchen_island_compartment_0_item_1  # Scene name, for the evaluator; never shown on the page.
+actions: motion
+observations:
+  camera_roles: [planning]  # The robot's arm-planning cameras (Spot: frontleft, frontright, hand).
+  joint_state: true
+  imu: false
+grants: [gt_localization]
+budget:
+  sim_seconds: 900
+seed: 0

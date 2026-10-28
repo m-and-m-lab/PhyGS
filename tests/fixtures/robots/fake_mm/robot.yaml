@@ -1,0 +1,61 @@
+# A made-up mobile manipulator for unit tests (tests/test_robot_description.py): a base on planar
+# joints, a torso lift in the arm chain, five arm joints and a gripper of two prismatic fingers [m].
+schema: 1
+name: fake_mm
+usd: robot.usda
+urdf: robot.urdf
+base_link: base_link
+spawn_height: 0.0
+fallen_height: null  # Planar joints cannot tip.
+initial_joints: {finger_.*_joint: 0.04}
+articulation: {self_collisions: true, solver_position_iterations: 4, solver_velocity_iterations: 0, contact_sensors: true}
+actuators: actuators.py:actuator_cfgs
+base:
+  kind: planar_joints
+  kinematics: holonomic
+  joints: {x: base_x, y: base_y, yaw: base_yaw}
+  config: base.yaml
+arm:
+  joints: [lift, shoulder_yaw, shoulder_pitch, elbow, wrist_roll]
+  root_link: torso
+  wrist_link: wrist
+  stow: [0.0, 0.0, -1.5, 2.4, 0.0]
+  prestow: [0.0, 0.0, -1.2, 2.1, 0.0]
+  move_seconds: 2.0
+  motion:  # The fingers [m, m/s].
+    max_velocity: 1.0
+    max_acceleration: 2.0
+    tracking_tolerance: 0.15
+    joint_tolerance: 0.03
+    stopped_velocity: 0.08
+    gripper_tolerance: 0.002
+    gripper_stopped_velocity: 0.003
+    grip_squeeze: 0.005
+gripper:
+  joints: {finger_left_joint: 1.0, finger_right_joint: 1.0}
+  open: 0.04
+  closed: 0.0
+  jaw_links: [finger_left, finger_right]
+  tools:
+    wrist: {position: [0.0, 0.0, 0.0]}
+    hand: {position: [0.15, 0.0, 0.0]}  # The gripper's axes are the wrist's.
+    grasp: {position: [0.14, 0.0, 0.0]}
+cameras:
+  head: {prim: camera_mount/head, width: 64, height: 48, pinhole: {focal_length: 18.0, horizontal_aperture: 20.955, clipping_range: [0.05, 10.0]}, offset: {pos: [0.0, 0.0, 0.0]}}
+  wrist_cam: {prim: wrist/cam, width: 64, height: 48, pinhole: {focal_length: 18.0, horizontal_aperture: 20.955, clipping_range: [0.05, 10.0]}, offset: {pos: [0.05, 0.0, 0.0]}}
+camera_roles:
+  navigation: [head]
+  planning: [head, wrist_cam]
+  look: wrist_cam
+  front: [head]
+navigation:
+  limits: {period: 0.04, max_speed: 0.5, max_yaw_speed: 1.0}
+  footprint_profile: transit.json
+planning:
+  default_joints: [0.2, 0.0, -1.0, 1.5, 0.0]
+  usd_only_geometry: []
+  link_aliases: {}
+  surface_fit_links: [finger_left, finger_right]
+  drawn_link: wrist
+  workspace: {lower: [-0.5, -1.0, -0.2], upper: [1.5, 1.0, 1.8]}
+  obstacle_radius: 1.2

@@ -1,1 +1,12 @@
 CLAUDE.md
+.DS_Store
+**/__pycache__/
+**/.pytest_cache/
+**/*.egg-info/
+**/*.pyc
+**/*.log*
+output_check/*
+docker/artifacts/
+*.tmp
+# Scene generation outputs (scene_generation/infinigen has its own ignore rules).
+scene_generation/infinigen/outputs/

@@ -1,0 +1,96 @@
+# Clearpath Ridgeback with a Franka Emika Panda arm: Isaac Lab's asset (isaaclab_assets.robots.
+# ridgeback_franka), the second robot of the framework, in bring-up (README.md: which rungs pass).
+# Schema: phygs/robots/description.py; how to add a robot: docs/adding_a_robot.md.
+# Paths are relative to this file. The arm is revolute [rad]; the fingers are prismatic [m].
+schema: 1
+name: ridgeback_franka
+usd: assets/ridgeback_franka.usd
+fetch: fetch.py  # Downloads assets/ (pinned hashes); a missing asset names it.
+urdf: planning.urdf  # Generated from the USD by make_planning_urdf.py; Franka meshes in meshes/.
+# The articulation root is fixed to the world; the base moves on three joints under it.
+base_link: base_link
+spawn_height: 0.0
+fallen_height: null  # Planar joints cannot tip.
+initial_joints:  # [m, rad]; the arm starts at arm.stow.
+  dummy_base_.*: 0.0
+  panda_finger_joint.*: 0.04
+articulation:
+  self_collisions: false  # As Isaac Lab's configuration; to check on rung 00.
+  solver_position_iterations: 8
+  solver_velocity_iterations: 0
+  contact_sensors: true  # Arm and jaw contacts are recorded in the episode report.
+actuators: actuators.py:actuator_cfgs
+base:
+  kind: planar_joints
+  kinematics: holonomic
+  # Prismatic along the root's x and y [m], revolute about its z [rad]: velocity driven.
+  joints: {x: dummy_base_prismatic_x_joint, y: dummy_base_prismatic_y_joint, yaw: dummy_base_revolute_z_joint}
+  config: base/base.yaml
+arm:
+  joints: [panda_joint1, panda_joint2, panda_joint3, panda_joint4, panda_joint5, panda_joint6, panda_joint7]
+  root_link: panda_link0
+  wrist_link: panda_hand
+  # Isaac Lab's default posture, folded over the base; it held within 0.18 rad through the footprint drives.
+  stow: [0.0, -0.569, 0.0, -2.810, 0.0, 2.0, 0.741]
+  prestow: [0.0, -0.3, 0.0, -2.4, 0.0, 2.1, 0.741]  # A little unfolded; to tune on rung 07.
+  move_seconds: 2.0
+  motion:  # MotionConfig: the arm [rad, rad/s, rad/s²], the fingers [m, m/s].
+    max_velocity: 1.0
+    max_acceleration: 2.0
+    tracking_tolerance: 0.15
+    joint_tolerance: 0.03
+    stopped_velocity: 0.08
+    gripper_tolerance: 0.002
+    # About 6 % of a 1 s close's mean finger speed (0.04 m/s), the ratio Spot's claw has.
+    gripper_stopped_velocity: 0.003
+    grip_squeeze: 0.005  # Past first contact.
+gripper:
+  joints: {panda_finger_joint1: 1.0, panda_finger_joint2: 1.0}  # The two fingers move together.
+  open: 0.04  # [m] each finger.
+  closed: 0.0
+  jaw_links: [panda_leftfinger, panda_rightfinger]
+  # Tool frames in the wrist link (panda_hand) [m]. The gripper's axes: x the approach (the hand's
+  # z), z the axis the fingers close along (the hand's y), y the hand's x.
+  tools:
+    wrist: {position: [0.0, 0.0, 0.0]}
+    # Between the fingertips (the USD's endeffector body).
+    hand: {position: [0.0, 0.0, 0.1034], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
+    # An object's grasp point, 3.7 cm inside the fingertips and ~8 mm below the finger roots
+    # (z 0.058 m): the fingers cover the object's top ~4 cm. At the fingertips they closed on nothing;
+    # 2.8 cm inside they squeezed the 4 cm box out and toppled it (table_reach, 2026-10-28).
+    grasp: {position: [0.0, 0.0, 0.066], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
+    # A bar handle's axis: between the fingertips, until the drawer rungs say otherwise. Both fingers
+    # close, so a held object stays centred (no fixed_jaw).
+    handle: {position: [0.0, 0.0, 0.1034], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
+cameras:  # The USD has none: pinhole depth cameras spawned on the base and the hand.
+  front:
+    prim: base_link/front_camera
+    width: 640
+    height: 480
+    pinhole: {focal_length: 18.0, horizontal_aperture: 20.955, clipping_range: [0.1, 10.0]}
+    offset: {pos: [0.45, 0.0, 0.35], rot: [0.0, 0.1736, 0.0, 0.9848], convention: world}  # 20 deg down.
+  hand:
+    prim: panda_hand/hand_camera
+    width: 640
+    height: 480
+    pinhole: {focal_length: 18.0, horizontal_aperture: 20.955, clipping_range: [0.05, 10.0]}
+    offset: {pos: [0.06, 0.0, 0.04], rot: [0.0, -0.7071068, 0.0, 0.7071068], convention: world}  # Along z.
+camera_roles:
+  navigation: [front]
+  planning: [front, hand]
+  look: hand
+  front: [front]
+navigation:
+  limits: {period: 0.04, max_speed: 0.5, max_yaw_speed: 1.0}
+  # Measured 2026-10-28 (check_footprint.py, output_check/20261028-1155_ridgeback_footprint).
+  footprint_profile: navigation/transit.json
+planning:
+  default_joints: [0.0, -0.3, 0.0, -2.4, 0.0, 2.1, 0.741]  # cuRobo's retract posture: the pre-stow.
+  usd_only_geometry: []
+  link_aliases: {}
+  surface_fit_links: [panda_hand, panda_leftfinger, panda_rightfinger]
+  drawn_link: panda_hand
+  workspace:  # The depth map's corners in the body frame [m]: the arm (mounted 0.3 m ahead) reaches ~0.85 m.
+    lower: [-0.4, -1.0, 0.0]
+    upper: [1.5, 1.0, 1.6]
+  obstacle_radius: 1.4

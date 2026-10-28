@@ -1,0 +1,11 @@
+# The robot tests' stances in the grid storage scene: where the scripted routines stand (routines/base.py).
+# Stances [x, y, heading] [m, m, rad] per place and use, from the robot tests' grid episode
+# (2026-10-14); the closed handle bar is at y 2.56.
+# The open and reach_in stances are not here: they are the same rule for every drawer (the
+# routines, phygs_robot_tests/routines/params.yaml grip_range_m and reach_in_*).
+stances:
+  corner_nightstand_tier_2_drawer:  # The top drawer.
+    close: [0.0, 1.38, 1.5708]  # 0.06 m further back: the push's start pose clears the body.
+  table:
+    approach: [-0.9, 0.0, 0.0]  # Facing the table 0.65 m behind its reach stance.
+    reach: [-0.25, 0.0, 0.0]  # 0.12 m inside the free space at the table.

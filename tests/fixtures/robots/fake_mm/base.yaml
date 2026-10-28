@@ -1,0 +1,7 @@
+# The fake base's settings (PlanarJointBase): no dead band, a deceleration limit and the stop.
+command_dead_band:
+  v_x: {zero: 0.0, negative: 0.0, positive: 0.0}
+  v_y: {zero: 0.0, negative: 0.0, positive: 0.0}
+  v_rot: {zero: 0.0, negative: 0.0, positive: 0.0}
+command_deceleration: {v_x: 1.0, v_y: 1.0, v_rot: 2.0}
+stop_seconds: 0.2

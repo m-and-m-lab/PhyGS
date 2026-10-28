@@ -1,0 +1,158 @@
+# ROS 2 Jazzy. Geometry, frames and limits are supplied by nav2.launch.py.
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    expected_planner_frequency: 1.0
+    planner_plugins: [GridBased]
+    # State lattice over position and 16 headings with the rectangle footprint: routes end at the
+    # goal heading. The launcher writes the motion primitives for the costmap resolution
+    # (lattice_filepath; nav2.launch.py lattice_primitives): the installed 5 cm / 0.5 m set for the
+    # robot's base kinematics ("omni": forward, sideways and turning moves, as Spot walks; "diff" for
+    # a differential base), scaled for coarser maps.
+    GridBased:
+      plugin: nav2_smac_planner::SmacPlannerLattice
+      # Routes may cross unexplored cells (exploration's frontier goals lie at their edge); maps without
+      # unknown space (the flat floor, known boxes) are unaffected.
+      allow_unknown: true
+      tolerance: 0.0
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 5.0
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 3.0
+      analytic_expansion_max_cost: 200.0
+      analytic_expansion_max_cost_override: false
+      reverse_penalty: 2.0
+      change_penalty: 0.05
+      non_straight_penalty: 1.05
+      cost_penalty: 2.0
+      rotation_penalty: 5.0
+      retrospective_penalty: 0.015
+      lattice_filepath: ""
+      lookup_table_size: 20.0
+      cache_obstacle_heuristic: false
+      allow_reverse_expansion: false
+      smooth_path: true
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.3
+        w_data: 0.2
+        tolerance: 1.0e-10
+        do_refinement: true
+        refinement_num: 2
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    enable_stamped_cmd_vel: true
+    controller_frequency: 50.0
+    odom_topic: odom
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.0
+    progress_checker_plugins: [progress_checker]
+    goal_checker_plugins: [goal_checker]
+    controller_plugins: [FollowPath]
+    progress_checker:
+      plugin: nav2_controller::SimpleProgressChecker
+      required_movement_radius: 0.1
+      movement_time_allowance: 45.0
+    goal_checker:
+      plugin: nav2_controller::SimpleGoalChecker
+      stateful: false
+      xy_goal_tolerance: 0.04
+      yaw_goal_tolerance: 0.04
+    # MPPI samples forward, sideways and turning commands (motion model Omni; the launcher sets the
+    # robot's: DiffDrive for a differential base) and scores them against the route, the goal pose and
+    # the costmap with the rectangle footprint, so the base turns to the goal heading while it walks.
+    # The launcher sets the motion model and the velocity limits.
+    FollowPath:
+      plugin: nav2_mppi_controller::MPPIController
+      motion_model: Omni
+      time_steps: 50  # Launcher: a 2 s horizon at the control period (model_dt).
+      model_dt: 0.04
+      batch_size: 2000
+      iteration_count: 1
+      temperature: 0.3
+      gamma: 0.015
+      regenerate_noises: true
+      visualize: false
+      vx_std: 0.2
+      vy_std: 0.2
+      wz_std: 0.4
+      vx_max: 1.0
+      vx_min: -0.35
+      vy_max: 0.5
+      wz_max: 1.5
+      # Nav2's default sampling accelerations [m/s², rad/s²]. With the locomotion skill's deceleration
+      # limits instead (2, 1, 2) MPPI drifted backwards at under 0.1 m/s even on a perfect kinematic
+      # robot (2026-10-24); the skill still limits how fast the base slows down.
+      ax_max: 3.0
+      ax_min: -3.0
+      ay_max: 3.0
+      az_max: 3.5
+      prune_distance: 1.7
+      transform_tolerance: 0.1
+      enforce_path_inversion: false
+      # No TwirlingCritic: with it MPPI crept at under 0.1 m/s even on a perfect kinematic robot
+      # (2026-10-24); without it, 3 m ahead took about 4 s.
+      critics: [ConstraintCritic, CostCritic, GoalCritic, GoalAngleCritic, PathAlignCritic, PathFollowCritic,
+                PathAngleCritic, PreferForwardCritic]
+      ConstraintCritic: {enabled: true, cost_power: 1, cost_weight: 4.0}
+      GoalCritic: {enabled: true, cost_power: 1, cost_weight: 5.0, threshold_to_consider: 1.4}
+      GoalAngleCritic: {enabled: true, cost_power: 1, cost_weight: 3.0, threshold_to_consider: 1.0}
+      PreferForwardCritic: {enabled: true, cost_power: 1, cost_weight: 5.0, threshold_to_consider: 0.5}
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.81
+        critical_cost: 300.0
+        consider_footprint: true
+        collision_cost: 1000000.0
+        near_goal_distance: 1.0
+        trajectory_point_step: 2
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 14.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 4
+        threshold_to_consider: 0.5
+        offset_from_furthest: 20
+        use_path_orientations: false
+      PathFollowCritic: {enabled: true, cost_power: 1, cost_weight: 5.0, offset_from_furthest: 5, threshold_to_consider: 1.4}
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        mode: 0  # Face along the route (Spot walks fastest forward); GoalAngleCritic turns to the goal heading.
+local_costmap:
+  local_costmap:
+    ros__parameters: &costmap
+      use_sim_time: true
+      update_frequency: 50.0
+      publish_frequency: 5.0
+      global_frame: spot_navigation/map
+      robot_base_frame: spot_navigation/base_link
+      rolling_window: false
+      resolution: 0.1
+      # The launcher sets the footprint (the robot's measured standing outline) and its padding.
+      track_unknown_space: true
+      always_send_full_costmap: true
+      plugins: [static_layer, inflation_layer]
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        map_topic: /spot_navigation/map
+        map_subscribe_transient_local: true
+        first_map_only: false
+        subscribe_to_updates: false
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        inflation_radius: 1.58312
+        cost_scaling_factor: 3.3333333333333335
+global_costmap:
+  global_costmap:
+    ros__parameters: *costmap

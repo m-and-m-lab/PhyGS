@@ -1,0 +1,26 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+# Entry-point rung (episodes/check_entry_point.py): the template agent on the joints tier, through
+# the public run command (body velocity and arm joint commands; no skills).
+schema: 3
+id: joints_grid
+scene:
+  id: grid_storage
+  ground: true  # The file has no floor of its own.
+robot:
+  model: spot  # phygs/robots/spot; the base spawns at the robot's own height.
+  start: [-1.6, -0.2, 0.0]  # x, y, heading [m, m, rad]; the arm starts stowed.
+record_view: {eye: [2.8, -1.8, 3.0], target: [-0.1, 1.0, 0.3]}
+task:
+  goal: none
+actions: joints
+observations:
+  cameras: []
+  joint_state: true
+  imu: false
+grants: [gt_localization]
+budget:
+  sim_seconds: 60
+seed: 0

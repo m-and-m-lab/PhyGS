@@ -1,0 +1,10 @@
+schema_version: 1
+repo_id: mandmlabresearch/ForageBench
+revision: feff23549d8317c1266afd340aa99ba82f79d510
+manifest: scenes/bear_loop_house/1.0.0/scene.json
+scene_id: bear_loop_house
+scene_version: 1.0.0
+sha256: f3c6d6699c4ceea44e1cced8280b01cb176f55966c86c21e5665e37a2b8a30ae
+physics:
+  backend: physx
+  timestep_seconds: 0.004166666666666667

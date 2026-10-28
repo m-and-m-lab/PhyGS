@@ -1,0 +1,136 @@
+# Boston Dynamics Spot with the arm and Orbbec Gemini 2 depth cameras: every Spot fact the framework
+# reads (schema: phygs/robots/description.py; how to add a robot:
+# docs/adding_a_robot.md). Paths are relative to this file. Values of arm and gripper joints are
+# [m or rad, depending on joint type]; Spot's are all revolute [rad].
+schema: 1
+name: spot
+usd: assets/spot_arm_w_cam.usd
+urdf: assets/spot.urdf
+base_link: body  # The framework's "body" frame; Spot's articulation root.
+imu_link: body
+spawn_height: 0.5  # Base height at spawn [m]; the robot settles standing.
+fallen_height: 0.35  # Base below this [m]: the robot fell and the episode stops.
+# Start posture of the joints outside the arm [rad] (joint name regex); the arm starts at arm.stow.
+initial_joints:
+  .*_left_hip_x: 0.1
+  .*_right_hip_x: -0.1
+  front_.*_hip_y: 0.9
+  rear_.*_hip_y: 1.1
+  .*_knee: -1.5
+  arm_f1x: 0.0
+articulation:
+  self_collisions: true
+  # 8 (trained with 4): with all legs on PhysX drives while standing, TGS left the arm drives short of
+  # their targets by (Kd / Kp) x a residual that halves per doubling of iterations (4: 6.3 mrad, 8: 3.2)
+  # and the body rocked longer; 8 halved stop wobble and was no worse on any stop or navigation measure
+  # (15 seeds, 2026-10-22, output_check/20261022-1019_stand_velocity_bias/compare_stats_iters.txt).
+  solver_position_iterations: 8
+  solver_velocity_iterations: 0
+  contact_sensors: true
+# Actuator groups: (physics_dt [s]) -> {name: IsaacLab actuator config}.
+actuators: phygs.robots.spot.actuators:actuator_cfgs
+# The base walks with the learned policy; it moves forward, sideways and turns.
+base:
+  kind: legged_policy
+  kinematics: holonomic
+  policy: phygs.robots.spot.policy:SpotFlatTerrainPolicy
+  # The policy files, stand drive and switch, stop, dead band, deceleration and lowest-speed moves.
+  config: locomotion/locomotion.yaml
+arm:
+  joints: [arm_sh0, arm_sh1, arm_el0, arm_el1, arm_wr0, arm_wr1]
+  root_link: arm_link_sh0
+  wrist_link: arm_link_wr1
+  # Folded transit posture: navigation requires it and the transit footprint was measured in it.
+  stow: [0.0, -3.13, 3.13, 0.0, 0.0, 0.0]
+  # 0.3 rad less folded: >= 1.2 cm self-clearance in every cuRobo sphere fit (the stow: -2 to -3 cm).
+  prestow: [0.0, -2.83, 2.83, 0.0, 0.0, 0.0]
+  move_seconds: 2.0  # A skill's straight joint move [s].
+  motion:  # ManipulationController limits and tolerances (MotionConfig) [rad, rad/s, rad/s²].
+    max_velocity: 1.5
+    max_acceleration: 3.0
+    tracking_tolerance: 0.15
+    joint_tolerance: 0.03
+    stopped_velocity: 0.08
+    gripper_tolerance: 0.03
+    gripper_stopped_velocity: 0.08
+    grip_squeeze: 0.05
+    position_tolerance: 0.01
+    orientation_tolerance: 0.05
+    settle_seconds: 0.15
+    timeout_seconds: 2.0
+    stop_timeout_seconds: 2.0
+gripper:
+  joints: {arm_f1x: 1.0}  # Joint -> ratio to the primary (the first); Spot's claw is one joint.
+  open: -1.4
+  closed: -0.05
+  # Links that squeeze a grasped body: the fixed jaw (part of the wrist link) and the moving finger.
+  # From a close command to the opening, their contacts with a body both pinched are the grasp,
+  # reported apart from other arm contacts (episodes.recorder.Recorder).
+  jaw_links: [arm_link_wr1, arm_link_fngr]
+  # Tool frames in the wrist link [m], from the USD jaw colliders (2026-10-14). The gripper's axes
+  # are the wrist's: x the approach, z the axis the moving jaw closes along. The fixed jaw spans
+  # x 0.146-0.236 m with its inner pad at z -0.036 m; the moving jaw opened 75 deg has its inner
+  # surface at z +0.094 m (the gap is 0.13 m, its middle at z 0.029 m).
+  tools:
+    wrist: {position: [0.0, 0.0, 0.0]}
+    hand: {position: [0.20, 0.0, 0.029]}  # The middle of the jaw gap.
+    # An object's grasp point, in the middle of the gap: the jaws cover the object's top ~5 cm.
+    grasp: {position: [0.183, 0.0, 0.029]}
+    # A bar handle's underside, on the bar's axis line, 3 mm above the fixed jaw's tooth
+    # (x 0.219-0.228 m, z -0.032 m): the bar enters without pushing a free drawer away and the closing
+    # jaw hooks it behind the tooth. The closing jaw reaches x ~0.247 m, ~1 cm before a drawer front
+    # 3.75 cm behind the bar axis.
+    handle: {position: [0.22, 0.0, -0.029]}
+    fixed_jaw: {position: [0.20, 0.0, -0.036]}  # Its inner pad: a held object rests on it.
+# The onboard Orbbec Gemini 2 depth streams in the USD; prims are below the robot prim. A spec
+# observes a subset by name.
+cameras:
+  frontleft:
+    prim: body/Gemini2_front_left/Orbbec_Gemini2/camera_ir_left/camera_left/Stream_depth
+    width: 640
+    height: 480
+  frontright:
+    prim: body/Gemini2_front_right/Orbbec_Gemini2/camera_ir_left/camera_left/Stream_depth
+    width: 640
+    height: 480
+  hand:
+    prim: arm_link_wr1/Gemini2_arm/Orbbec_Gemini2/camera_ir_left/camera_left/Stream_depth
+    width: 640
+    height: 480
+  # The side and rear body cameras; Nav2 does not use them yet (2026-10-27: five cameras fix the
+  # dynamic obstacle's contacts but cost RTF; add them to the navigation role to use them).
+  left:
+    prim: body/Gemini2_left/Orbbec_Gemini2/camera_ir_left/camera_left/Stream_depth
+    width: 640
+    height: 480
+  right:
+    prim: body/Gemini2_right/Orbbec_Gemini2/camera_ir_left/camera_left/Stream_depth
+    width: 640
+    height: 480
+  rear:
+    prim: body/Gemini2_rear/Orbbec_Gemini2/camera_ir_left/camera_left/Stream_depth
+    width: 640
+    height: 480
+camera_roles:
+  navigation: [frontleft, frontright]  # Nav2's voxel layer maps their point clouds.
+  planning: [frontleft, frontright, hand]  # The arm planner's depth, without known_map.
+  look: hand  # look_at aims it.
+  front: [frontleft, frontright]  # The two crossed front cameras, left first: the Front view.
+navigation:
+  # Nav2's control period [s] (10 physics ticks: MPPI scores 2000 sampled commands per period) and
+  # speed limits [m/s, rad/s]; the transit footprint was measured within them.
+  limits: {period: 0.04, max_speed: 1.0, max_yaw_speed: 1.5}
+  footprint_profile: navigation/transit.json  # Measured by check_footprint.py (rung 03).
+planning:
+  default_joints: [0.0, -1.8, 1.8, 0.0, 0.0, 0.0]  # cuRobo's retract posture [rad].
+  usd_only_geometry: ["Gemini2_*"]  # Camera housings: the URDF has no cameras.
+  link_aliases: {"(.*)_foot": "\\1_lower_leg"}  # The USD feet are rigid on the lower legs.
+  # The jaws and the wrist: 8 mm spheres on the mesh surface. They reach 0.8 cm past the mesh, where
+  # the volume fit reached 1.7-2.7 cm (an open gripper next to a released handle was a start
+  # collision for the next plan); ~440 spheres more (2026-10-15).
+  surface_fit_links: [arm_link_wr0, arm_link_wr1, arm_link_fngr]
+  drawn_link: arm_link_fngr  # A plan's picture draws the moving jaw's path.
+  workspace:  # The depth map's corners in the body frame [m].
+    lower: [-0.4, -1.0, -0.6]
+    upper: [1.6, 1.0, 1.4]
+  obstacle_radius: 1.5  # The arm reaches ~1.4 m from the base centre; cuRobo has 64 box slots.

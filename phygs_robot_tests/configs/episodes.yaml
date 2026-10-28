@@ -1,0 +1,9 @@
+# Pass thresholds of the episode robot tests (episodes/check_*.py); the episodes themselves are
+# specs in configs/episodes/ here, the plans' strategy is routines/params.yaml and their stances configs/stances/.
+stow_tolerance_rad: 0.05  # Measured arm vs the stow posture at the end.
+place_drawer: corner_nightstand_tier_2_drawer  # check_drawer_place.py's drawer (the grid scene's top drawer).
+opening_tolerance_m: 0.02  # The drawer must open at least the request less this [m].
+# And at least this far, whatever the plan requested [m]: room to reach in. The strokes opened
+# 0.287 m (grid) and 0.263 m (house), 2026-10-22.
+stroke_min_opening_m: 0.20
+closed_max_m: 0.03  # Closed: at most this open [m] (the push stops 0.01 m short of the end).

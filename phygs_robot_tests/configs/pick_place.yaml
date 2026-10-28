@@ -1,0 +1,28 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# episodes/check_pick_place.py: pick, carry and place at the grid table (specs table_reach and
+# table_reach_depth). Thresholds from the component check check_manipulation_planning.py (measured
+# 2026-10-14 to 10-25; removed 2026-10-28).
+place_xy: [0.92, -0.16]  # The free table spot the target is set down on [m] (away from both boxes).
+# The table layout for a plan without known boxes (table_reach_depth): the clutter's centre [m] and
+# top [m], the table top [m], as the spec places the clutter and the scene sizes it (hints.boxes()
+# on table_reach, 2026-10-28: clutter 0.1 x 0.1 x 0.2 m at z 0.5, table top 0.4 m).
+layout: {clutter_xy: [0.80, 0.18], clutter_top_m: 0.60, table_top_m: 0.40}
+hold_seconds: 1.0  # Held still after the pick before the lift is measured [s].
+minimum_lift_m: 0.05
+# The wrist at the pre-grasp above the target's start, as the pick's planned move left it before
+# the line in: 0.0023-0.0035 m in 8 runs on 2026-10-28 (cuRobo and MoveIt, known boxes and depth).
+# After the grasp it is 0.012-0.015 m off, not checked: the line out starts where the wrist settled
+# at the grasp, and the closing jaw shifts it (up ~8 mm, pitched ~6 deg; probe 2026-10-28).
+pregrasp_tolerance_m: 0.015
+# The held object hangs this far below the lowest jaw at least, so a carry goal can put only the
+# object into the clutter box (the refusal), with the jaws clear of the planner's 1 cm padding.
+minimum_hang_m: 0.025
+refused_depth_m: 0.01  # The refused carry puts the object's bottom this far below the clutter top [m].
+refused_wrist_motion_m: 0.02  # The wrist sags a few mm while the planner works; a carry moves > 10 cm.
+carry_clearance_m: 0.03  # The carry over the clutter keeps the object's bottom this far above it [m].
+place_tolerance: {position_m: 0.02, height_m: 0.01, tilt_deg: 10.0}
+stow_tolerance_rad: 0.05

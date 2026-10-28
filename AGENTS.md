@@ -1,0 +1,119 @@
+# Agent Rules
+
+This file defines how Codex agents and human contributors should work in this repository. The project is a robotics benchmark, so correctness, reproducibility, and clear failure modes matter more than convenience hacks.
+
+## Core Principles
+
+| Principle | Rule |
+| --- | --- |
+| Fail fast | If an asset, service, camera stream, target AABB, CUDA dependency, robot joint, or planner result is missing, raise a clear error immediately. |
+| No silent fallback | Do not silently switch to another target, fake camera frame, manual point, placeholder grasp, CPU substitute, or relaxed planner mode. |
+| Skill-client public API | Agents use the shared-runtime clients from `RobotControl.create(...)`: `robot.locomotion`, `robot.navigation`, `robot.manipulation`, and `robot.observe()`. |
+| Robot-neutral framework | Every robot fact is in its `robot.yaml` (`phygs/robots/<name>/`). Framework code asks the robot description for joints, links, tools and cameras (by role); it never names a robot's parts (`tests/test_robot_neutral.py`). See `docs/adding_a_robot.md`. |
+| Clean and lean code | Keep modules small, separate API facade from IsaacLab backend, avoid global state, and avoid broad compatibility shims. |
+| Robotics benchmark mindset | Prefer explicit configs, deterministic target paths, named assets, measurable outputs, and repeatable smoke tests. |
+
+## Required Workflow
+
+1. Inspect local code before editing.
+2. Preserve existing user changes and never revert unrelated files.
+3. Make targeted edits only in the area needed for the task.
+4. Add or update tests for API and behavior changes.
+5. Run the narrowest useful tests first.
+6. Report what was verified and what could not be run in the current environment.
+
+## Coding Style
+
+Use these standards:
+
+| Area | Standard |
+| --- | --- |
+| Python | Typed dataclasses and explicit protocols are preferred for API boundaries. |
+| Errors | Use `ValueError`, `RuntimeError`, `KeyError`, or specific service errors with actionable messages. |
+| Config | Use YAML for launch configs and dataclasses for validated runtime config. |
+| Imports | Keep heavy IsaacLab, CuRobo, and Torch imports behind optional package boundaries where possible. |
+| Comments | Add comments only for robotics-specific reasoning or non-obvious control flow. |
+| Fallbacks | Avoid defensive fallback trees. If a benchmark dependency is required, require it. |
+| Naming | Prefer Spot SDK vocabulary for public clients and service methods. |
+
+## Skill API Rules
+
+The public robot-facing surface is the set of skill clients on the shared runtime (see
+`docs/manipulation_skills.md`, `docs/locomotion.md`, `docs/navigation.md`). Method names
+stay close to Spot SDK vocabulary.
+
+Rules:
+
+- Add new robot capabilities as methods on a skill client, not as ad-hoc script methods.
+- Agent APIs live in `phygs/skills/<skill>/api.py`; implementation lives in `phygs`.
+- Keep IsaacLab implementation details in backend/runtime modules.
+- Preserve existing locomotion call sites when extending command signatures.
+- Use command ids and feedback objects for long-running actions.
+- Only one active manipulation command should run at a time unless a future milestone explicitly adds queuing.
+
+## Fail-Fast Examples
+
+Acceptable:
+
+```python
+if bounds is None:
+    raise RuntimeError(f"Failed to resolve target AABB for '{target_prim_path}'.")
+```
+
+Not acceptable:
+
+```python
+if bounds is None:
+    target_prim_path = f"{target_prim_path}/link_1"
+```
+
+Acceptable:
+
+```python
+if response.image.get("depth") is None:
+    raise RuntimeError(f"Camera '{response.source}' has no depth frame.")
+```
+
+Not acceptable:
+
+```python
+depth = response.image.get("depth") or np.zeros((480, 640))
+```
+
+## Test Expectations
+
+Add pure Python tests for:
+
+- Skill client commands, feedback, cancellation and episode reset.
+- Manipulation skill sequences and failure reasons (with fake arms and planners).
+- Planner request/result contracts and helper logic that can run outside Isaac Sim.
+
+Add IsaacLab smoke tests for:
+
+- Scene construction with required assets.
+- Locomotion policy execution.
+- Manipulation skills with planning, execution, terminal feedback and an independent evaluator (`phygs_robot_tests/{episodes,components}/check_*.py`).
+
+## Documentation Expectations
+
+When changing architecture or workflow, update:
+
+| File | When to update |
+| --- | --- |
+| `README.md` | User-facing setup, quick start, or major capability changes. |
+| `ARCHITECTURE.md` | Pipeline, API, backend, or data-flow changes. |
+| `PLANS.md` | Milestones, completed work, or known gaps. |
+| `CHANGELOG.md` | Any user-visible change: one past-tense line under Unreleased. |
+| `docs/README.md` | A guide or visual page is added, renamed, or superseded. Follow its "Keeping the docs tidy" rules. |
+| `docs/design/visual/*.html` | The source guide of that page changes. Update the page or mark it stale. |
+| Local directory README | Large directory ownership or launch commands change. |
+
+## What Agents Must Not Do
+
+- Do not add hidden fallbacks to make tests pass.
+- Do not fake service responses in benchmark smoke scripts.
+- Do not make target selection ambiguous.
+- Do not bury critical config in hard-coded script globals when it belongs in YAML.
+- Do not mix vendor code changes with benchmark integration changes unless explicitly requested.
+- Do not commit generated `__pycache__`, temporary outputs, model downloads, or large debug artifacts.
+- Do not weaken tests because the environment lacks Isaac Sim. Mark the limitation clearly instead.

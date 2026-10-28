@@ -1,0 +1,25 @@
+# Measured envelope is valid only for these tested folded-arm motions.
+seed: 7
+settling_seconds: 1.0
+# Navigation's footprint: the standing outline (after the reset and in the last standing_seconds [s]
+# of every stop) as a body-frame rectangle, grown by padding [m] for the swinging feet and stopping
+# drift. The walking sweep is recorded too (envelope), for information.
+standing_seconds: 0.5
+padding: 0.05
+motion_seconds: 3.0
+stop_seconds: 1.6
+steady_after_seconds: 1.0
+sample_seconds: 0.02  # Keep a tracking sample this often [s].
+commands:
+  forward: [1.0, 0.0, 0.0]
+  backward: [-1.0, 0.0, 0.0]
+  left: [0.0, 1.0, 0.0]
+  right: [0.0, -1.0, 0.0]
+  turn_left: [0.0, 0.0, 1.5]
+  turn_right: [0.0, 0.0, -1.5]
+  combined: [0.5, 0.5, 0.5]
+criteria:  # A fall: the base below the robot's fallen_height (robot.yaml) or tilted below minimum_up_z.
+  minimum_up_z: 0.7
+  stopped_speed: 0.15
+  stopped_yaw_speed: 0.15
+  arm_tolerance: 0.18

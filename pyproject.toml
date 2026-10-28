@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phygs"
+version = "0.3.0"
+description = "PhyGS: physically grounded simulation framework for mobile manipulation in Isaac Lab (robot, world, runtime, skills, measurement)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "BSD-3-Clause" }
+# Runs inside the Isaac Lab container; Isaac Sim, Isaac Lab, torch, numpy, yaml and warp come with it.
+dependencies = []
+
+[project.urls]
+Homepage = "https://m-and-m-lab.github.io/PhyGS/"
+Repository = "https://github.com/m-and-m-lab/PhyGS"
+
+[tool.setuptools.packages.find]
+include = ["phygs", "phygs.*", "phygs_robot_tests", "phygs_robot_tests.*"]
+
+[tool.setuptools.package-data]
+"phygs" = ["configs/*.yaml", "configs/**/*.yaml", "configs/**/*.rviz"]
+"phygs.agents" = ["*.yaml"]
+"phygs.robots.spot" = ["robot.yaml", "locomotion/*.yaml", "locomotion/*.pt", "navigation/*.json", "assets/*.usd", "assets/*.urdf", "assets/configuration/**/*"]
+"phygs.robots.ridgeback_franka" = ["robot.yaml", "*.urdf", "navigation/*.json"]
+"phygs.robots._template" = ["robot.yaml"]
+"phygs.ui" = ["web/*.html", "web/*.js", "web/*.css"]
+"phygs.skills" = ["manipulation/config/*.yaml"]
+"phygs.execution.navigation.launch" = ["*.py"]
+"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "routines/*.yaml", "tasks/*.yaml", "scenes/**/*", "*.npz"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["scene_generation/infinigen", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "C90", "SIM", "RET"]
+ignore = ["E402", "RET504", "RET505", "SIM102", "SIM103", "SIM108", "SIM117", "SIM118", "UP006", "UP018"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 30
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

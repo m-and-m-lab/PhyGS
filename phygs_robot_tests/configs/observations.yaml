@@ -1,0 +1,42 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# The robot (--robot), its light and its first front camera are the shared ones (common.robot_scene); this is
+# the test's own inspection camera.
+sensors:
+  cameras:
+    inspection:
+      prim_path: "{ENV_REGEX_NS}/Robot/body/ObservationCamera"
+      width: 160
+      height: 120
+      data_types: [rgb, distance_to_image_plane]
+      offset:
+        pos: [0.85, 0.0, 0.35]
+        rot: [0.0, 0.0, 0.0, 1.0]
+        convention: world
+      pinhole:
+        focal_length: 24.0
+        horizontal_aperture: 20.955
+        clipping_range: [0.05, 20.0]
+observations:
+  joint_state: true
+  imu: true
+  localization: ground_truth
+  state_period: 0.02
+  camera_period: 0.032
+  cameras:
+    - {name: frontleft, rgb: true, depth: true}
+    - {name: inspection, rgb: true, depth: true}
+diagnostic:
+  seed: 7
+  settling_seconds: 1.0
+  lift_velocity_mps: 5.0
+  lift_seconds: 0.416
+  plane_tolerance_m: 0.05
+  minimum_depth_change_m: 1.0
+  wall_position: [3.0, 0.0, 1.5]
+  wall_size: [0.2, 5.0, 3.0]
+  obstacle_position: [1.5, 0.0, 0.6]
+  obstacle_size: [0.4, 1.2, 1.2]

@@ -1,0 +1,91 @@
+# A new robot: copy this folder to robots/<name>/ (or anywhere: --robot path/to/robot.yaml), fill every
+# field, then climb the bring-up ladder (docs/adding_a_robot.md). Every field is required; a missing
+# one is an error, never a default. Paths are relative to this file. Positions of arm and gripper
+# joints are [m or rad, depending on joint type]. Worked examples: ../spot/robot.yaml (a legged
+# robot with a learned walking policy) and ../ridgeback_franka/robot.yaml (a base on planar joints).
+schema: 1
+name: my_robot  # The folder's name.
+usd: assets/my_robot.usd  # The simulated robot (Isaac Lab spawns it).
+# fetch: fetch.py  # Optional: the script that downloads usd's assets; a missing asset names it.
+urdf: my_robot.urdf  # Its kinematics and collision meshes for the arm planners and IK; rooted at base_link.
+base_link: base_link  # The framework's "body" frame: localization, navigation and the planners use it.
+imu_link: base_link  # Optional (default base_link): where the IMU sits.
+spawn_height: 0.0  # The base's height at spawn [m] (a legged robot drops onto its feet).
+fallen_height: null  # Base below this [m]: the robot fell and the episode stops; null if it cannot fall.
+initial_joints: {}  # Start positions of the joints outside the arm, by name regex (the arm starts at arm.stow).
+articulation:  # PhysX articulation settings.
+  self_collisions: true
+  solver_position_iterations: 8
+  solver_velocity_iterations: 0
+  contact_sensors: true  # The episode report records arm and jaw contacts through them.
+# Actuator groups: a function (physics_dt [s]) -> {name: Isaac Lab actuator config}, as
+# file.py:function in this folder or package.module:function.
+actuators: actuators.py:actuator_cfgs
+base:
+  # legged_policy (a walking policy: base.policy names its wrapper class, base.config its settings,
+  # as Spot's), planar_joints (velocity-driven x, y, yaw joints: base.joints {x, y, yaw}, as the
+  # Ridgeback's), or your own controller class as module:Class / file.py:Class
+  # (execution/locomotion/base.py: BaseController).
+  kind: planar_joints
+  kinematics: holonomic  # holonomic (v_x, v_y, v_rot) or differential (no v_y; navigation not yet).
+  joints: {x: base_x_joint, y: base_y_joint, yaw: base_yaw_joint}
+  # The base's settings: command_dead_band, command_deceleration, the stop, lowest_speed_moves (optional).
+  config: base.yaml
+arm:
+  joints: [joint1, joint2, joint3, joint4, joint5, joint6]  # The movable joints from base_link to wrist_link, in order.
+  root_link: link0  # The arm's first link (look_at views the target from its side).
+  wrist_link: hand  # The link IK and the planners move; tools are poses in it.
+  stow: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # Folded for driving; the transit footprint is measured in it.
+  prestow: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # Just out of the stow, collision free in the planners' model.
+  move_seconds: 2.0  # A skill's straight joint move [s].
+  # ManipulationController limits and tolerances (MotionConfig) in the joints' units [m or rad].
+  # These are required; the Cartesian tolerances and the waits (position_tolerance, settle_seconds,
+  # timeout_seconds, ...) are optional.
+  motion:
+    max_velocity: 1.0  # Arm joints [rad/s]; also the planners' limit.
+    max_acceleration: 2.0  # [rad/s²]; cuRobo's limit, MoveIt's half of it.
+    tracking_tolerance: 0.15  # A joint move or trajectory fails beyond this from its reference.
+    joint_tolerance: 0.03  # Arm joints at a Cartesian servo's end.
+    stopped_velocity: 0.08  # Arm joints still below this.
+    gripper_tolerance: 0.002  # A commanded gripper must come this near its target, else it holds.
+    gripper_stopped_velocity: 0.003  # Gripper joints still below this.
+    grip_squeeze: 0.005  # A holding gripper presses this far past first contact (> gripper_tolerance).
+gripper:
+  joints: {finger_joint: 1.0}  # Joint -> ratio to the primary (the first, at 1.0); others follow it.
+  open: 0.04
+  closed: 0.0
+  jaw_links: [finger]  # Links that squeeze a grasped body.
+  # Tool frames: poses in the wrist link [m] ({position, rotation_xyzw}). "wrist" is the wrist link
+  # itself. Every other tool has the gripper's axes, one rotation for all: x the approach (out of the
+  # palm, toward the object), z the axis the jaws close along, y = z x x. Here the jaws approach
+  # along the wrist's z and close along its y.
+  tools:
+    wrist: {position: [0.0, 0.0, 0.0]}
+    hand: {position: [0.0, 0.0, 0.1], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}  # The middle of the jaw gap.
+    grasp: {position: [0.0, 0.0, 0.1], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}  # An object's grasp point.
+    # Optional, for the robot tests' scripted routines: where a bar handle goes in a pull grasp, and
+    # for a gripper with one fixed jaw, its inner pad (a held object rests on it).
+    handle: {position: [0.0, 0.0, 0.1], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
+cameras:  # Depth cameras: an existing prim below the robot prim, or a spawned pinhole (pinhole + offset).
+  front:
+    prim: base_link/front_camera
+    width: 640
+    height: 480
+    pinhole: {focal_length: 18.0, horizontal_aperture: 20.955, clipping_range: [0.1, 10.0]}
+    offset: {pos: [0.3, 0.0, 0.3], rot: [0.0, 0.0, 0.0, 1.0], convention: world}
+camera_roles:  # What each camera is for; framework code asks for roles, never for names.
+  navigation: [front]  # Nav2 maps their point clouds.
+  planning: [front]  # The arm planner's depth (all one image size).
+  look: front  # The camera look_at aims (usually on the hand).
+  front: [front]  # The Front view: one camera, or a left and a right one to stitch.
+navigation:
+  limits: {period: 0.04, max_speed: 0.5, max_yaw_speed: 1.0}  # Nav2's control period [s] and speeds.
+  footprint_profile: null  # navigation/transit.json once check_footprint.py (rung 03) measured it.
+planning:
+  default_joints: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # cuRobo's retract posture.
+  usd_only_geometry: []  # Name patterns of USD parts the URDF lacks (camera housings): boxed in.
+  link_aliases: {}  # USD body name regex -> the URDF link it is rigid on.
+  surface_fit_links: []  # Thin links (fingers) cuRobo covers with small surface spheres.
+  drawn_link: hand  # The link whose path a plan's picture draws.
+  workspace: {lower: [-0.5, -1.0, 0.0], upper: [1.5, 1.0, 1.6]}  # The depth map's corners [m], body frame.
+  obstacle_radius: 1.4  # Known boxes within this of the base are the planner's obstacles [m] (the reach).

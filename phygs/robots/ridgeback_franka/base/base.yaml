@@ -1,0 +1,9 @@
+# The Ridgeback's base controller settings (PlanarJointBase): the base moves on velocity-driven planar
+# joints, so it follows any command (no dead band). To measure on rung 02 (check_locomotion): the
+# deceleration it tolerates with the arm out, and lowest_speed_moves if the fine approach needs them.
+command_dead_band:
+  v_x: {zero: 0.0, negative: 0.0, positive: 0.0}  # [m/s]
+  v_y: {zero: 0.0, negative: 0.0, positive: 0.0}  # [m/s]
+  v_rot: {zero: 0.0, negative: 0.0, positive: 0.0}  # [rad/s]
+command_deceleration: {v_x: 1.0, v_y: 1.0, v_rot: 2.0}  # [m/s², m/s², rad/s²]; not yet measured.
+stop_seconds: 0.3  # A stop holds the base this long [s] after the command reaches zero.

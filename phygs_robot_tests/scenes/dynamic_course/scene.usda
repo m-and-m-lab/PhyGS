@@ -1,0 +1,178 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    def "objects"
+    {
+        def Xform "wall" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (5, 0, 1.5)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.7, 0.25, 0.1)]
+                double size = 1
+                float3 xformOp:scale = (0.2, 5, 3)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Xform "obstacle" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (1.5, 3.3, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.9, 0.15, 0.05)]
+                double size = 1
+                float3 xformOp:scale = (0.4, 1.2, 1.2)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Xform "ceiling" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (1.5, 0, 2.8499999999999996)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+                double size = 1
+                float3 xformOp:scale = (10, 9, 0.1)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Xform "room_west" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (-3.45, 0, 1.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+                double size = 1
+                float3 xformOp:scale = (0.1, 9, 2.8)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Xform "room_east" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (6.45, 0, 1.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+                double size = 1
+                float3 xformOp:scale = (0.1, 9, 2.8)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Xform "room_south" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (1.5, -4.45, 1.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+                double size = 1
+                float3 xformOp:scale = (10, 0.1, 2.8)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+
+        def Xform "room_north" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            bool physics:kinematicEnabled = 1
+            double3 xformOp:translate = (1.5, 4.45, 1.4)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "box" (
+                prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI"]
+            )
+            {
+                rel material:binding:physics = </World/Looks/rubber> (
+                    bindMaterialAs = "weakerThanDescendants"
+                )
+                color3f[] primvars:displayColor = [(0.6, 0.6, 0.62)]
+                double size = 1
+                float3 xformOp:scale = (10, 0.1, 2.8)
+                uniform token[] xformOpOrder = ["xformOp:scale"]
+            }
+        }
+    }
+
+    def "Looks"
+    {
+        def Material "rubber" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {
+            float physics:dynamicFriction = 1
+            float physics:staticFriction = 1
+        }
+    }
+}
+

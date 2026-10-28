@@ -1,0 +1,34 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# episodes/check_arm_planning.py: the arm's planned skills at the grid table (specs table_reach and
+# table_reach_depth). Thresholds from the component check check_manipulation_planning.py (measured
+# 2026-10-14 to 10-25; removed 2026-10-28) unless noted.
+# look_at views of the target, tried in order as an agent would: [distance [m], elevation [deg]].
+look_views: [[0.5, 60.0]]
+look_hold_seconds: 0.096  # Three camera periods at the view, so the hand camera captures after the move [s].
+# The measured hand camera must reach the requested view within these and aim at the point.
+look_tolerance: {distance_m: 0.02, elevation_deg: 3.0, axis_deg: 4.0}
+# move_to_pose goals of the robot's hand tool (the middle of the jaw gap) [x, y, z [m], qx, qy, qz, qw]
+# in the world (the table 0.6 m ahead of the origin, along +x), in the gripper's axes: the approach
+# straight down, the jaws closing along +x. Over the clutter box (Spot's jaw tips ~6 cm above it), then
+# over a free table spot (~11 cm above the table). Spot's wrist goals were (0.80, 0.18, 0.90) and
+# (0.92, -0.16, 0.75); its hand is 0.20 m along the wrist x and 0.029 m along its z.
+poses:
+  above_clutter: [0.829, 0.18, 0.70, 0.0, 0.7071068, 0.0, 0.7071068]
+  above_free_spot: [0.949, -0.16, 0.55, 0.0, 0.7071068, 0.0, 0.7071068]
+# The physical wrist at a reached goal. New 2026-10-28: the skill's own tolerances
+# (Spot's robot.yaml arm.motion: 0.01 m, 0.05 rad) plus 5 mm and 0.01 rad of sag.
+pose_tolerance: {position_m: 0.015, rotation_rad: 0.06}
+# Cancel a planned 5 cm lift after 0.16 s; after 0.32 s the arm must have stopped where it was.
+cancel: {lift_m: 0.05, after_seconds: 0.16, settle_seconds: 0.32, drift_rad: 0.05, speed_radps: 0.08}
+stow_tolerance_rad: 0.05  # Measured arm vs the stow posture; navigation accepts 0.18.
+# A plan from the measured start, inside a 4 m box around the robot, to the arm raised (the robot's
+# planning.default_joints) must be refused.
+# The planner's model at the measured joints must sit on the physical links.
+fk_tolerance: {position_m: 0.005, rotation_rad: 0.03}
+geometry_cell_size: 0.04  # Sphere grid for the robot geometry coverage audit [m] (environment.yaml planner).
+# A short walk with the cameras and the planner running.
+walk: {speed_mps: 0.15, seconds: 1.0, minimum_distance_m: 0.02}

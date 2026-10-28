@@ -1,0 +1,58 @@
+# Environment of every episode (examples/run_world.py, phygs/episodes/environment.py):
+# timing, skills, arm planner and navigation settings, whatever the robot. The robot is the spec's
+# (robot.model): its cameras, camera roles, arm, gripper and limits are in its robot.yaml
+# (phygs/robots/<name>/; docs/adding_a_robot.md).
+physics_dt: 0.004  # [s]; 250 Hz, the project's physics rate (the robot's walking policy must accept it).
+camera_period: 0.032  # [s]; every rendered frame (31.25 per simulated second).
+settling_seconds: 1.0  # Standing still at reset [s].
+stop_all_timeout_seconds: 3.0  # After the agent ends: the robot stops (grip kept) within this [s] or is reported timed out.
+end_settle_seconds: 1.0  # Then standing still before the evaluator reads the final state [s].
+contact_record_n: 0.5  # Arm contact above this [N] is recorded in the report, not limited.
+# Arm contacts are read every this many physics ticks (5: every 20 ms). A read costs ~0.16 ms
+# wall, so reading every tick cost ~0.03 RTF; a contact shorter than this can be missed.
+contact_read_ticks: 5
+light: {intensity: 2500.0, color: [0.85, 0.85, 0.85]}  # The dome light.
+record: {width: 800, height: 450}  # Third-person video (--record), from the scene's record view.
+# The navigation map over every episode's scene: its bounds are the scene USD's colliders in the
+# height band [m] (floors and ceilings are out) and the robot's start, grown by margin [m]; cell
+# size and the known-box map's clearance [m]. Arm contact is recorded against the bodies in it.
+map: {resolution: 0.05, clearance: 0.0, height: [0.05, 1.2], margin: 2.0}
+# Navigation: Nav2 (needs a sourced ROS 2 Jazzy; its servers start with the episode). With the
+# known_map grant it plans on the scene's known boxes; without it, Nav2's voxel layer maps the robot's
+# navigation cameras' point clouds (camera role "navigation" in its robot.yaml), on a flat floor
+# within the scene's map area: it marks obstacles between the
+# height band [m] and up to max_depth [m], and rays to the floor and to farther points clear, in 3D.
+# Each camera's newest depth goes to Nav2 every period [s] (10 Hz, as on a real robot; the cameras
+# themselves stream every camera_period), using every pixel_stride-th pixel row and column (the
+# full clouds cost 21% of a house episode's wall time at 10 Hz, 2026-10-25), one point per
+# voxel_size [m] cube: Nav2 raytraces every point it receives.
+navigation:
+  nav2: {namespace: spot_navigation}
+  point_cloud:
+    height: [0.1, 1.2]
+    max_depth: 6.0
+    period: 0.1
+    pixel_stride: 2
+    voxel_size: 0.05
+    mark_margin: 0.05  # The image's bottom 5% only clears (Nav2Config.sensor_mark_margin).
+    # The robot does not know the map: Nav2's map is unknown beyond this disk around the start [m]
+    # (it covers the standing footprint, 0.76 m to a corner) until the cameras see it. Nav2 plans
+    # through unknown cells (Smac allow_unknown); navigation.explore() goes after them.
+    explored_radius: 1.0
+skills:
+  backend: collision_avoidance_planner  # Or direct (straight joint moves, no planner).
+planner:
+  backend: curobo  # Or moveit (needs ROS 2 Humble and ROS_DOMAIN_ID).
+  curobo_dependencies: /tmp/spot-planner-deps
+  planning_time_seconds: 30.0
+  obstacle_padding: 0.01  # Planner clearance [m].
+  held_sphere_limit: 256  # cuRobo's reserved spheres for a held object.
+  geometry_cell_size: 0.04  # Sphere grid of the robot's collision model [m].
+  # With known_map the arm plans around the scene's known boxes; without it, on the robot's planning
+  # cameras (camera role "planning"), in the robot's planning workspace (robot.yaml planning).
+  planner_resolution: 0.02
+  pixel_stride: 4
+  self_filter_padding: 0.05  # Depth within this of the robot or its held object is dropped [m] (cuRobo default).
+  # Known boxes: the scene's colliders within the robot's planning obstacle_radius [m] of the base
+  # (box edge, xy) and in this height band [m] (floors and ceilings are out).
+  obstacle_height: [0.02, 2.0]

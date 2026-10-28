@@ -1,0 +1,75 @@
+# Spot's walking policy and its settings: robot.yaml's base section names this file. Paths are relative
+# to it. The physics rate is the project's (configs/environment.yaml physics_dt, 250 Hz since
+# 2026-10-17): the policy keeps its trained 50 Hz period, so the rate is a multiple of 50, and
+# stand_drive must have an entry for it; actuator delays keep 0–8 ms (robots/spot/actuators.py). At
+# 250 Hz it walks, turns, recovers from a push and stands as at the training rate, with a higher
+# real-time factor; 200 and 100 Hz walk, but standing vibrates and drifts.
+policy_path: policy.pt
+env_config_path: env.yaml
+# The deployed policy (2026-10-22): scripts/spot_sim_policy, task
+# Isaac-Velocity-Flat-SpotArmCam-ArmFineHeight-v0 (arm in the loop, the arm out in 25% of episodes,
+# left-right symmetry, base height >= 0.56 m), run 2026-10-21_18-05-44_h56w500, model_13750. It also
+# observes the 6 arm joints (spot_env.yaml). Against the tuned 2026-10-19 policy (logs/rsl_rl/
+# spot_arm_w_cam_flat_tuned/2026-10-19_12-00-39_tuned_continue, model_5000; the reference of the
+# stand work, never deployed here) at 250 Hz with the settings below (15 seeds;
+# output_check/20261021-1859_h56_15seed/compare_stats.txt): no metric worse, 0 falls;
+# 1 s moves end 2.8 vs 4.1 cm off, navigation reaches 90 vs 77% of goals, walking tilt with the arm
+# swinging 2.2 vs 7.9 deg, standing height after a stop 0.535 m for both.
+# Standing leg gains per physics rate [Hz]: PhysX joint drives (implicit PD on the undelayed stand
+# targets, no actuator delay), Kp [N·m/rad] and Kd [N·m·s/rad] for hips and knees, while the robot
+# stands (reset hold, zero command). At 250 Hz they halved the settling wobble and time of the
+# explicit-PD stand (400 / 12 with the 0-8 ms delay) with 0 falls in 70 stops (2026-10-19). A rate
+# without an entry is rejected.
+stand_drive:
+  250: {hip: [2000.0, 80.0], knee: [2500.0, 80.0]}
+# Switch to standing after the policy command reaches zero (SpotFlatTerrainPolicy): once the base
+# moves slower than base_speed [m/s] and turns slower than yaw_speed [rad/s], every leg joint moves
+# slower than joint_speed [rad/s] (no foot in swing: swinging joints exceed 4 rad/s) and all feet are
+# level within feet_spread [m]; or from feet_down_after [s], once the feet are level within
+# feet_down_spread [m]; or at max_seconds [s] at the latest. The legs are then held where they
+# are, not moved to the default posture. A forced switch at 0.7 s with a foot in the air fell at
+# low speed; waiting for the feet removed those falls (2026-10-19).
+stand_switch:
+  base_speed: 0.15
+  yaw_speed: 0.2
+  joint_speed: 2.0
+  feet_spread: 0.01
+  feet_down_after: 0.7
+  feet_down_spread: 0.015
+  max_seconds: 1.5
+# A stop keeps the legs while the policy command slows to zero (command_deceleration), then for
+# stop_stand_seconds [s], longer than stand_switch.max_seconds so the robot stands when it releases.
+stop_stand_seconds: 1.6
+# Slowing limit of the policy command [m/s², m/s², rad/s²] (LocomotionController.Deceleration);
+# speeding up is not limited. Abrupt stops from 0.8 m/s sideways fell in 3 of 210 runs; with these
+# rates 0 of 210 for both policies, and stops from speed end shorter per m/s (2026-10-21,
+# output_check/20261021-1330_decel_limit).
+command_deceleration: {v_x: 2.0, v_y: 1.0, v_rot: 2.0}
+# Velocity command dead band (LocomotionController.DeadBand), per axis: a command with |value| <=
+# zero is sent as 0 (the robot stands); one between zero and the lowest walking speed (negative: a
+# magnitude) is raised to that speed. One speed for every direction, 0.08 m/s and 0.08 rad/s: the
+# slowest direction's (right, and turning right), so every direction walks.
+# Lowest speed per direction, measured 2026-10-22 for the deployed policy at 250 Hz on flat ground
+# from standing (output_check/20261021-2058_dead_band_new_policy; 5 s walks over 5 seeds, steady
+# speed over the last 3 s, >= ~70% of the command in every seed; 1 s moves over 10-15 seeds
+# covering >= ~70%, median): forward 0.05 m/s (steady 109-129%, 1 s 5.3 cm; 0.04 stands); back
+# 0.07 (87-100%, 6.4 cm; 0.05: 36% in one seed); left 0.05 (69-95%, 5.7 cm); right 0.08
+# (90-105%, 5.7 cm; 0.06-0.07 walk steadily but 1 s moves cover only 3.2-4.2 cm, a slow start);
+# turning 0.08 rad/s both ways (left 78-80%, right 127-128%; 0.07 right stands). Below these speeds
+# the policy mostly stands; some seeds creep at up to ~30% of a 0.02-0.04 command.
+# Walking: zero 0.025 m/s (was 0.04; set 2026-10-24 by the user), so a slow Nav2 command (MPPI sends
+# 0.02-0.04 m/s near the route) walks at the lowest speed instead of standing.
+command_dead_band:
+  v_x: {zero: 0.025, negative: 0.08, positive: 0.08}  # [m/s]
+  v_y: {zero: 0.025, negative: 0.08, positive: 0.08}  # [m/s]; negative is to the right.
+  v_rot: {zero: 0.04, negative: 0.08, positive: 0.08}  # [rad/s]; negative is clockwise.
+# Distance [m] the base covers from standing at the lowest walking speed (the dead band, 0.08 m/s)
+# held for these durations [s], per direction: median of 5 seeds, 250 Hz, flat ground (2026-10-22,
+# output_check/20261022-1110_short_moves_008). Short moves fall short, to the right most: 0.3-0.5 s
+# right moved about 0.5 cm. Navigation's fine approach sizes its moves with it (FineApproach.Coverage).
+lowest_speed_moves:
+  seconds: [0.3, 0.5, 0.7, 1.0]
+  forward: [0.037, 0.057, 0.071, 0.091]
+  backward: [0.020, 0.028, 0.044, 0.074]
+  left: [0.042, 0.064, 0.084, 0.105]
+  right: [0.005, 0.004, 0.015, 0.057]

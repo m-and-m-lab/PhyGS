@@ -1,0 +1,26 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+# Obstacle-avoidance rung (episodes/check_dynamic_obstacle.py): Nav2 maps the navigation cameras'
+# point clouds; the test moves the box into the route mid-walk, then puts it in view and takes it away.
+schema: 3
+id: nav_dynamic
+scene:
+  id: dynamic_course
+  ground: true  # The file has no floor of its own.
+robot:
+  model: spot  # phygs/robots/spot; the base spawns at the robot's own height.
+  start: [0.0, 0.0, 0.0]  # x, y, heading [m, m, rad]; the arm starts stowed.
+record_view: {eye: [-2.5, -3.5, 2.6], target: [2.0, 0.5, 0.3]}  # Under the room's ceiling.
+task:
+  goal: none
+actions: [navigation, motion]  # Motion: the turn to face the box.
+observations:
+  cameras: []  # Nav2's cameras are captured for it (phygs/configs/environment.yaml navigation.point_cloud).
+  joint_state: true
+  imu: false
+grants: [gt_localization]  # No known_map: Nav2 builds its map from the cameras.
+budget:
+  sim_seconds: 180
+seed: 7

@@ -1,0 +1,40 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+seed: 7
+settling_seconds: 1.0
+motion_seconds: 3.0
+stop_observation_seconds: 2.5  # A stop: the command slows at the deceleration limit (<= 0.4 s here), then 1.6 s.
+sample_seconds: 0.1  # Sample the state this often while walking [s].
+collision_seconds: 10.0
+barrier_x_m: 4.0
+minimum_collision_force_n: 1.0
+arm_target_rad: 0.3
+criteria:
+  # Mean velocity error per axis [m/s, rad/s]. Measured 2026-10-21/22: at most 0.041 walking and
+  # turning, 0.073 walking into the barrier.
+  velocity_error: 0.1
+  stopped_linear_speed_mps: 0.15
+  stopped_yaw_speed_radps: 0.15
+  minimum_height_m: 0.25
+  maximum_projected_gravity_z: -0.7
+  arm_error_rad: 0.08
+  reset_max_abs_error: 0.001
+commands:
+  forward: [0.4, 0.0, 0.0]
+  lateral: [0.0, 0.3, 0.0]
+  turning: [0.0, 0.0, 0.4]
+  collision: [0.4, 0.0, 0.0]
+
+
+teleop:
+  linear_speed: 1.0
+  strafe_speed: 1.0
+  yaw_speed: 1.5
+
+
+camera:
+  eye_offset: [2.0, 2.0, 1.2]
+  target_height_offset: 0.35

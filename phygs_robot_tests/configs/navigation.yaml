@@ -1,0 +1,36 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# episodes/check_navigation.py: the cases each spec runs, in order. A case: the goal [x, y [m],
+# heading [rad]], the statuses navigate_to may end with (`expect`), and optionally the arrival
+# tolerance [m, rad] (default navigate_to's 0.04, 0.04), `by: velocity` (the plan drives with body
+# velocities instead of navigate_to), `cancel_after_s` (the plan cancels; while navigating it also
+# checks that a direct velocity command is refused) and `turns` (the robot must face its travel,
+# turning more than `turn_min_rad`, as it walks to a goal beside it). Goals from the component checks of
+# 2026-10 (navigation.yaml, house.yaml); the goal in the pen replaces moving a blocker onto the route.
+cases:
+  nav_course:  # Each case starts back at the start pose (the plan walks back between cases).
+    - {name: open, goal: [0.0, 1.6, 0.0], expect: [succeeded], turns: true}
+    - {name: detour, goal: [3.8, 0.0, 0.0], expect: [succeeded]}
+    - {name: heading, goal: [-0.5, 0.0, 0.7], expect: [succeeded]}
+    # Velocity commands only, no fine approach: below ~5 cm its small mixed commands stall the gait.
+    - {name: velocity, goal: [0.0, 1.6, 0.0], expect: [succeeded], by: velocity, tolerance: [0.18, 0.12]}
+    - {name: invalid, goal: [1.6, 0.0, 0.0], expect: [invalid_goal]}  # Inside the wall.
+    - {name: unreachable, goal: [3.8, -2.6, 0.0], expect: [unreachable]}  # Inside the closed pen.
+    - {name: cancel, goal: [0.0, 1.6, 0.0], expect: [cancelled], cancel_after_s: 1.0}
+  nav_house:  # One after another, from where the last ended.
+    - {name: blocked, goal: [11.7, 7.0, 0.0], expect: [unreachable, blocked, invalid_goal]}  # In the kitchen island.
+    - {name: goal_1, goal: [11.8, 5.44, 1.5707963], expect: [succeeded], tolerance: [0.18, 0.12]}
+    - {name: goal_2, goal: [10.2, 6.1, -1.5707963], expect: [succeeded], tolerance: [0.18, 0.12]}
+    - {name: cancel, goal: [11.8, 5.44, 1.5707963], expect: [cancelled], cancel_after_s: 0.5}
+return_to_start: [nav_course]  # Specs whose cases each start from the start pose.
+case_budget_s: 45.0  # A case's walk must end within this [s simulated].
+velocity: {max_speed_mps: 1.0, max_yaw_radps: 1.5, period_s: 0.1}  # The velocity case's plan.
+stopped: {speed_mps: 0.15, yaw_radps: 0.2}  # After every reached, cancelled or blocked walk.
+clearance_period_s: 0.02  # How often the footprint's clearance to the scene's boxes is measured.
+# Facing the travel (MPPI's PathAngleCritic) versus strafing, which holds the heading: the most the
+# robot turned on the way to the goal 1.6 m to its left was 0.45 rad with the episodes' Nav2 settings
+# (5 cm map and lattice; 2026-10-28) and 0.66 rad with the old component check's (10 cm; 2026-10-27).
+turn_min_rad: 0.25

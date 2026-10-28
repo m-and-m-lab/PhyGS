@@ -1,0 +1,35 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+# Arm planning and pick-and-place rungs (episodes/check_arm_planning.py, check_pick_place.py):
+# the robot stands at the grid table, the target next to the clutter box; the arm plans on
+# the scene's known boxes (known_map).
+schema: 3
+id: table_reach
+scene:
+  id: grid_storage
+  ground: true  # The file has no floor of its own.
+robot:
+  model: spot  # phygs/robots/spot; the base spawns at the robot's own height.
+  start: [0.0, 0.0, 0.0]  # x, y, heading [m, m, rad]: the table's near edge 0.6 m ahead.
+  starts:  # Robots whose bodies need other room. The Ridgeback's front reaches 0.71 m (1.4 cm from
+    # the table here) and its arm the free table spot (IK, 2026-10-28).
+    ridgeback_franka: [-0.12, 0.0, 0.0]
+objects:  # World positions [m] of the bodies' origins (box centres).
+  target: {position: [0.80, 0.0, 0.46]}
+  clutter: {position: [0.80, 0.18, 0.50]}
+record_view: {eye: [2.0, -2.0, 1.65], target: [0.25, 0.0, 0.6]}
+task:
+  goal: retrieve
+  description: the small green box
+  target: target  # Scene name; agents see it only with object_targets.
+actions: [manipulation, motion]  # Motion: a short walk with the planner and cameras running.
+observations:
+  camera_roles: [planning]  # The robot's arm-planning cameras (Spot: frontleft, frontright, hand).
+  joint_state: true
+  imu: false
+grants: [gt_localization, known_map, object_targets, scene_hints]
+budget:
+  sim_seconds: 300
+seed: 7
