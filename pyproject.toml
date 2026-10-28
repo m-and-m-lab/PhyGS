@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phygs"
-version = "0.3.0"
+version = "0.3.1"
 description = "PhyGS: physically grounded simulation framework for mobile manipulation in Isaac Lab (robot, world, runtime, skills, measurement)."
 readme = "README.md"
 requires-python = ">=3.11"
