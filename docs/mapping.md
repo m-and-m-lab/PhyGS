@@ -23,11 +23,11 @@ source /opt/explore_ws/install/setup.bash
 # An obstacle moved into a planned route on the camera costmap, then a box put in view and taken
 # away (its cells must be marked, then clear; the course is a room: the voxel layer clears only along
 # rays that return).
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
 
 # The house search: explore() over the unexplored kitchen, then a coverage pass, until a colour
 # detector sees the cube.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_nav2_pipeline.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
 ```
 
 The search saves Nav2's costmap (`costmap.png`: grey unknown, white free, black obstacles, inflation

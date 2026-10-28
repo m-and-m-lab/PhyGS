@@ -57,12 +57,12 @@ experiments and their helpers remain isolated under
 does not import that stack or ROS.
 
 Robot-specific code and data (Spot's policy, actuators and calibrations) live in the robot's
-folder; framework code names no robot's parts (`tests/test_robot_neutral.py`). Runnable physical checks are `phygs_robot_tests/episodes/check_*.py` and
-`phygs_robot_tests/components/check_*.py`, automatic and headless by default (`--manual` for
-keyboard control where a test has it); component tests read `phygs_robot_tests/configs/`, and the
+folder; framework code names no robot's parts (`tests/test_robot_neutral.py`). Runnable physical checks are `tests/robot_tests/episodes/check_*.py` and
+`tests/robot_tests/components/check_*.py`, automatic and headless by default (`--manual` for
+keyboard control where a test has it); component tests read `tests/robot_tests/configs/`, and the
 robot is `--robot` (default `spot`). The first object-search evaluator lives under
-`src/phygs_robot_tests/tasks/object_search.py` and its agent-facing declaration
-client lives under `phygs_robot_tests/tasks/object_search_api.py`.
+`src/tests/robot_tests/tasks/object_search.py` and its agent-facing declaration
+client lives under `tests/robot_tests/tasks/object_search_api.py`.
 
 Optional input/processing arrangements and navigation factory migration are documented
 in [pipelines](../docs/pipelines.md).

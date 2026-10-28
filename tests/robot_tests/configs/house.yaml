@@ -1,0 +1,80 @@
+# Ground-truth localization; native Nav2 point-cloud costmaps.
+robot:  # The robot is --robot (default spot); this is where it spawns.
+  position: [10.2, 6.0, 0.6]  # The storage revision's robot start (configs/episodes/dev_house_drawer.yaml).
+  rotation_wxyz: [1.0, 0.0, 0.0, 0.0]
+scene:
+  id: bear_loop_house  # Release 1.1.0 of the scene dataset, found by phygs.episodes.scenes.
+  version: 1.1.0
+  dome_light_intensity: 2500.0
+  dome_light_color: [0.75, 0.75, 0.75]
+sensors:
+  imu: true
+  cameras:
+    inspection:
+      prim_path: "{ENV_REGEX_NS}/Robot/body/ObservationCamera"
+      width: 640
+      height: 480
+      data_types: [rgb, distance_to_image_plane]
+      offset:
+        pos: [0.85, 0.0, 0.35]
+        rot: [0.0, 0.0, 0.0, 1.0]
+        convention: world
+      pinhole:
+        focal_length: 18.0
+        horizontal_aperture: 20.955
+        clipping_range: [0.05, 20.0]
+observations:
+  joint_state: true
+  imu: true
+  localization: ground_truth
+  state_period: 0.02
+  camera_period: 0.032  # 31.25 captures per simulated second, independent of RTF
+  cameras:
+    - {name: inspection, rgb: true, depth: true}
+# Nav2's camera: the inspection camera's points between the height band [m] and up to max_depth [m]
+# on the house's flat floor; the map is exploration.bounds.
+mapping:
+  camera: inspection
+  height: [0.2, 1.2]
+  resolution: 0.1
+  max_depth: 8.0
+transit:
+  footprint_profile: ../../../phygs/robots/spot/navigation/transit.json
+  clearance: 0.0
+  initial_free_radius: 0.94
+base_kinematics: holonomic  # Spot's base (robot.yaml base.kinematics): Nav2's motion model.
+navigation:
+  period: 0.1
+  max_speed: 1.0
+  max_yaw_speed: 1.5
+nav2:
+  namespace: spot_navigation
+  sensor_voxel_size: 0.05  # One point per 5 cm cube goes to Nav2, as in episodes.
+  sensor_mark_margin: 0.05  # The image's bottom 5% only clears, as in episodes.
+house:
+  settling_seconds: 1.0
+  scan_seconds: 5.0
+  scan_yaw_radps: 1.5
+exploration:
+  # The search's Nav2 map: the kitchen, unexplored beyond the spawn disk (initial_free_radius);
+  # explore_lite picks frontiers on Nav2's costmap.
+  bounds: [8.0, 4.0, 14.0, 10.0]
+  time_budget: 120.0
+  # When explore() has mapped the kitchen but the camera never saw the cube (the floor behind the island
+  # reads free from rays over it): viewpoints on the costmap's cells of cost at most max_cost and at
+  # least edge_margin [m] inside the map (the robot fits; corner cells were invalid goals), each the
+  # farthest from the robot's start and the earlier ones (at least separation [m]), reached within
+  # arrival_tolerance [m] at any heading, then a turn of turn_seconds [s] at scan_yaw_radps.
+  coverage:
+    max_viewpoints: 6
+    max_cost: 100
+    edge_margin: 0.7
+    separation: 1.0
+    arrival_tolerance: 0.3
+    turn_seconds: 4.2
+search:
+  target_description: magenta diagnostic cube
+  target:
+    center: [13.0, 7.0, 0.45]
+    size: [0.25, 0.25, 0.25]
+    color: [0.95, 0.05, 0.95]

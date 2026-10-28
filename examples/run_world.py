@@ -6,7 +6,7 @@
 """Run one world: build the episode from its spec, run an agent, write the report.
 
     ./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
-        --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/dev_grid_table.yaml \
+        --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
         --agent template --task_loader phygs_robot_tests.tasks:load_task \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
 

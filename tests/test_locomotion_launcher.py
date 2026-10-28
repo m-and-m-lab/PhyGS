@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-LOCOMOTION = Path(__file__).parents[1] / "phygs_robot_tests" / "components" / "check_locomotion.py"
+LOCOMOTION = Path(__file__).parents[1] / "tests" / "robot_tests" / "components" / "check_locomotion.py"
 
 
 def test_an_output_folder_is_required(tmp_path):

@@ -11,12 +11,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 import torch
+from phygs_robot_tests.tasks.point_navigation import PhysicalSample, PointNavigationEvaluator, PointNavigationTask
 
 from phygs.execution.locomotion.base import DeadBand
 from phygs.execution.navigation.map import GridMap, RectangleFootprint
 from phygs.simulation.maps import BoxGeometry, KnownBoxMap
 from phygs.skills.navigation.api import NavigationConfig, NavigationGoal
-from phygs_robot_tests.tasks.point_navigation import PhysicalSample, PointNavigationEvaluator, PointNavigationTask
 
 
 def test_segments_are_blocked_by_diagonal_corners_and_subcell_intersections():
@@ -143,7 +143,7 @@ def test_task_action_permissions_reject_commands_before_backend_access():
 
 
 def test_the_navigation_course_refuses_its_goals_for_the_stated_reason():
-    """The navigation rung's course (phygs_robot_tests/scenes/nav_course): the invalid goal lies inside the wall and
+    """The navigation rung's course (tests/robot_tests/scenes/nav_course): the invalid goal lies inside the wall and
     the unreachable goal inside the closed pen, clear of its walls (a free cell no route reaches)."""
     from pathlib import Path
 
@@ -154,7 +154,7 @@ def test_the_navigation_course_refuses_its_goals_for_the_stated_reason():
     from phygs.simulation.scene import collider_boxes
 
     project = Path(__file__).resolve().parents[1]
-    cases = yaml.safe_load((project / "phygs_robot_tests/configs/navigation.yaml").read_text())["cases"]
+    cases = yaml.safe_load((project / "tests/robot_tests/configs/navigation.yaml").read_text())["cases"]
     goals = {case["name"]: case["goal"] for case in cases["nav_course"]}
     stage = Usd.Stage.Open(str(scene_file("nav_course")))
     boxes = {}

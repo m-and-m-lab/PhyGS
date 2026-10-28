@@ -85,7 +85,7 @@ def nav2_navigation(
     if profile is None:
         raise ValueError(
             f"{robot.name} has no measured transit footprint (navigation.footprint_profile): measure it with"
-            " phygs_robot_tests/components/check_footprint.py (rung 03) first."
+            " tests/robot_tests/components/check_footprint.py (rung 03) first."
         )
     require_ros2()  # Before the servers start: the bridge runs in this process.
     base_files = base_controller_class(robot).files(robot)

@@ -11,7 +11,7 @@ not pass), ``session.stream()`` (one packet per camera period while time passes)
 feedback (``session.wait(command)`` blocks until it ends; ``client.feedback(command)`` reads it now).
 
     ./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \\
-        --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/dev_house_drawer.yaml \\
+        --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_house_drawer.yaml \\
         --agent depth_example --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_depth_example
 """
 

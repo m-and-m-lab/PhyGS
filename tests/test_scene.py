@@ -17,7 +17,7 @@ from pxr import Usd
 from phygs.episodes.spec import EpisodeSpec
 from phygs.simulation import scene
 
-EPISODES = Path(__file__).resolve().parents[1] / "phygs_robot_tests" / "configs" / "episodes"
+EPISODES = Path(__file__).resolve().parents[1] / "tests" / "robot_tests" / "configs" / "episodes"
 GRID_DRAWER = EpisodeSpec.load(EPISODES / "dev_grid_drawer.yaml")
 GRID = GRID_DRAWER.scene.usd
 HOUSE = EpisodeSpec.load(EPISODES / "dev_house_drawer.yaml").scene.usd

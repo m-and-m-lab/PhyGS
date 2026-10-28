@@ -73,7 +73,7 @@ History: until 2026-10-22 both planners used the walking sweep's enclosing circl
 error brushed the dynamic obstacle; `output_check/20261022-1230_rectangle_nav2_padding`). The
 lattice + MPPI configuration passed the Nav2 group 11/11 (`output_check/20261023-2100_nav2_mppi_v2`).
 
-`phygs_robot_tests/components/check_footprint.py` measures it: the enabled collision shapes'
+`tests/robot_tests/components/check_footprint.py` measures it: the enabled collision shapes'
 local bounds at actual articulated link poses, in a level frame at the base yaw, standing
 after the reset and in the last 0.5 s of every stop (`standing` in the profile: bounds,
 `padding` 0.05 m for the swinging feet and stopping drift, hull). It also records the swept
@@ -111,21 +111,21 @@ of publishing a false zero. Episode reset clears that history.
 ## Inspect in IsaacLab
 
 Run from `/workspace/isaaclab` (source ROS 2 Jazzy for navigation). Navigation is checked as an agent
-uses it (`episodes/check_navigation.py`, rung 6 of the [robot-test ladder](../phygs_robot_tests/README.md)):
+uses it (`episodes/check_navigation.py`, rung 6 of the [robot-test ladder](../tests/robot_tests/README.md)):
 goals around a wall, to a heading and by velocity commands, goals refused in a wall, in a closed pen
 or in furniture, and a cancelled walk, on the course (`nav_course`) and in the house (`nav_house`).
 `--viz kit` opens Kit to watch; the footprint check has keyboard control with `--manual`:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_navigation.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_footprint.py --manual --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint_manual
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py --manual --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint_manual
 ```
 
 Automated checks (the default, headless) use the same scripts and YAML files:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_footprint.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_navigation.py --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/nav_house.yaml --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation_house
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_house.yaml --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation_house
 ```
 
 The footprint check writes the transit profile to `DIR/transit.json`. To adopt a new
@@ -266,7 +266,7 @@ are agent tests: the episode harness starts Nav2 for them.
 
 ```bash
 source /opt/explore_ws/install/setup.bash  # Jazzy plus explore_lite (the house search explores).
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_nav2_pipeline.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
 ```
 
 Runs are automatic and headless unless `--viz kit` is given.
@@ -303,7 +303,7 @@ or stopped for without contact, and a box put in view, then taken away, must be 
 
 ```bash
 source /opt/explore_ws/install/setup.bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
 ```
 
 Nav2 maps the cameras in a 3D voxel grid, the standard for depth cameras (since 2026-10-26;
@@ -391,7 +391,7 @@ The diagnostic normally opens only Isaac Sim. Add `--rviz` to start RViz2 with
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_nav2_pipeline.py \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
   --rviz --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_nav2_rviz_check
 ```
 

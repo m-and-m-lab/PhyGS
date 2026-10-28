@@ -22,7 +22,7 @@ flowchart TB
     agent(["Agent<br/>(LLM, policy or reference agent)"])
     runner(["Environment runner<br/>calls robot.step() every physics tick"])
 
-    subgraph api["Public APIs — phygs/skills/*/api.py (object search: phygs_robot_tests/tasks/object_search_api.py)"]
+    subgraph api["Public APIs — phygs/skills/*/api.py (object search: tests/robot_tests/tasks/object_search_api.py)"]
         direction LR
         loco["locomotion<br/>command_velocity, stop, feedback"]
         nav["navigation<br/>navigate_to, cancel, feedback"]
@@ -51,7 +51,7 @@ flowchart TB
     end
 
     isaac[("Isaac Lab / PhysX / RTX")]
-    evals["Task evaluators — src/phygs_robot_tests/tasks<br/>point_navigation, object_search"]
+    evals["Task evaluators — src/tests/robot_tests/tasks<br/>point_navigation, object_search"]
 
     agent -->|commands, feedback| loco & nav & manip
     agent -->|reads| obs
@@ -75,12 +75,12 @@ flowchart TB
 
 | Layer | Status | Where |
 | --- | --- | --- |
-| Public skill APIs | Live | `phygs/skills/{locomotion,navigation,manipulation}/api.py`, `phygs_robot_tests/tasks/object_search_api.py` |
+| Public skill APIs | Live | `phygs/skills/{locomotion,navigation,manipulation}/api.py`, `tests/robot_tests/tasks/object_search_api.py` |
 | Execution | Live | `phygs/execution/` |
 | Runtime and observation pipeline | Live | `phygs/runtime/` |
 | Robot descriptions and assembly | Live | `phygs/robots/` (`RobotDescription`, `RobotControl`; one folder per robot) |
 | Simulation adapters | Live | `phygs/simulation/` |
-| Tasks and evaluators | Live | `src/phygs_robot_tests/tasks/` |
+| Tasks and evaluators | Live | `src/tests/robot_tests/tasks/` |
 
 ## Code map
 
@@ -117,9 +117,9 @@ The directory tree is in [phygs/README.md](phygs/README.md).
 | `helpers/observations/types.py` | Permitted products, capture stamps, calibrated snapshots, and exact-time transform queries. |
 | `helpers/observations/localization.py` | Localization provider contract and explicitly privileged ground-truth mode. |
 | `helpers/collision_map.py` | Robot voxels and body-frame boxes for arm planning. |
-| `phygs_robot_tests/tasks/` | The robot tests' tasks, outside the framework: `load_task(block)` builds the task object from a spec's task block; `RetrieveTask` (brief and evaluator: held, stowed, upright, in time; conduct: unintended contact, drawers left open; thresholds in `retrieve.yaml`, hashed into provenance), point navigation and object search evaluators. A benchmark brings its own. |
+| `tests/robot_tests/tasks/` | The robot tests' tasks, outside the framework: `load_task(block)` builds the task object from a spec's task block; `RetrieveTask` (brief and evaluator: held, stowed, upright, in time; conduct: unintended contact, drawers left open; thresholds in `retrieve.yaml`, hashed into provenance), point navigation and object search evaluators. A benchmark brings its own. |
 | `episodes/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); no Isaac imports. |
-| `episodes/scenes.py` | Scenes by id: `scene_file(id)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes`, then `phygs_robot_tests/scenes`; no spec holds a file path. |
+| `episodes/scenes.py` | Scenes by id: `scene_file(id, version)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes` (fetched releases, version checked), then `tests/robot_tests/scenes`; no spec holds a file path. |
 | `episodes/task.py` | The task seam: the `Task` protocol the Environment takes (public goal and description, privileged target, `brief()`, `result()`, `provenance()`) and `NoTask`. The framework never imports `tasks/`. |
 | `episodes/environment.py` | `Environment`: builds an episode, owns the main-thread loop, runs an agent, ground truth for tests, report. |
 | `episodes/recorder.py` | The episode folder: `report.json` (arm `contacts` apart from the grasp's `grasp_contacts`), the video. |
@@ -261,7 +261,7 @@ controller routes position and gain outputs through the shared world backend.
 The keyboard locomotion launcher runs through `RobotControl` in human mode.
 Other old launchers remain independent diagnostics until migrated.
 Agents do not step controllers or policies. The same
-`phygs_robot_tests/components/check_locomotion.py` runs automated checks, or keyboard control with `--manual`. See
+`tests/robot_tests/components/check_locomotion.py` runs automated checks, or keyboard control with `--manual`. See
 [the locomotion contract](docs/locomotion.md) for usage and validation.
 
 ## Navigation
@@ -330,7 +330,7 @@ settings live in `phygs/configs/navigation/nav2.yaml` and `phygs/execution/navig
 See [setup, measurements and limitations](docs/nav2.md).
 
 Episodes start Nav2 themselves (`execution/navigation/backends/nav2_stack.py`).
-`phygs_robot_tests/components/check_nav2_pipeline.py` owns only diagnostic subprocess lifecycle for
+`tests/robot_tests/components/check_nav2_pipeline.py` owns only diagnostic subprocess lifecycle for
 the house search: Nav2 launch (`pointcloud`, the configuration episodes and the UI use) plus the
 Spot search test (`check_house.py`).
 
@@ -437,16 +437,15 @@ in unseen space.
 The skills (`stow`, `look_at`) are described in [manipulation skills](docs/manipulation_skills.md)
 and the low-level commands in the [manipulation contract](docs/design/manipulation_contract/index.html).
 There are no pick, place or drawer skills: an agent composes them from `move_to_pose`,
-end-effector trajectories (`execute_trajectory`) and the gripper commands (see the robot tests' routines, `phygs_robot_tests/routines/`).
+end-effector trajectories (`execute_trajectory`) and the gripper commands (see the robot tests' routines, `tests/robot_tests/routines/`).
 
 ## Scenes and assets
 
-Scene YAML configs pin a ForageBench commit and archive checksum. The explicit
-`phygs/scenes/fetch.py fetch` preparation step resolves and verifies
-assets into a local cache and writes a provenance record. The standalone scene
-checker consumes this record offline and includes it in its JSON report.
-Robot launchers continue to accept local USD paths; they do not depend on Hub
-authentication during simulation. Authoring and publishing are in `scene_generation/usd_tools/`.
+Released scenes live in the scene dataset on Hugging Face as immutable releases (one scene id at
+one version: a ZIP, a manifest with its SHA-256 and USD entry point, a catalog listing every
+manifest). `phygs.scenes.fetch` downloads and verifies a release into the local scene cache and
+writes a record the scene registry reads, so a spec pins `scene: {id, version}`; nothing downloads
+during a simulation. Authoring and publishing are in `scene_generation/usd_tools/` ([docs/scenes.md](docs/scenes.md)).
 
 Catalog discovery also supports scene-ID subsets and all catalogued releases without
 a local YAML. Each command resolves one Hub commit and generates per-scene local
@@ -455,7 +454,7 @@ records under `CACHE/records/COMMIT/SCENE-VERSION.json`.
 | Source | Usage |
 | --- | --- |
 | `phygs/robots/spot/assets/` | Spot robot, cameras, URDF/USD, cuRobo config; `spot_description` (submodule) for the meshes. |
-| `phygs_robot_tests/scenes/` | The authored test scenes (grid storage, navigation course, dynamic course), built by `scene_generation/usd_tools/build_*_scene.py`. |
+| `tests/robot_tests/scenes/` | The authored test scenes (grid storage, navigation course, dynamic course), built by `scene_generation/usd_tools/build_*_scene.py`. |
 | `~/.cache/phygs/scenes` (`$PHYGS_SCENES`) | Fetched scene releases (`phygs.scenes.fetch`) and any local scene folder; specs name scenes by id. |
 | `scene_generation/infinigen/` | The Infinigen-Indoors fork: scene and object generation, USD export (its own Python environment). |
 | `scene_generation/usd_tools/` | Scene builders, the USD scope sorter, the packager and publisher, `scene_lib` checks. |
@@ -464,7 +463,7 @@ Benchmark launchers should reference assets explicitly through YAML config when 
 
 ## Episodes
 
-One entry point, `examples/run_world.py`, runs an episode spec (e.g. `phygs_robot_tests/configs/episodes/*.yaml`) with
+One entry point, `examples/run_world.py`, runs an episode spec (e.g. `tests/robot_tests/configs/episodes/*.yaml`) with
 an agent. The entry point builds the task object from the spec's task block (`phygs_robot_tests.tasks.load_task`) and
 passes it in; the `Environment` loads the spec's robot (`robot.model`, or `--robot`), finds the scene by id, builds it, creates `RobotControl` with the
 spec's actions (`allowed_actions`) and grants (pipeline access, known-box navigation, object
@@ -481,9 +480,9 @@ plan: [docs/design/episode_harness/index.html](docs/design/episode_harness/index
 | Test type | Location | Runtime |
 | --- | --- | --- |
 | Pure Python unit tests | `tests/test_*.py` | Standard Python environment with local dependencies. |
-| IsaacLab robot checks | `phygs_robot_tests/{episodes,components}/check_*.py` | Require Isaac Sim, Isaac Lab, GPU, assets, and camera support. |
+| IsaacLab robot checks | `tests/robot_tests/{episodes,components}/check_*.py` | Require Isaac Sim, Isaac Lab, GPU, assets, and camera support. |
 
-Robot tests form a ladder in the order the framework is built ([phygs_robot_tests/README.md](phygs_robot_tests/README.md);
+Robot tests form a ladder in the order the framework is built ([tests/robot_tests/README.md](tests/robot_tests/README.md);
 `run_suite.py ladder --upto N`). Each spawns a scene, has the robot do one thing, and shows (`--record`),
 checks (`DIR/check.json`) and serves as the reference for using that part. A test takes the shape its
 subject's real user would write: what an agent asks for (navigation, arm planning, pick and place,
@@ -493,7 +492,7 @@ through the agent session only, and checks on the test side from ground truth af
 machinery carrying out an agent's requests (stage and reset, sensors, gait, footprint, the arm's joint
 controller) has component tests, `components/check_*.py`, which drive the modules directly and build
 the robot from the files episodes use. All are automatic and headless by default and take
-`--output DIR`; settings are in `phygs_robot_tests/configs/`, the robot is `--robot` (default the spec's, or `spot`).
+`--output DIR`; settings are in `tests/robot_tests/configs/`, the robot is `--robot` (default the spec's, or `spot`).
 Smoke checks are intentionally stricter than demos:
 
 - They validate config paths.
@@ -532,14 +531,14 @@ To add a new skill:
 3. Bind it once in `robots/control.py` and gate it with an `allowed_actions` entry.
 4. Add pure unit tests for API behavior.
 5. Add a rung to the robot-test ladder if the skill touches simulation: an agent test
-   (`phygs_robot_tests/episodes/`, a spec and a plan through the session) when agents call it, a
+   (`tests/robot_tests/episodes/`, a spec and a plan through the session) when agents call it, a
    component test (`components/`) for machinery under the session.
 
 To add a new benchmark task:
 
 1. Add a task YAML with robot, scene, target, and timeout sections.
 2. Reference concrete USD assets and target prim paths.
-3. Add a task evaluator under `src/phygs_robot_tests/tasks/` that reads physical state.
+3. Add a task evaluator under `src/tests/robot_tests/tasks/` that reads physical state.
 4. Save result artifacts.
 5. Add documentation and a check command.
 
@@ -552,4 +551,4 @@ the camera/point-cloud helpers, `scripts/phygs.py`, their configs and tests,
 and the fixed-base drawer smoke tests. The last version is in git history before that
 date. Grasping, placing and drawers now run through `robot.manipulation` skills with
 MoveIt or cuRobo V2 planning (see [manipulation skills](docs/manipulation_skills.md));
-drawers are checked by `phygs_robot_tests/episodes/check_drawer_stroke.py` and the other episode tests.
+drawers are checked by `tests/robot_tests/episodes/check_drawer_stroke.py` and the other episode tests.

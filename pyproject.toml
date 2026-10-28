@@ -16,8 +16,43 @@ dependencies = []
 Homepage = "https://m-and-m-lab.github.io/PhyGS/"
 Repository = "https://github.com/m-and-m-lab/PhyGS"
 
-[tool.setuptools.packages.find]
-include = ["phygs", "phygs.*", "phygs_robot_tests", "phygs_robot_tests.*"]
+[tool.setuptools]
+# phygs at the root; the robot tests are the package phygs_robot_tests, kept under tests/robot_tests.
+packages = [
+    "phygs",
+    "phygs.agents",
+    "phygs.episodes",
+    "phygs.execution",
+    "phygs.execution.locomotion",
+    "phygs.execution.manipulation",
+    "phygs.execution.manipulation.planners",
+    "phygs.execution.navigation",
+    "phygs.execution.navigation.backends",
+    "phygs.execution.navigation.launch",
+    "phygs.observations",
+    "phygs.robots",
+    "phygs.robots.ridgeback_franka",
+    "phygs.robots.spot",
+    "phygs.robots.spot.assets.spot_description.spot_description",
+    "phygs.runtime",
+    "phygs.scenes",
+    "phygs.simulation",
+    "phygs.skills",
+    "phygs.skills.locomotion",
+    "phygs.skills.manipulation",
+    "phygs.skills.navigation",
+    "phygs.tools",
+    "phygs.ui",
+    "phygs_robot_tests",
+    "phygs_robot_tests.components",
+    "phygs_robot_tests.episodes",
+    "phygs_robot_tests.routines",
+    "phygs_robot_tests.tasks",
+]
+
+[tool.setuptools.package-dir]
+"" = "."
+"phygs_robot_tests" = "tests/robot_tests"
 
 [tool.setuptools.package-data]
 "phygs" = ["configs/*.yaml", "configs/**/*.yaml", "configs/**/*.rviz"]

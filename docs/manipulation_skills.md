@@ -4,7 +4,7 @@ Status: interface approved 2026-10-06. Two skills remain: `stow` and `look_at`. 
 were removed on 2026-10-16, and `pick`, `place` and `move_along_axis` on 2026-10-18 (the
 manipulation contract, [manipulation_contract/index.html](manipulation_contract/index.html)):
 agents compose grasps, placements and drawer strokes from `move_to_pose`, end-effector
-trajectories and the gripper commands, as the robot tests' routines do (`phygs_robot_tests/routines/`).
+trajectories and the gripper commands, as the robot tests' routines do (`tests/robot_tests/routines/`).
 This guide stays the source of truth for the skills; the contract is the source of truth for
 the low-level commands.
 
@@ -141,7 +141,7 @@ forces and object poses go only to the evaluator.
 
 ## Composing grasps, placements and straight motions
 
-The robot tests' routines are the reference compositions (`phygs_robot_tests/routines/arm.py`,
+The robot tests' routines are the reference compositions (`tests/robot_tests/routines/arm.py`,
 numbers in `routines/params.yaml`); any agent may do the same or something else:
 
 - **Straight approach** (`arm.approach_straight`): `move_to_pose` (planned, `tool="wrist"`,
@@ -176,9 +176,9 @@ slide axis builds force (on the kitchen island the jaws wedged at ~320 N).
 ## Drawers
 
 There is no drawer skill. The routines compose a stroke in `drawer.open_drawer` and
-`drawer.close_drawer` (`phygs_robot_tests/routines/drawer.py`): open the gripper; a straight approach into the part to the handle grasp
+`drawer.close_drawer` (`tests/robot_tests/routines/drawer.py`): open the gripper; a straight approach into the part to the handle grasp
 pose; close; a straight line along the slide by the stroke; open; move the fixed jaw off the bar
-and back out with straight lines. `phygs_robot_tests/episodes/check_drawer_stroke.py` checks it.
+and back out with straight lines. `tests/robot_tests/episodes/check_drawer_stroke.py` checks it.
 
 Handle grasp pose: the bar along the gripper's y (Spot: the jaw hinge), the approach into the
 part, at the robot's `handle` tool frame: with a fixed jaw the bar rests on it (its axis a radius
@@ -283,7 +283,7 @@ Configuration in the robot's `robot.yaml` (Spot's: `phygs/robots/spot/robot.yaml
 the skill backend is `skills.backend` in `phygs/configs/environment.yaml`). The tool frames are the
 gripper geometry the skills, the UI and the robot tests' routines read; every tool but `wrist` has
 the gripper's axes (x the approach, z the jaws' closing axis). The routines' line speed and
-clearances are in `phygs_robot_tests/routines/params.yaml`:
+clearances are in `tests/robot_tests/routines/params.yaml`:
 
 ```yaml
 arm:
@@ -307,7 +307,7 @@ camera_roles:
 | `phygs/execution/manipulation/skills/types.py` | Targets, `SkillFailure`, `SkillError`, `SkillConfig`, `HeldObject` |
 | `phygs/execution/manipulation/skills/runner.py` | Runs a skill sequence one low-level command at a time |
 | `phygs/execution/manipulation/skills/backends.py` | `DirectSkills`, `CollisionAvoidancePlannerSkills`, `create_skills` |
-| `phygs_robot_tests/routines/` | Reference compositions: pick, place (`arm.py`), drawer strokes (`drawer.py`) |
+| `tests/robot_tests/routines/` | Reference compositions: pick, place (`arm.py`), drawer strokes (`drawer.py`) |
 
 ## Example: orchestrating agent
 

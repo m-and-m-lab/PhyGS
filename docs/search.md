@@ -8,7 +8,7 @@ permitted `robot.locomotion.command_velocity(...)` calls and own its search logi
 require manipulation.
 
 A target declaration is a camera name, capture stamp, and image pixel. The
-agent-facing task endpoint is `phygs_robot_tests/tasks/object_search_api.py`:
+agent-facing task endpoint is `tests/robot_tests/tasks/object_search_api.py`:
 
 ```python
 camera = robot.observe().cameras["inspection"]
@@ -33,7 +33,7 @@ From `/workspace/isaaclab`:
 ```bash
 source /opt/explore_ws/install/setup.bash
 # explore() over the unexplored kitchen, then a coverage pass, until the detector sees the cube.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_nav2_pipeline.py \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
 
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest \

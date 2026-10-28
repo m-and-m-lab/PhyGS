@@ -8,18 +8,19 @@ references (no Isaac Sim)."""
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
 import pytest
 import yaml
-
-from phygs.episodes.spec import ACTION_SETS, ACTIONS, EpisodeSpec, load_agent
 from phygs_robot_tests.tasks import load_task
 
+from phygs.episodes.spec import ACTION_SETS, ACTIONS, EpisodeSpec, load_agent
+
 PROJECT = Path(__file__).resolve().parents[1]
-EPISODES = PROJECT / "phygs_robot_tests" / "configs" / "episodes"
-STANCES = PROJECT / "phygs_robot_tests" / "configs" / "stances"
+EPISODES = PROJECT / "tests" / "robot_tests" / "configs" / "episodes"
+STANCES = PROJECT / "tests" / "robot_tests" / "configs" / "stances"
 SPECS = sorted(EPISODES.glob("*.yaml")) + sorted((PROJECT / "phygs" / "configs" / "ui").glob("*_drawer.yaml"))
 
 
@@ -88,6 +89,21 @@ def test_a_spec_maps_a_named_action_set_to_actions_and_keeps_its_public_summary(
     assert custom.actions == ("motion", "arm") and ACTION_SETS["skills"] == spec.actions
     house = EpisodeSpec.from_dict(spec_data(scene=dict(id="bear_loop_house", name="house", ground=False)))
     assert house.scene.name == "house"
+
+
+def test_a_fetched_release_is_found_by_its_record_and_its_version_is_checked(tmp_path, monkeypatch):
+    monkeypatch.setenv("PHYGS_SCENES", str(tmp_path))
+    usd = tmp_path / "abc123" / "house_rev" / "scene.usdc"
+    usd.parent.mkdir(parents=True)
+    usd.write_bytes(b"PXR-USDC")
+    (tmp_path / "house.json").write_text(json.dumps({"scene_version": "1.1.0", "usd_path": str(usd)}))
+    assert EpisodeSpec.from_dict(spec_data(scene=dict(id="house", ground=False))).scene.usd == usd
+    pinned = EpisodeSpec.from_dict(spec_data(scene=dict(id="house", version="1.1.0", ground=False)))
+    assert pinned.scene.usd == usd and pinned.summary()["scene_version"] == "1.1.0"
+    with pytest.raises(ValueError, match="wants 1.0.0"):
+        EpisodeSpec.from_dict(spec_data(scene=dict(id="house", version="1.0.0", ground=False))).scene.usd
+    with pytest.raises(ValueError, match="major.minor.patch"):
+        EpisodeSpec.from_dict(spec_data(scene=dict(id="house", version="latest", ground=False)))
 
 
 def test_a_missing_scene_names_the_roots_searched(tmp_path, monkeypatch):

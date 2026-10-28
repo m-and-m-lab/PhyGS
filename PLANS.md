@@ -25,7 +25,7 @@ README's dated runs).
 
 ## Robot-test ladder (2026-10-28)
 
-Every robot test in build order, 15 rungs ([phygs_robot_tests/README.md](phygs_robot_tests/README.md);
+Every robot test in build order, 15 rungs ([phygs_robot_tests/README.md](tests/robot_tests/README.md);
 `run_suite.py ladder --upto N`). What an agent asks for has agent tests (`episodes/`: a spec, a plan
 through the session, checks from ground truth after and during the run via
 `Environment.run(during=...)`); the machinery under the session has component tests
@@ -48,7 +48,7 @@ the benchmark's.
 Design and migration plan: [docs/design/episode_harness/index.html](docs/design/episode_harness/index.html).
 One task (interactive search, retrieve: target held, arm stowed), one entry point
 (`examples/run_world.py`), one oracle agent, a separate evaluator, flat robot tests.
-Since 2026-10-18 the oracle is not an agent: its routines are in `phygs_robot_tests/routines/`,
+Since 2026-10-18 the oracle is not an agent: its routines are in `tests/robot_tests/routines/`,
 each episode robot test holds its plan, and the robot tests are in `episodes/` and `components/`
 ([robot tests housekeeping](docs/design/archive/robot_tests_housekeeping/index.html)).
 
@@ -61,11 +61,11 @@ each episode robot test holds its plan, and the robot tests are in `episodes/` a
   session: walk to the table stance, look, pick, stow holding; realtime clock, video; 33.6 s sim,
   one planner restart, no arm contact).
 - Step 2 done (2026-10-15): the oracle (`agents/oracle.py`, strategy in `oracle.yaml`; since 2026-10-18
-  `phygs_robot_tests/routines/` and `routines/params.yaml`), built from
+  `tests/robot_tests/routines/` and `routines/params.yaml`), built from
   `check_manipulation_planning.py`'s agent code with every check removed; robot tests
   `check_retrieve.py`, `check_drawer_stroke.py`, `check_drawer_place.py` (one episode per process,
   ground truth via `Environment.truth()`, thresholds in `spot_episodes.yaml`, now
-  `phygs_robot_tests/configs/episodes.yaml`). All pass headless
+  `tests/robot_tests/configs/episodes.yaml`). All pass headless
   with cuRobo: `output_check/20261015-1419_step2_retrieve_drawer` (70 s sim),
   `..._step2_drawer_stroke` (opened 0.335 m, closed 0.0003 m), `20261015-1531_step2b_retrieve_table`
   (45 s), `20261015-1531_step2b_drawer_place` (target in the drawer, upright, drawer closed; 156 s,
@@ -85,7 +85,7 @@ each episode robot test holds its plan, and the robot tests are in `episodes/` a
 
 Basic shared-runtime manipulation adds joint trajectories, arm gravity feedforward,
 claw commands, free-space wrist differential IK, measured completion, cancellation,
-and reset checks. Run `phygs_robot_tests/components/check_manipulation.py --output DIR` for physical
+and reset checks. Run `tests/robot_tests/components/check_manipulation.py --output DIR` for physical
 validation; add `--record` for third-person video. See the tests README.
 
 Done: MoveIt is qualified for collision-aware reaching with the full robot model,
@@ -118,7 +118,7 @@ Step 3 done: `place` sets the object on a different free table spot, 10/10 withi
 Step 4 done (2026-10-08): drawer `open`/`close` and the `pick` approach direction; gate
 24/24 (`output_check/gate4`, both libraries, known boxes and depth, 0 N contact, a blocked
 drawer stalls and lets go). Removed 2026-10-16: the `open`/`close` skills and `--task drawer`;
-agents compose `move_along_axis` and the gripper commands (see `phygs_robot_tests/routines/`; since
+agents compose `move_along_axis` and the gripper commands (see `tests/robot_tests/routines/`; since
 2026-10-18 `move_to_pose` and end-effector lines, `move_along_axis` removed).
 Same day (2026-10-08): the robot USD's finger editor spheres were disabled, manipulation stillness uses a 0.05 s window, the planning check's guard uses 2 cm cells.
 `stow` and `look_at` done (2026-10-09): gate 44/44 (`output_check/gate7`). Basic skills
@@ -233,7 +233,7 @@ Make the drawer manipulation smoke test a reliable benchmark entry point that ca
 Tasks:
 
 - (Removed 2026-10-08) The drawer smoke test itself; drawers are checked by
-  `phygs_robot_tests/episodes/check_drawer_stroke.py` and the other episode tests on the shared runtime.
+  `tests/robot_tests/episodes/check_drawer_stroke.py` and the other episode tests on the shared runtime.
 - Confirm AO-Grasp services are reachable from both host and container network modes.
 - Confirm the whole drawer root AABB is visible from configured Spot cameras.
 - Tune the default drawer pose only if planning or visibility consistently fails.

@@ -1,7 +1,7 @@
 # Tests
 
 Two kinds of tests: pure Python unit tests (`tests/test_*.py`, no Isaac Sim) and robot tests
-(`phygs_robot_tests/`, a real simulator). Run everything from the Isaac Lab root
+(`tests/robot_tests/`, a real simulator). Run everything from the Isaac Lab root
 (`/workspace/isaaclab`). The project runs at 250 Hz physics.
 
 ## Unit tests
@@ -37,7 +37,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest scripts/PhyGS/tests 
 
 Every robot test spawns a scene and has the robot do one thing; they form a ladder in the order the
 framework is built. The ladder, the two test shapes (agent tests and component tests), how to run
-it and how to add a rung: [phygs_robot_tests/README.md](../phygs_robot_tests/README.md).
+it and how to add a rung: [tests/robot_tests/README.md](../tests/robot_tests/README.md).
 
 ```
 robot_tests/
@@ -82,11 +82,11 @@ them. Component tests show the cameras the control observes, and the planner whe
 ```bash
 # The ladder up to a rung (ROS 2 Jazzy and explore_lite sourced for rungs 6, 7, 11-15). --record adds
 # the videos; open <folder>/index.html for the results and every video.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/run_suite.py ladder --upto 10 --record
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
 
 # One test.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_retrieve.py \
-  --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/dev_house_drawer.yaml \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_house_drawer.yaml \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_retrieve_house
 ```
 
@@ -116,7 +116,7 @@ running while the agent thinks.
 
 ```bash
 ./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
-  --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/dev_grid_table.yaml --agent template \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml --agent template \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
 ```
 
@@ -157,7 +157,7 @@ short fixed route; `--autostart` starts without the page. Unit tests: `test_ui_s
 ## Standalone scene loading
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 ./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/load_usd_asset_standalone.py \
+CUDA_VISIBLE_DEVICES=0 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/load_usd_asset_standalone.py \
   --usd_path scripts/.scene_usd/bear_loop_house_revised/scene.usdc \
   --device cpu --viz kit --physics_dt 0.004166666666666667 --no_render_every_step
 ```
@@ -190,7 +190,7 @@ cache and scene record. It prints the USD path, resolved repository commit, and 
 path. Use that printed record path to load offline:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 ./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/load_usd_asset_standalone.py \
+CUDA_VISIBLE_DEVICES=0 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/load_usd_asset_standalone.py \
   --scene_record /PATH/PRINTED/BY/FETCH.json \
   --device cpu --viz kit --no_render_every_step --report /tmp/bear_loop_run.json
 ```

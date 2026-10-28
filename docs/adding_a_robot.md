@@ -24,7 +24,7 @@ the same episode, test or UI with another one:
 
 ```bash
 ./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
-  --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/dev_grid_table.yaml \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
   --agent template --robot /path/to/my_robot/robot.yaml \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_my_robot
 ```
@@ -65,7 +65,7 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
    gripper, reads every camera and checks that localization follows the base link.
 
    ```bash
-   ./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_bring_up.py \
+   ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_bring_up.py \
      --robot R --record --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_bring_up
    ```
 
@@ -75,7 +75,7 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
 
    ```bash
    OUT=scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
-   ./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_footprint.py \
+   ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py \
      --robot R --record --output $OUT
    ROBOT=scripts/PhyGS/phygs/robots/my_robot
    mkdir -p $ROBOT/navigation && cp $OUT/transit.json $ROBOT/navigation/
@@ -86,13 +86,13 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
    wall and in a closed pen, a cancel. Needs ROS 2 Jazzy sourced (`source /opt/ros/jazzy/setup.bash`).
 
    ```bash
-   ./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_navigation.py \
-     --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/nav_course.yaml \
+   ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
+     --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_course.yaml \
      --robot R --record --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
    ```
 
 8. **Arm tasks.** The rest of the robot-test ladder takes `--robot` too
-   ([phygs_robot_tests/README.md](../phygs_robot_tests/README.md); `run_suite.py ladder`): arm
+   ([tests/robot_tests/README.md](../tests/robot_tests/README.md); `run_suite.py ladder`): arm
    planning, pick and place, drawers, retrieve. Their scripted routines place your
    [tool frames](#tool-frames); where the robot stands in a scene (`configs/stances/<scene>.yaml`)
    and the routines' strategy (`routines/params.yaml`) were tuned for Spot.

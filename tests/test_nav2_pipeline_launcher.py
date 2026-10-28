@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 import yaml
 
-path = Path(__file__).parents[1] / "phygs_robot_tests" / "components" / "check_nav2_pipeline.py"
+path = Path(__file__).parents[1] / "tests" / "robot_tests" / "components" / "check_nav2_pipeline.py"
 spec = importlib.util.spec_from_file_location("nav2_pipeline_launcher", path)
 launcher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(launcher)
@@ -61,7 +61,7 @@ def _launch_module():
 
 def test_nav2_plans_and_follows_the_padded_standing_rectangle():
     project, module = _launch_module()
-    config = project / "phygs_robot_tests/configs/house.yaml"
+    config = project / "tests/robot_tests/configs/house.yaml"
     _, parameters = module.navigation_parameters(config, "pointcloud")
     profile = json.loads(
         (config.parent / yaml.safe_load(config.read_text())["transit"]["footprint_profile"]).read_text()
@@ -125,7 +125,7 @@ def test_camera_clouds_feed_a_voxel_layer_that_clears_with_floor_returns():
     ray in 3D, so the source keeps floor returns and returns above the band (they clear) while the layer
     marks only within the band. The 16-voxel column spans the floor to the band's top."""
     project, module = _launch_module()
-    config = project / "phygs_robot_tests/configs/house.yaml"
+    config = project / "tests/robot_tests/configs/house.yaml"
     experiment = yaml.safe_load(config.read_text())
     low, high = experiment["mapping"]["height"]
     _, parameters = module.navigation_parameters(config, "pointcloud")

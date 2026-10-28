@@ -9,7 +9,7 @@ An episode is one self-contained file: the scene (by id, :mod:`.scenes`), where 
 where objects start, the task block (opaque to the framework; a task object is built from it,
 :func:`phygs_robot_tests.tasks.load_task`), which actions the agent may use, what it observes,
 which privileged channels it is granted, a simulated-time budget and a seed. The robot tests'
-episodes are ``phygs_robot_tests/configs/episodes/*.yaml``.
+episodes are ``tests/robot_tests/configs/episodes/*.yaml``.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import math
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from functools import cached_property
@@ -70,23 +71,27 @@ class EpisodeSpec:
     @dataclass(frozen=True)
     class Scene:
         """The scene: its ``id`` (a scene folder, :mod:`.scenes`), a label (``name``, for reports
-        and the robot tests' own data; default the id) and whether it needs a ground plane. The USD
-        file is looked up when first asked for (``usd``), so a spec validates without the scene."""
+        and the robot tests' own data; default the id), whether it needs a ground plane and, for a
+        fetched release, the ``version`` it pins. The USD file is looked up when first asked for
+        (``usd``), so a spec validates without the scene."""
 
         id: str
         name: str
         ground: bool
+        version: str | None = None
 
         def __post_init__(self) -> None:
             if not valid_id(self.id) or not self.name:
                 raise ValueError(f"A scene needs an id (one folder name, no '..') and a name; got {self.id!r}.")
             if type(self.ground) is not bool:
                 raise ValueError("The scene's ground is true or false.")
+            if self.version is not None and not re.fullmatch(r"\d+\.\d+\.\d+", str(self.version)):
+                raise ValueError(f"A scene version is major.minor.patch; got {self.version!r}.")
 
         @cached_property
         def usd(self) -> Path:
             """The scene's USD file (absolute), from the scene roots."""
-            return scene_file(self.id)
+            return scene_file(self.id, self.version)
 
     @dataclass(frozen=True)
     class Robot:
@@ -196,8 +201,8 @@ class EpisodeSpec:
         scene = data["scene"]
         if "usd" in scene:
             raise ValueError("Scenes are named by id, not by file: scene: {id: <folder>}; see episodes/scenes.py.")
-        if not {"id", "ground"} <= set(scene) or set(scene) - {"id", "name", "ground"}:
-            raise ValueError("The scene is {id, ground} and an optional name.")
+        if not {"id", "ground"} <= set(scene) or set(scene) - {"id", "name", "ground", "version"}:
+            raise ValueError("The scene is {id, ground} and an optional name and version.")
         robot = data["robot"]
         if not {"model", "start"} <= set(robot) <= {"model", "start", "starts"}:
             raise ValueError("The robot is {model, start} and optionally starts {robot: start}.")
@@ -208,7 +213,12 @@ class EpisodeSpec:
             model = str(((base or Path.cwd()) / model).resolve())
         return cls(
             id=data["id"],
-            scene=cls.Scene(scene["id"], str(scene.get("name") or scene["id"]), scene["ground"]),
+            scene=cls.Scene(
+                scene["id"],
+                str(scene.get("name") or scene["id"]),
+                scene["ground"],
+                None if scene.get("version") is None else str(scene["version"]),
+            ),
             robot=cls.Robot(model, tuple(robot["start"]), dict(robot.get("starts") or {})),
             objects=dict(data.get("objects") or {}),
             record_view=data.get("record_view"),
@@ -237,6 +247,7 @@ class EpisodeSpec:
             schema=SCHEMA,
             scene=self.scene.name,
             scene_id=self.scene.id,
+            scene_version=self.scene.version,
             scene_usd=str(self.scene.usd),
             robot=self.robot.model,
             robot_start=list(self.robot.start),

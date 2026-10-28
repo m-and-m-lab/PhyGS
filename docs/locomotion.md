@@ -111,7 +111,7 @@ From the IsaacLab workspace root:
   scripts/PhyGS/tests/test_spot_locomotion_api.py \
   scripts/PhyGS/tests/test_locomotion_launcher.py -q
 
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_locomotion.py \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py \
   --device cpu --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_locomotion
 ```
 
@@ -119,7 +119,7 @@ Add `--viz kit` to display the automated diagnostic on a machine with a GUI. Wit
 `--manual`, the same launcher opens Kit for keyboard control:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_locomotion.py --manual \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py --manual \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_locomotion_manual
 ```
 

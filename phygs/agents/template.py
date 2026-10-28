@@ -9,7 +9,7 @@ tier adds ``locomotion`` (a body velocity), the joints tier ``arm`` (arm joint a
 
 Run it with:
     ./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
-        --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/dev_grid_table.yaml \
+        --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
         --agent template --output <folder>
 """
 

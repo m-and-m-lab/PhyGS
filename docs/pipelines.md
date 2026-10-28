@@ -180,15 +180,15 @@ existing manual inspection modes. There are no duplicate scripts or YAML files.
 
 ```bash
 # Observations and direct-motion interface, without supplied localization or mapping.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_observations.py \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
   --preset observations --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_observations
 
 # Observations with ground-truth localization, without a mapper/navigation stack.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_observations.py \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
   --preset localized --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_localized
 
 # Runtime-managed navigation on Nav2's camera costmap, driven through the agent session.
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_nav2
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_nav2
 
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest \
   scripts/PhyGS/tests/test_pipeline.py -q
@@ -227,7 +227,7 @@ the backend walks to each ([nav2](nav2.md#frontier-exploration)). It sees only N
 simulator geometry or target locations. An agent can instead choose its own viewpoints from its
 camera stream and call `navigate_to`, or command locomotion directly.
 
-`phygs_robot_tests/components/check_house.py` (through `check_nav2_pipeline.py`) runs it with ground-truth localization
+`tests/robot_tests/components/check_house.py` (through `check_nav2_pipeline.py`) runs it with ground-truth localization
 on the kitchen (`exploration.bounds`), unexplored beyond the validated spawn disk, while a colour
 detector watches the camera; when exploration has mapped the floor without seeing the cube, a
 coverage pass walks to viewpoints spread over the costmap's free cells and turns at each. It ends

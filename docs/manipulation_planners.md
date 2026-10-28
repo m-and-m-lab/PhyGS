@@ -19,15 +19,15 @@ From the repository root, with ROS Jazzy sourced (MoveIt only):
 ```bash
 source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=47
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_arm_planning.py \
-  --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_arm_planning_moveit
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_pick_place.py \
-  --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place_moveit
 ```
 
-These are rungs 8–10 of the [robot-test ladder](../phygs_robot_tests/README.md): agent tests whose
+These are rungs 8–10 of the [robot-test ladder](../tests/robot_tests/README.md): agent tests whose
 plan drives the arm through the agent session at the grid table (a target next to one clutter box).
 The run is automatic and headless; add `--viz kit` to watch. `--planner curobo` (the default) uses
 the other planner. The spec decides what the planner avoids: the scene's known boxes
@@ -87,8 +87,8 @@ fallback. Dependency errors stop the selected experiment.
 | `phygs/execution/manipulation/arm_planner.py` | `ArmPlanner`: the one planner host for episodes (and their robot tests) and the UI; known boxes, the robot's depth cameras, or both |
 | `phygs/execution/manipulation/controller.py` | Simulation-time reference following and physical completion |
 | `src/phygs/tools/collision_map.py` | Known boxes into the body frame |
-| `phygs_robot_tests/episodes/check_arm_planning.py`, `check_pick_place.py` | Agent tests: a plan through the session, independent physical assertions |
-| `phygs_robot_tests/configs/arm_planning.yaml`, `pick_place.yaml`, `episodes/table_reach*.yaml` | Thresholds; the table scene and what the planner avoids |
+| `tests/robot_tests/episodes/check_arm_planning.py`, `check_pick_place.py` | Agent tests: a plan through the session, independent physical assertions |
+| `tests/robot_tests/configs/arm_planning.yaml`, `pick_place.yaml`, `episodes/table_reach*.yaml` | Thresholds; the table scene and what the planner avoids |
 
 The episode harness hosts the planner (`ArmPlanner`) and the agent calls
 `session.manipulation.move_to_pose(...)`. A planner failure propagates; it never silently switches
@@ -302,7 +302,7 @@ skills, attached-object planning and opening are not implemented yet.
 Note 2026-10-16: there is no `open`/`close` skill (removed). Since 2026-10-18 there is no
 `pick`, `place` or `move_along_axis` either: agents compose them from `move_to_pose`,
 end-effector trajectories and the gripper commands (see the robot tests' routines,
-`phygs_robot_tests/routines/`).
+`tests/robot_tests/routines/`).
 
 ## Limits that matter
 
@@ -448,8 +448,8 @@ recent failures. The shared validator keeps its `require_observed` option.
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-ROS_DOMAIN_ID=47 ./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_arm_planning.py \
-  --spec scripts/PhyGS/phygs_robot_tests/configs/episodes/table_reach_depth.yaml --planner moveit --record \
+ROS_DOMAIN_ID=47 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach_depth.yaml --planner moveit --record \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_depth_reach
 ```
 

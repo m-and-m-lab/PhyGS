@@ -31,9 +31,9 @@ released. Every rename, old → new:
 | `policies/` (unused checkpoints) | dropped; the deployed policy is `phygs/robots/spot/locomotion/` |
 | `scripts/run_episode.py` | `examples/run_world.py` (`--task_loader module:function`) |
 | `scripts/ui_episode.py`, `scripts/ui_replay.py` | `phygs/ui/cli.py`, `phygs/ui/replay_cli.py` |
-| `src/interactive_search/tasks/`, `scripts/tasks/object_search/api.py` | `phygs_robot_tests/tasks/` (the robot tests' own evaluators; the framework imports no task) |
-| `tests/robot_tests/` | `phygs_robot_tests/` (an importable package; `routines`, `episode`, `common` are `phygs_robot_tests.*`) |
-| `../.scene_usd/{grid_storage,nav_course,dynamic_course}` | `phygs_robot_tests/scenes/` (fixtures) |
+| `src/interactive_search/tasks/`, `scripts/tasks/object_search/api.py` | `tests/robot_tests/tasks/` (the robot tests' own evaluators; the framework imports no task) |
+| `tests/robot_tests/` | `tests/robot_tests/` (an importable package; `routines`, `episode`, `common` are `phygs_robot_tests.*`) |
+| `../.scene_usd/{grid_storage,nav_course,dynamic_course}` | `tests/robot_tests/scenes/` (fixtures) |
 | `../.scene_usd/tools/` | `scene_generation/usd_tools/` (without `legacy/` and the 61 MB `assets/`) |
 | `docs/{episode_harness,manipulation_contract,robot_portability,evaluator_and_robot_tests,framework_benchmark_split,ui,visual,archive}` | `docs/design/...` |
 | `docs/0*_*.md`, `legacy_scene_generation_notes.md` | `scene_generation/docs/` |
@@ -42,6 +42,12 @@ released. Every rename, old → new:
 Not copied: `output_check/`, `reports/`, `research_notes/`, the benchmark design pages
 (`docs/benchmark_*`, `docs/repo_split`), the presentation sites and the asset catalogs' images.
 Scenes other than the fixtures are found through `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`).
+
+Scenes and versions (2026-10-28): a spec may pin a fetched release, `scene: {id: bear_loop_house,
+version: 1.1.0}`; the registry checks the version against the fetch record. The house specs pin
+`bear_loop_house` 1.1.0 (the storage revision, packaged and prepared for the dataset the same day);
+`scene_generation/usd_tools/publish_scene.py` replaces the one-release publisher and adds releases to
+an existing catalog.
 
 The entries below are interactive-search's, kept as the framework's history.
 
@@ -78,7 +84,7 @@ The entries below are interactive-search's, kept as the framework's history.
   evaluates. The report's `stopped` says what was cancelled and how long it took. New
   `NavigationClient.active_command`, `ManipulationClient.active_command`, `CommandClient.name`.
 - Robot-test ladder (2026-10-28): every robot test in build order, 15 rungs from scene and reset to
-  the public entry point (`phygs_robot_tests/README.md`; `run_suite.py ladder --upto N`, `--from N`).
+  the public entry point (`tests/robot_tests/README.md`; `run_suite.py ladder --upto N`, `--from N`).
   The summary names the first failing rung, the lowest broken module. Agents' requests have agent
   tests (a spec and a plan through the session), the machinery under them component tests.
 - Agent tests (2026-10-28): `episodes/check_navigation.py` (specs `nav_course`, `nav_house`),
@@ -101,7 +107,7 @@ The entries below are interactive-search's, kept as the framework's history.
 - Base controllers (2026-10-28): the `BaseController` contract (`execution/locomotion/base.py`, with
   `DeadBand` and `Deceleration`), `PlanarJointBase` (`planar_joints`: velocity-driven x, y, yaw joints)
   beside the walking policy (`legged_policy`), or a plugin `module:Class`.
-- `phygs_robot_tests/components/check_bring_up.py --robot <name>`: a new robot's first simulator check
+- `tests/robot_tests/components/check_bring_up.py --robot <name>`: a new robot's first simulator check
   (spawn stowed, drive, arm, gripper, cameras, localization), every value from its `robot.yaml`;
   the README and `docs/adding_a_robot.md` give the bring-up steps (2026-10-28).
 - `robots/ridgeback_franka/`: the second robot, in bring-up (description check, a simulator smoke of
@@ -312,7 +318,7 @@ The entries below are interactive-search's, kept as the framework's history.
   (`phygs/scenes/fetch.py`).
 - Optional observation pipelines: `PipelineConfig`, `ServiceDeclaration`,
   `ProcessingService`, private service views and a `LocalizationEstimator` interface.
-- First object-search task: `phygs_robot_tests/tasks/object_search_api.py` and an independent
+- First object-search task: `tests/robot_tests/tasks/object_search_api.py` and an independent
   RGB-D evidence evaluator.
 - Observed-depth navigation map (`ObservedDepthMap`) for both navigation backends.
 - Depth mapping helper `helpers/mapping.py` (`DepthMapper`).
@@ -335,7 +341,7 @@ The entries below are interactive-search's, kept as the framework's history.
   `--case`, `--manual`, `--moved_obstacle` and `--camera_view` are gone. Navigation is
   `episodes/check_navigation.py`, the moved obstacle `episodes/check_dynamic_obstacle.py`
   (2026-10-28).
-- `phygs_robot_tests/configs/navigation.yaml` holds the navigation agent test's cases.
+- `tests/robot_tests/configs/navigation.yaml` holds the navigation agent test's cases.
   `phygs/execution/navigation/launch/nav2.launch.py` requires `experiment:=` (for example a run's
   `nav2_experiment.yaml`); its default was that file (2026-10-28).
 - **Breaking:** `SpotControl` is `RobotControl`; `RobotControl.create(sim, scene, robot, ...)` takes the
@@ -481,7 +487,7 @@ The entries below are interactive-search's, kept as the framework's history.
   (2026-10-22).
 
 - **Breaking:** robot tests are reorganised (design: `docs/design/archive/robot_tests_housekeeping/index.html`).
-  `phygs_robot_tests/episodes/` holds the episode tests (scripted plans through the agent session,
+  `tests/robot_tests/episodes/` holds the episode tests (scripted plans through the agent session,
   judged with `environment.truth()`), `components/` the subsystem tests, `routines/` the plans'
   building blocks (was `agents/oracle.py`; strategy in `routines/params.yaml`), `configs/` the test
   settings (was `spot_*.yaml` next to the tests, e.g. `spot_mapping.yaml` -> `configs/mapping.yaml`).
@@ -581,7 +587,7 @@ The entries below are interactive-search's, kept as the framework's history.
   adapter on the same scene share them.
 
 - The handle-grasp keys `handle_depth_m` and `handle_jaw_z_m` moved from `manipulation.skills` to
-  `manipulation` in `phygs_robot_tests/spot_manipulation.yaml`; agents and tests that grasp a bar
+  `manipulation` in `tests/robot_tests/spot_manipulation.yaml`; agents and tests that grasp a bar
   handle read them there. The oracle keeps its own copy in `oracle.yaml` (2026-10-16).
 
 - Headless runs with cameras (no GUI or visualizer) have PhysX write body poses to Fabric,
@@ -603,7 +609,7 @@ The entries below are interactive-search's, kept as the framework's history.
   scene body by its path (2026-10-15). **Breaking:** code reading `scene["scene_body_NNNN"]`
   reads `SceneBodies(scene).body(path)` instead.
 
-- The house storage-unit helpers moved from `phygs_robot_tests/house_storage.py` to
+- The house storage-unit helpers moved from `tests/robot_tests/house_storage.py` to
   `phygs.simulation.storage_units`; the old module re-exports them until its users
   (`check_manipulation_planning.py`, `phygs/ui/cli.py`) import the new one (2026-10-15).
 - Robot UI: `phygs/ui/cli.py` runs an episode spec (`--spec`, default
@@ -635,15 +641,15 @@ The entries below are interactive-search's, kept as the framework's history.
 - The manipulation robot test's `look_views` are lists tried in order (the agent's
   choice, not the skill's); drawer layouts may set `close_distance` (2026-10-12).
 - The drawer robot test uses the top drawer of the house scene's two-drawer
-  `corner_nightstand` (`phygs_robot_tests/house_storage.py`) instead of the
-  `phygs_robot_tests/storage.py` unit, which was removed; `storage`/`drawer_layouts` in
+  `corner_nightstand` (`tests/robot_tests/house_storage.py`) instead of the
+  `tests/robot_tests/storage.py` unit, which was removed; `storage`/`drawer_layouts` in
   `spot_manipulation_planning.yaml` became `storage_unit`/`drawer_layouts`, and `look_views`
   sets the requested views (2026-10-09).
 - `stow()` while holding an object carries it in the stow instead of failing with
   `holding_object`; the gripper closes only when empty (2026-10-09).
 - **Breaking:** `SkillConfig` requires `handle_depth_m`, `handle_jaw_z_m` and
   `line_speed_m_s`. Add them to the `manipulation.skills` YAML (see
-  `phygs_robot_tests/spot_manipulation.yaml`) (2026-10-08).
+  `tests/robot_tests/spot_manipulation.yaml`) (2026-10-08).
 - The planning check's independent guard uses 2 cm voxels (`map.resolution`), as fine as
   the planners' maps; 5 cm cells rejected paths the planner kept 1 cm clear (2026-10-08).
 - Manipulation stillness (target reached, gripper stopped on an object, physical stop)
@@ -657,7 +663,7 @@ The entries below are interactive-search's, kept as the framework's history.
   deferred and not imported by the public APIs.
 - Locomotion execution moved to `phygs/execution/locomotion/`;
   policy files use the `spot_` prefix.
-- IsaacLab launch scripts moved from `tests/isaaclab_test/` to `phygs_robot_tests/`.
+- IsaacLab launch scripts moved from `tests/isaaclab_test/` to `tests/robot_tests/`.
   Physical checks are `check_*.py`, manual by default, `--auto` for assertions.
 - Scene generation, Blender and catalog helpers moved from `scripts/` to
   `scene_generation/usd_tools/legacy/`.
@@ -719,11 +725,11 @@ The entries below are interactive-search's, kept as the framework's history.
   Nav2 circle 0.660 m) (2026-10-22).
 
 - **Breaking:** the oracle agent (`phygs.agents.oracle`, `oracle.yaml`,
-  `run_world.py --agent oracle`). Its routines are `phygs_robot_tests/routines/`; the retrieve
-  plan is `plan(session)` in `phygs_robot_tests/episodes/check_retrieve.py` (2026-10-18).
+  `run_world.py --agent oracle`). Its routines are `tests/robot_tests/routines/`; the retrieve
+  plan is `plan(session)` in `tests/robot_tests/episodes/check_retrieve.py` (2026-10-18).
 - `NavigationClient._diagnostics(id)`; use `NavigationClient.backend.feedback(id)` (2026-10-18).
-- `phygs_robot_tests/episode_check.py` (now `common.py` and `episodes/episode.py`),
-  `phygs_robot_tests/house_storage.py` (use `phygs.simulation.storage_units`) and
+- `tests/robot_tests/episode_check.py` (now `common.py` and `episodes/episode.py`),
+  `tests/robot_tests/house_storage.py` (use `phygs.simulation.storage_units`) and
   `check_manipulation_planning.py --task`, `--scene` and `--backend none` (2026-10-18).
 
 - **Breaking:** the skills `robot.manipulation.pick(target, *, approach=None)`, `place(target)` and
@@ -789,7 +795,7 @@ The entries below are interactive-search's, kept as the framework's history.
   `curobo_interfaces.py`), `helpers/cam_utils.py`, `helpers/pcd_utils.py`,
   `scripts/phygs.py`, their configs and unit tests. Use `SpotControl.create(...)`
   and the `robot.manipulation` skills with MoveIt or cuRobo V2 planning (2026-10-08).
-- The fixed-base AO-Grasp/CuRobo drawer smoke tests `phygs_robot_tests/spot_manipulation_drawer.py`,
+- The fixed-base AO-Grasp/CuRobo drawer smoke tests `tests/robot_tests/spot_manipulation_drawer.py`,
   `spot_manipulation_drawer_known_grasp.py`, their YAML, and the unit test that only read
   their source. Use `check_manipulation_planning.py --task drawer` (2026-10-08).
 - Virtual floating cameras and the sphere robot self-filter from the manipulation

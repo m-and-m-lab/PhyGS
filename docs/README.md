@@ -13,7 +13,7 @@ decisions behind them.
 | The package layout, module by module | [phygs/README.md](../phygs/README.md) |
 | What is done, what is next, known gaps, decisions | [PLANS.md](../PLANS.md) · [status board](design/visual/status.html) |
 | What changed and when (including every rename of the repository split) | [CHANGELOG.md](../CHANGELOG.md) |
-| Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [phygs_robot_tests/README.md](../phygs_robot_tests/README.md) |
+| Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [tests/robot_tests/README.md](../tests/robot_tests/README.md) |
 | Rules for coding agents and contributors | [AGENTS.md](../AGENTS.md) |
 
 ## Topic guides
@@ -27,6 +27,7 @@ decisions behind them.
 | Point navigation (Nav2) | [navigation.md](navigation.md) | Navigation diagram in [ARCHITECTURE.md](../ARCHITECTURE.md#navigation) |
 | Nav2 backend, installation (ROS 2 Jazzy, Nav2, explore_lite) and the measured transit envelope | [nav2.md](nav2.md) | Navigation diagram in [ARCHITECTURE.md](../ARCHITECTURE.md#navigation) |
 | Mapping (Nav2's) | [mapping.md](mapping.md) | Navigation diagram in [ARCHITECTURE.md](../ARCHITECTURE.md#navigation) |
+| Scenes: ids and versions, the scene cache, fetching releases from the dataset, publishing a new version | [scenes.md](scenes.md) | — |
 | Object search (a robot-test task, not a framework task) | [search.md](search.md) | — |
 | Collision-aware manipulation planners (cuRobo, MoveIt): setup, tests, limits | [manipulation_planners.md](manipulation_planners.md) | [status board](design/visual/status.html) |
 | Manipulation skills (`stow`, `look_at`, end-effector lines, gripper) | [manipulation_skills.md](manipulation_skills.md) | [Manipulation contract](design/manipulation_contract/index.html) |
@@ -56,8 +57,7 @@ python3 -m http.server 8000 --directory docs/design/episode_harness
 
 The Infinigen fork and its notes are under [scene_generation/](../scene_generation/): the generator
 (`infinigen/`, its own Python environment), the USD builders, packager and publisher (`usd_tools/`)
-and the asset catalogs and legacy notes (`docs/`). Fetching released scenes:
-`./isaaclab.sh -p -m phygs.scenes.fetch` ([README](../README.md#-scenes)).
+and the asset catalogs and legacy notes (`docs/`). Fetching and publishing released scenes: [scenes.md](scenes.md).
 
 ## Keeping the docs tidy
 

@@ -8,7 +8,7 @@ modify the simulator or subsequent observations.
 ## Configure once, read simply
 
 Configure sensors in the scene YAML before scene construction. The
-`phygs_robot_tests/configs/observations.yaml` example registers the existing mounted
+`tests/robot_tests/configs/observations.yaml` example registers the existing mounted
 front-left camera, a diagnostic pinhole camera mounted clear of the arm, and an IMU.
 Existing camera assets use `spawn=None`; an optional `pinhole` section creates a
 new camera. Width, height, prim paths, and requested data types are explicit.
@@ -117,7 +117,7 @@ RGB-D sensors. It adds no object tracks, detector, mapping, or navigation planne
 From the IsaacLab root, inspect the live scene and RGB/depth panels:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_observations.py --manual \
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py --manual \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations_manual
 ```
 
@@ -129,7 +129,7 @@ manual inspection is recorded separately from an automated pass.
 Run the assertions headlessly (the default), or add `--viz kit` to watch:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/components/check_observations.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations
+./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations
 ```
 
 A camera-equipped runtime renders at its scheduled capture ticks; it does not

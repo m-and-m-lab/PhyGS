@@ -7,9 +7,10 @@
 
 A scene id is a folder name. The folders are looked up, in order, under ``$PHYGS_SCENES``, under
 ``~/.cache/phygs/scenes`` (where the scene fetcher installs releases) and under the robot tests'
-fixture scenes (``phygs_robot_tests/scenes``). A folder holds ``scene.usda``,
+fixture scenes (``tests/robot_tests/scenes``). A folder holds ``scene.usda``,
 ``scene.usdc`` or ``scene.usd``; a fetched release may instead be a record ``<id>.json`` whose
-``usd_path`` points at the installed file. No spec ever holds a file path.
+``usd_path`` points at the installed file. A spec may pin a release's ``version``; it is checked
+against the record (a plain folder is unversioned and accepts any pin). No spec ever holds a file path.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from pathlib import Path
 
 SCENES_ENV = "PHYGS_SCENES"
 USER_CACHE = Path("~/.cache/phygs/scenes")
-FIXTURES = Path(__file__).resolve().parents[2] / "phygs_robot_tests" / "scenes"  # The authored test scenes.
+FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "robot_tests" / "scenes"  # The authored test scenes.
 FILES = ("scene.usda", "scene.usdc", "scene.usd")
 ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 
@@ -40,8 +41,9 @@ def scene_roots() -> list[Path]:
     return roots
 
 
-def scene_file(scene_id: str) -> Path:
-    """The scene's USD file (absolute); ``FileNotFoundError`` names the roots searched."""
+def scene_file(scene_id: str, version: str | None = None) -> Path:
+    """The scene's USD file (absolute); ``FileNotFoundError`` names the roots searched. A fetched
+    release's record must carry ``version`` when one is given."""
     if not valid_id(scene_id):
         raise ValueError(f"Invalid scene id {scene_id!r}: one folder name, no path separators or '..'.")
     for root in scene_roots():
@@ -51,7 +53,13 @@ def scene_file(scene_id: str) -> Path:
                 return (folder / name).resolve()
         record = root / f"{scene_id}.json"
         if record.is_file():
-            path = Path(json.loads(record.read_text())["usd_path"])
+            data = json.loads(record.read_text())
+            if version is not None and data.get("scene_version") != version:
+                raise ValueError(
+                    f"{record} holds {scene_id} {data.get('scene_version')}, the spec wants {version}: fetch it"
+                    f" (phygs.scenes.fetch fetch --scene_id {scene_id} --scene_version {version})."
+                )
+            path = Path(data["usd_path"])
             if path.is_file():
                 return path.resolve()
     searched = ", ".join(str(root) for root in scene_roots())

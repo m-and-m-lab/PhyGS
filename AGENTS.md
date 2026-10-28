@@ -92,7 +92,7 @@ Add IsaacLab smoke tests for:
 
 - Scene construction with required assets.
 - Locomotion policy execution.
-- Manipulation skills with planning, execution, terminal feedback and an independent evaluator (`phygs_robot_tests/{episodes,components}/check_*.py`).
+- Manipulation skills with planning, execution, terminal feedback and an independent evaluator (`tests/robot_tests/{episodes,components}/check_*.py`).
 
 ## Documentation Expectations
 

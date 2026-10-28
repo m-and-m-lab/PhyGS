@@ -17,7 +17,7 @@ import pytest
 
 PROJECT = Path(__file__).resolve().parents[1]
 AGENTS = PROJECT / "phygs" / "agents"
-ROBOT_TESTS = PROJECT / "phygs_robot_tests"
+ROBOT_TESTS = PROJECT / "tests" / "robot_tests"
 ALLOWED = {"phygs.episodes.session", "numpy", "yaml"}
 # Routines import each other; an episode test also imports its harness helper (episode.py).
 PLANS = sorted(ROBOT_TESTS.glob("routines/*.py")) + sorted(ROBOT_TESTS.glob("episodes/check_*.py"))

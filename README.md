@@ -60,7 +60,7 @@ PhyGS/
 │   ├── configs/                 # environment.yaml (physics, cameras, Nav2, planner, timing), navigation/, ui/
 │   ├── agents/                  # Example agents (template, depth example)
 │   └── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, replay_cli.py)
-├── phygs_robot_tests/           # The robot tests (importable): 15 rungs, routines, test tasks, fixture scenes, run_suite.py
+├── tests/robot_tests/           # The robot tests (importable): 15 rungs, routines, test tasks, fixture scenes, run_suite.py
 ├── tests/                       # Unit tests (no simulator) and the import guards
 ├── examples/run_world.py        # Run one episode spec with an agent
 ├── scene_generation/            # infinigen/ (fork, own environment), usd_tools/ (builders, packager, publisher), docs/
@@ -97,7 +97,7 @@ All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container
 ```bash
 # 1. Run a world with the template agent (it looks around and finishes). The report lands in --output.
 ./isaaclab.sh -p $PHYGS/examples/run_world.py \
-  --spec $PHYGS/phygs_robot_tests/configs/episodes/dev_grid_table.yaml \
+  --spec $PHYGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
   --agent template --task_loader phygs_robot_tests.tasks:load_task \
   --output $PHYGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
 
@@ -106,7 +106,7 @@ All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container
   --output $PHYGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
 
 # 3. The first five robot tests (no ROS needed): spawn and reset, sensors, walking, footprint, arm.
-./isaaclab.sh -p $PHYGS/phygs_robot_tests/run_suite.py ladder --upto 5
+./isaaclab.sh -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 5
 
 # 4. Fetch a released scene (the dataset is private for now; authenticate once with `hf auth login`).
 ./isaaclab.sh -p -m phygs.scenes.fetch list
@@ -151,14 +151,14 @@ Adding a robot is one folder with a `robot.yaml` ([docs/adding_a_robot.md](docs/
 
 ## 🏠 Scenes
 
-- **Fixtures** in `phygs_robot_tests/scenes/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course. Built by `scene_generation/usd_tools/build_*_scene.py`.
-- **Released scenes** (the ForageBench scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): `phygs.scenes.fetch` downloads, verifies (SHA-256, every dependency inside the archive) and installs a release under `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`) with a record the scene registry reads.
+- **Fixtures** in `tests/robot_tests/scenes/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course. Built by `scene_generation/usd_tools/build_*_scene.py`.
+- **Released scenes** (the scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): a catalog of immutable releases, one scene id at one version each. `phygs.scenes.fetch` downloads, verifies (SHA-256, every dependency inside the archive) and installs a release under `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`) with a record the scene registry reads; a spec pins it with `scene: {id: bear_loop_house, version: 1.1.0}`. Publishing a new version: `scene_generation/usd_tools/package_scene.py` then `publish_scene.py` ([docs/scenes.md](docs/scenes.md)).
 - **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says `scene: {id: <folder>, ground: true|false}`; no spec holds a file path. Generation: [scene_generation/](scene_generation/) (Infinigen fork, own environment) and the builders.
 - **The scene contract** the framework reads from a USD: rigid bodies by name, prismatic joints as drawers, colliders for the known map, the robot's start on the floor. The reader is `phygs/simulation/scene.py`.
 
 ## 🧪 Robot tests
 
-Every robot test spawns a scene and has the robot do one thing, measures it against thresholds and writes `check.json` and, with `--record`, a video. They form a ladder in the order the framework is built; after a change, run it up to the rung you touched. Full table and commands: [phygs_robot_tests/README.md](phygs_robot_tests/README.md).
+Every robot test spawns a scene and has the robot do one thing, measures it against thresholds and writes `check.json` and, with `--record`, a video. They form a ladder in the order the framework is built; after a change, run it up to the rung you touched. Full table and commands: [tests/robot_tests/README.md](tests/robot_tests/README.md).
 
 | Rung | What the robot does | Needs |
 | --- | --- | --- |
@@ -171,11 +171,11 @@ Every robot test spawns a scene and has the robot do one thing, measures it agai
 | 15 | The template agent through `examples/run_world.py` | ROS 2, cuRobo |
 
 ```bash
-./isaaclab.sh -p $PHYGS/phygs_robot_tests/run_suite.py ladder --upto 10 --record
+./isaaclab.sh -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest $PHYGS/tests -q -p no:cacheprovider   # Unit tests, no simulator.
 ```
 
-Robot tests that use the house scene need `$PHYGS_SCENES` to hold `bear_loop_house_storage_revision` until that revision is released to the dataset.
+Rungs that use the house need its release fetched once: `./isaaclab.sh -p -m phygs.scenes.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0`.
 
 ## 📚 Documentation
 

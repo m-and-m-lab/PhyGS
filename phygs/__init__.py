@@ -4,3 +4,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """PhyGS: the simulation framework (robot, world, runtime, skills, measurement)."""
+
+__version__ = "0.3.0"

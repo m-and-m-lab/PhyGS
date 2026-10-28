@@ -125,8 +125,8 @@ original time budget.
 
 ## Evaluation and inspection
 
-Navigation is checked as an agent uses it: `phygs_robot_tests/episodes/check_navigation.py` (rung 6
-of the [robot-test ladder](../phygs_robot_tests/README.md)) sends `navigate_to` goals through the
+Navigation is checked as an agent uses it: `tests/robot_tests/episodes/check_navigation.py` (rung 6
+of the [robot-test ladder](../tests/robot_tests/README.md)) sends `navigate_to` goals through the
 agent session and judges arrival with the evaluator below; `episodes/check_dynamic_obstacle.py`
 (rung 7) moves a box into the route as a scripted test perturbation.
 
