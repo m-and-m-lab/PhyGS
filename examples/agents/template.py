@@ -22,7 +22,8 @@ def run(session):
     if session.navigation is not None:
         start = packet.localization.pose.matrix[:2, 3].tolist() if packet.localization.valid else None
         print("base at", start)
-        feedback = session.wait(session.navigation.navigate_to(-1.0, -0.2, 0.0))  # Simulated time passes in wait.
+        with session.step("walk to a point"):  # Named steps show on the run's timeline (phygs replay).
+            feedback = session.wait(session.navigation.navigate_to(-1.0, -0.2, 0.0))  # Time passes in wait.
         print("navigation:", feedback.status, feedback.reason)
 
     if session.locomotion is not None:  # Motion and joints tiers: body velocity [m/s, m/s, rad/s].

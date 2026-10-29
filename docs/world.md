@@ -33,6 +33,28 @@ starts and only `World` (with `Truth` and `run_episode`) needs it.
 | Scenes | `scene/registry.py` (`scene_file(id, version)`), `scene/fetch.py` (`phygs scenes`) | Roots: `$PHYGS_SCENES`, `~/.cache/phygs/scenes`, the fixtures. [scenes.md](scenes.md). |
 | Session | `phygs.session` (`AgentSession`, target types) | What the agent gets; a benchmark's agents import only this. |
 
+## What a run leaves, and replaying it
+
+A run's output folder holds:
+
+| File | What it is |
+| --- | --- |
+| `report.json` | The report (`world/report.py`). |
+| `audit.jsonl` | One line per agent call (time, call, arguments, result or error), and the agent's named steps: `with session.step("open the drawer"):` writes `session.step` lines where the step begins and ends (with the error that left it). Steps nest; they are not calls and are not counted in the report's `usage`. |
+| `state.npz` | The state log (`recording/state_log.py`), on every run: every camera period, the robot's root pose and joints, whether the gripper holds something, and the pose of each scene body that moved since its last logged pose; Nav2's route when it changes; the command timeline's spans. Arrays only, nothing rendered, so it costs the run no speed. |
+| `third_person.mp4` | With `--record` only: the video with its panels, rendered while the run goes (it slows the run). |
+| `nav2/`, `planner/` | The Nav2 servers' and the arm planner's logs. |
+
+`phygs replay <run>` (`examples/replay_run.py`) renders the run afterwards from these files: it builds
+the scene and robot again without control, Nav2 or the planner, poses them sample by sample without
+stepping physics, and writes into `<run>/replay`, frame for frame: `outside.mp4` (a camera following
+the robot, with the overview strip under it: clock, what the gripper holds, contact force, the agent's
+step, the floor plan with the path walked and Nav2's route, and the timeline of steps, commands, grips
+and bumps), the robot's views (`front`, `front_depth`, `hand`, `hand_depth`), and `trace.json` (the
+timeline and path the strip is drawn from, `recording/trace.py`). The floor plan is the scene
+release's (`plan/` beside the scene file, [scenes.md](scenes.md#floor-plans)); without one, replay
+renders the floor once and keeps it in `~/.cache/phygs/plans/<scene sha256>`.
+
 ## Settings a benchmark owns
 
 `configs/environment.yaml` names them in its header; a benchmark passes them as `overrides` and

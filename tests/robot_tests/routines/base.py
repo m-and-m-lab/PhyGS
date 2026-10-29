@@ -10,11 +10,12 @@ from __future__ import annotations
 import math
 
 import numpy as np
-from phygs_robot_tests.routines import PARAMS, STANCES
+from phygs_robot_tests.routines import PARAMS, STANCES, step
 
 from phygs.session import AgentFailed
 
 
+@step(lambda place, use, point=None: f"go_to({place}, {use})")
 def go_to(session, place: str, use: str, point=None) -> None:
     """Walk to the stance for ``use`` at ``place``, then stand while the legs settle; the arm must
     be stowed. ``open`` and ``reach_in`` are the same rule for every drawer (:func:`open_stance`,

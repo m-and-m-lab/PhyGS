@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
 from types import SimpleNamespace
 
@@ -81,6 +82,8 @@ class FakeSession:
     def __init__(self, inside="storage_drawer", heading=math.pi / 2, **results):
         self.position = (0.0, 0.0)
         self.calls, self.results, self.heading = [], {k: list(v) for k, v in results.items()}, heading
+        self.steps = []  # The named steps, in the order they began, with their depth.
+        self._depth = 0
         self.tool = np.array([0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0])
         target = TargetHint("target", (0.0, 2.4, 0.1), (0.04, 0.04, 0.12), inside, None if inside else "table")
         self.hints = SimpleNamespace(
@@ -143,6 +146,15 @@ class FakeSession:
     def sleep(self, seconds):
         self.calls.append(("sleep", seconds))
 
+    @contextmanager
+    def step(self, name):
+        self.steps.append((self._depth, name))
+        self._depth += 1
+        try:
+            yield
+        finally:
+            self._depth -= 1
+
     def observe(self):
         c, s = math.cos(self.heading), math.sin(self.heading)
         x, y = self.position
@@ -192,6 +204,22 @@ def test_the_retrieve_plan_opens_the_drawer_then_reaches_in_picks_and_stows():
     assert lift[1:] == ((0.0, 0.0, 1.0), pytest.approx(distance))
     held = session.calls[-1][1]  # The stow carries the picked object.
     assert held.name == "target" and held.size == (0.04, 0.04, 0.12)
+
+
+def test_the_retrieve_plan_names_its_steps_for_the_timeline():
+    session = FakeSession()
+    plan(session)
+    assert session.steps == [
+        (0, "stow"),
+        (0, "go_to(storage_drawer, open)"),
+        (0, "look_at(handle)"),
+        (0, "open_drawer(storage_drawer)"),
+        (0, "stow"),
+        (0, "go_to(storage_drawer, reach_in)"),
+        (0, "pick(target)"),
+        (1, "look_at(target)"),  # Inside the pick.
+        (0, "stow(held)"),
+    ]
 
 
 def test_the_pick_uses_the_target_where_the_open_drawer_moved_it():

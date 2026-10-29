@@ -15,10 +15,15 @@ stand in a scene is the routines' own data, ``configs/stances/<scene>.yaml`` (:f
 The routines place the robot's tool frames (``grasp``, ``handle``, ``fixed_jaw``), which share the
 gripper's axes: x the approach, z the jaws' closing axis. The strategy and the stances were tuned
 for Spot.
+
+The plan-level routines run as named steps of the agent's plan (``session.step``, :func:`step`), so
+a run's timeline shows them beside the robot's commands.
 """
 
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -40,6 +45,21 @@ def use_robot(robot) -> None:
     TOOLS.update({name: matrix(pose) for name, pose in robot.tools.items()})
     ARM.clear()
     ARM.update(joints=robot.arm_joints, stow=robot.stow, prestow=robot.prestow, move_seconds=robot.move_seconds)
+
+
+def step(name: str | Callable[..., str]):
+    """Run the decorated routine ``routine(session, ...)`` as one step of the agent's plan
+    (``session.step``), named ``name`` or ``name(...)`` of the routine's other arguments."""
+
+    def decorate(routine):
+        @functools.wraps(routine)
+        def run(session, *args, **kwargs):
+            with session.step(name(*args, **kwargs) if callable(name) else name):
+                return routine(session, *args, **kwargs)
+
+        return run
+
+    return decorate
 
 
 def use_scene(name: str) -> None:

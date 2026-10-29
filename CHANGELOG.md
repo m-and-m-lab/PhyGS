@@ -11,6 +11,33 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.7.0 (unreleased, develop)
+
+Runs leave a state log and render afterwards (2026-10-29). Additive: the spec and report schemas are
+unchanged.
+
+Added:
+
+- Every run writes `state.npz` (`phygs.recording.state_log`: `StateLog`, `States`): every camera period
+  the robot's root pose and joints, whether the gripper holds something and the scene bodies that
+  moved, Nav2's route when it changes, and the command timeline's spans. Nothing is rendered for it.
+- `phygs replay <run>` (`examples/replay_run.py`, `phygs.world.replay.Replay`): renders a finished run
+  from its state log, a camera following the robot with the overview strip under it (clock, holding,
+  contact, step, floor plan with path and route, timeline) and the robot's views, into `<run>/replay`.
+- `AgentSession.step(name)`: names a step of the agent's plan; the audit records its begin and end
+  (`session.step` lines), and the replay's timeline shows it. The robot tests' routines run as named
+  steps (`phygs_robot_tests.routines.step`).
+- `phygs.recording.trace.build(run)`: the timeline (agent steps, commands, grips, bumps, holding) and
+  the robot's path from a run's logs, as `trace.json`; `phygs.recording.overview.Overview` draws it.
+- `phygs.scene.plan`: scene floor plans with their pixel mapping, read from a release's `plan/` or
+  rendered once and cached (`~/.cache/phygs/plans`, `$PHYGS_PLANS`); docs/scenes.md.
+- `ViewCamera` takes `focal_length` and `near`, looks straight down, and has `place` and `image`
+  around a shared render.
+
+Changed:
+
+- `Recorder` takes the run's `state` log and writes it in `write(report, commands)`.
+
 ### 0.6.0 (unreleased, develop)
 
 The task evaluator samples the run (ForageBench's phase C, 2026-10-29). A change to the `Task`

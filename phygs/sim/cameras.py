@@ -285,12 +285,23 @@ class RenderCameras:
 class ViewCamera:
     """A third-person camera for videos, added to a running scene (no scene config entry).
 
-    A USD pinhole camera at ``path``; :meth:`capture` places it at ``eye`` looking at ``target``
-    (world [m]), renders once and returns the RGB image. Moving it every frame makes a follow
-    camera. Rendering costs wall time; physics is not touched.
+    A USD pinhole camera at ``path`` with ``focal_length`` [mm] on a 20.955 mm wide aperture;
+    everything nearer than ``near`` [m] is clipped (from above, a near plane below the roof cuts a
+    house open). :meth:`capture` places it at ``eye`` looking at ``target`` (world [m]), renders
+    and returns the RGB image; :meth:`place` and :meth:`image` do the same around a render shared
+    with other cameras (:meth:`RenderCameras.render`). Moving it every frame makes a follow camera.
+    Rendering costs wall time; physics is not touched.
     """
 
-    def __init__(self, path: str = "/World/ViewCamera", *, width: int = 800, height: int = 450) -> None:
+    def __init__(
+        self,
+        path: str = "/World/ViewCamera",
+        *,
+        width: int = 800,
+        height: int = 450,
+        focal_length: float = 18.0,
+        near: float = 0.05,
+    ) -> None:
         import omni.replicator.core as rep
         import omni.usd
         from isaaclab_physx.renderers.isaac_rtx_renderer_utils import ensure_rtx_hydra_engine_attached
@@ -299,10 +310,10 @@ class ViewCamera:
         ensure_rtx_hydra_engine_attached()
         stage = omni.usd.get_context().get_stage()
         camera = UsdGeom.Camera.Define(stage, path)
-        camera.CreateFocalLengthAttr(18.0)
+        camera.CreateFocalLengthAttr(float(focal_length))
         camera.CreateHorizontalApertureAttr(20.955)
         camera.CreateVerticalApertureAttr(20.955 * height / width)
-        camera.CreateClippingRangeAttr((0.05, 100.0))
+        self._clipping = camera.CreateClippingRangeAttr((float(near), 200.0))
         self._transform = UsdGeom.Xformable(camera).AddTransformOp()
         self._product = rep.create.render_product(path, (width, height))
         self._annotator = rep.AnnotatorRegistry.get_annotator("rgb", device="cpu")
@@ -310,23 +321,39 @@ class ViewCamera:
 
     def capture(self, eye, target) -> np.ndarray:
         """RGB image [height, width, 3] uint8 from ``eye`` looking at ``target`` (world [m])."""
+        self.place(eye, target)
+        for _ in range(RenderCameras.WARMUP_RENDERS):
+            RenderCameras.render()
+            image = self.image()
+            if image is not None:
+                return image
+        raise RuntimeError("The view camera delivered no image.")
+
+    def place(self, eye, target, near: float | None = None) -> None:
+        """Put the camera at ``eye`` looking at ``target`` (world [m]); straight down, image up is +y.
+        ``near`` [m] moves the near clip."""
         import numpy as np
         from pxr import Gf
 
         eye, target = np.asarray(eye, dtype=float), np.asarray(target, dtype=float)
         forward = (target - eye) / np.linalg.norm(target - eye)
         right = np.cross(forward, [0.0, 0.0, 1.0])
+        if np.linalg.norm(right) < 1e-6:  # Straight down or up.
+            right = np.array([1.0, 0.0, 0.0])
         right /= np.linalg.norm(right)
         up = np.cross(right, forward)
         # USD cameras look along -Z with +Y up; Gf matrices hold the basis vectors as rows.
         rows = (*right, 0.0), (*up, 0.0), (*(-forward), 0.0), (*eye, 1.0)
-        self._transform.Set(Gf.Matrix4d(*[value for row in rows for value in row]))
-        for _ in range(RenderCameras.WARMUP_RENDERS):
-            RenderCameras.render()
-            data = self._annotator.get_data()
-            if getattr(data, "size", 0) > 0:
-                return np.asarray(data)[..., :3]
-        raise RuntimeError("The view camera delivered no image.")
+        self._transform.Set(Gf.Matrix4d(*[float(value) for row in rows for value in row]))
+        if near is not None:
+            self._clipping.Set(Gf.Vec2f(float(near), 200.0))
+
+    def image(self) -> np.ndarray | None:
+        """The RGB image [height, width, 3] uint8 of the last render; None before the first one."""
+        import numpy as np
+
+        data = self._annotator.get_data()
+        return np.asarray(data)[..., :3] if getattr(data, "size", 0) > 0 else None
 
     def close(self) -> None:
         self._annotator.detach([self._product.path])

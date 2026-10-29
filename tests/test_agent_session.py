@@ -240,6 +240,37 @@ def test_errors_reach_the_agent_and_every_call_is_audited(tmp_path):
     assert len(audit.commands) == 1  # The waited command, with its final feedback.
 
 
+def test_steps_are_audited_but_not_counted_and_record_how_they_ended(tmp_path):
+    world, main, session, _, _, audit, _ = make_session(tmp_path)
+
+    def agent():
+        with session.step("walk"):
+            with session.step("leg one"):
+                session.wait(session.navigation.navigate_to(0.0, 1.0))
+        with pytest.raises(RuntimeError), session.step("look"):
+            session.manipulation.look_at(ObjectTarget("target"))
+        with pytest.raises(ValueError):
+            with session.step(" "):
+                pass
+
+    assert "error" not in run(world, main, agent)
+    audit.close()
+    lines = [json.loads(line) for line in (tmp_path / "audit.jsonl").read_text().splitlines()]
+    steps = [(line["name"], line["event"], line["depth"]) for line in lines if line["call"] == "session.step"]
+    assert steps == [
+        ("walk", "begin", 0),
+        ("leg one", "begin", 1),
+        ("leg one", "end", 1),
+        ("walk", "end", 0),
+        ("look", "begin", 0),
+        ("look", "end", 0),
+    ]
+    marks = [line for line in lines if line["call"] == "session.step"]
+    assert marks[2]["t"] == pytest.approx(0.5, abs=DT) and marks[0]["t"] == 0.0  # Time passed in the walk.
+    assert marks[-1]["error"] == "RuntimeError: no plan" and "error" not in marks[3]
+    assert audit.summary()["calls"] == 3 and "session" not in audit.summary()["by_client"]
+
+
 def test_hints_refuse_what_the_spec_does_not_grant(tmp_path):
     world, main, session, *_ = make_session(tmp_path, grants=("scene_hints",))
     seen = {}

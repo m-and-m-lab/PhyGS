@@ -22,6 +22,7 @@ import threading
 import time
 import traceback
 from collections.abc import Callable
+from dataclasses import asdict
 from pathlib import Path
 
 import isaaclab.sim as sim_utils
@@ -37,10 +38,13 @@ from phygs.execution.manipulation.skills.types import SkillConfig
 from phygs.execution.navigation.backends.nav2_stack import Nav2Stack
 from phygs.execution.navigation.known_map import BoxGeometry
 from phygs.recording.panels import PanelFeed
+from phygs.recording.state_log import FILE as STATE_FILE
+from phygs.recording.state_log import StateLog
 from phygs.robots.control import RobotControl
 from phygs.robots.description import RobotDescription, load_robot
 from phygs.robots.scene import make_scene_cfg, robot_cameras, simulation_cfg
 from phygs.runtime.episode import EpisodeStatus, RunMode
+from phygs.scene.assets import SceneBodies
 from phygs.scene.reader import UsdScene
 from phygs.session.hints import PrivilegedHints
 from phygs.session.session import AgentFailed, AgentSession, Audit, EpisodeEnded, MainThread, ObjectTarget, PublicTask
@@ -157,8 +161,9 @@ class World:
         self.scene = InteractiveScene(cfg)
         self.sim.reset()
         self.scene_def.bind(self.scene)
-        robot_asset = self.scene["robot"]
+        robot_asset = self._robot_asset = self.scene["robot"]
         self.base = BaseLink(robot_asset, robot.base_link)
+        self._bodies = SceneBodies(self.scene)  # Every scene body, for the state log.
         self.scene.update(dt)
         self.sim.set_camera_view(*(tuple(v.tolist()) for v in view))
 
@@ -196,12 +201,36 @@ class World:
         if record:
             self._panels = PanelFeed(self.control, footprint=build.transit_outline(robot), planner=self.planner)
         self.provenance.update(task.provenance())
+        # What phygs replay needs to build the scene again, beside the states (recording.state_log).
+        state = StateLog(
+            output / STATE_FILE,
+            joint_names=robot_asset.joint_names,
+            body_names=self._bodies.names,
+            meta=dict(
+                period=period,
+                physics_dt=dt,
+                robot=robot.name,
+                scene=dict(
+                    name=spec.scene.name,
+                    id=spec.scene.id,
+                    version=spec.scene.version,
+                    usd=str(spec.scene.usd),
+                    sha256=self.provenance["scene_usd"]["sha256"],
+                    ground=spec.scene.ground,
+                ),
+                objects=spec.objects,
+                start=list(spec.robot.start),
+                light=settings["light"],
+                record_view=[list(map(float, point)) for point in view],
+            ),
+        )
         self.recorder = Recorder(
             output,
             video=record,
             fps=1.0 / period,
             jaw_links=robot.gripper.jaw_links,
             read_ticks=settings["contact_read_ticks"],
+            state=state,
         )
         self.report: dict | None = None
         self._during: Callable[[World], None] | None = None  # The robot test's per-tick call (run).
@@ -357,6 +386,7 @@ class World:
         else:
             ended_by, reason = "setup_error", "; ".join(self.start_check["problems"])
             self._outcome = ("not_started", "the start check failed")
+        self._log_state()  # The scene as the agent finds it.
         broken = None  # An error in the World itself: reported, then raised.
         try:
             while ended_by is None:
@@ -434,7 +464,7 @@ class World:
             narration=self.control.narration.log,
             runtime=self.control.runtime.result(),
         )
-        self.recorder.write(self.report)
+        self.recorder.write(self.report, commands=[asdict(span) for span in self.control.timeline.spans])
         if broken is not None:
             raise broken
         return self.report
@@ -525,6 +555,8 @@ class World:
             self.task.update(self.truth())
         if self._during is not None:
             self._during(self)
+        if runtime.tick % self.render_ticks == 0:
+            self._log_state()
         if self.viewer is not None and runtime.tick % self.render_ticks == 0:
             self.viewer.update(self._view())
         if self._record and runtime.tick % self.render_ticks == 0:
@@ -537,6 +569,23 @@ class World:
                 spans=control.timeline.spans,
                 panels=self._panels.sources(packet),
             )
+
+    def _log_state(self) -> None:
+        """One state log sample (recording.state_log): the robot, the scene's bodies, whether the
+        gripper holds something; and Nav2's route when it changed. Arrays only, nothing rendered."""
+        control, runtime, data = self.control, self.control.runtime, self._robot_asset.data
+        self.recorder.state.sample(
+            runtime.time_seconds,
+            data.root_link_pose_w.torch[0].cpu().numpy(),
+            data.joint_pos.torch[0].cpu().numpy(),
+            self._bodies.poses().cpu().numpy(),
+            holding=control.manipulation is not None and control.manipulation.holding,
+        )
+        backend = getattr(control.navigation, "backend", None)
+        if hasattr(backend, "route"):
+            route = backend.route()
+            goal, points = (None, ()) if route is None else ((route[0].x, route[0].y, route[0].heading), route[1])
+            self.recorder.state.route(runtime.time_seconds, goal, points)
 
     def _view_idle(self) -> None:
         """Keep the viewer updated, once per camera period of wall time, while time stands still."""

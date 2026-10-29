@@ -8,6 +8,7 @@
     phygs run --spec <episode.yaml> --agent template --output <folder> [--task_loader module:function]
     phygs ui --output <folder> [--spec ...]            # The robot UI (a person as the agent).
     phygs ui replay <recording>                        # Replay a recorded UI episode.
+    phygs replay <run> [--views ...]                   # Render a run again from its state log.
     phygs scenes list | fetch ...                      # Scene releases from the dataset.
     phygs tests ladder --upto N | <group> ...          # The robot tests (tests/robot_tests/run_suite.py).
     phygs version
@@ -27,6 +28,7 @@ SCRIPTS = {
     "run": ROOT / "examples" / "run_world.py",
     "ui": ROOT / "phygs" / "ui" / "cli.py",
     "ui-replay": ROOT / "phygs" / "ui" / "replay_cli.py",
+    "replay": ROOT / "examples" / "replay_run.py",
     "tests": ROOT / "tests" / "robot_tests" / "run_suite.py",
 }
 MODULES = {"scenes": "phygs.scene.fetch"}

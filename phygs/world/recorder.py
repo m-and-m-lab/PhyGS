@@ -3,16 +3,18 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""An episode's output folder: ``report.json``, the third-person video and contact records."""
+"""An episode's output folder: ``report.json``, the state log, the third-person video and contact records."""
 
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 
 from phygs.recording.panels import PanelSources
+from phygs.recording.state_log import StateLog
 from phygs.recording.video import Video
 
 
@@ -34,13 +36,22 @@ class Recorder:
     both jaws on a surface, is a ``contact``.
 
     Contacts are read every ``read_ticks`` physics ticks; a record's ``ticks`` counts each read as
-    that many ticks.
+    that many ticks. ``state`` is the run's state log (:mod:`phygs.recording.state_log`), sampled by
+    the World and written with the report.
     """
 
     def __init__(
-        self, output: Path, *, video: bool, fps: float, jaw_links: tuple[str, ...] = (), read_ticks: int = 1
+        self,
+        output: Path,
+        *,
+        video: bool,
+        fps: float,
+        jaw_links: tuple[str, ...] = (),
+        read_ticks: int = 1,
+        state: StateLog | None = None,
     ) -> None:
         self.output = output
+        self.state = state
         self._video = Video(output / "third_person.mp4", fps=fps) if video else None
         self._jaw_links = tuple(jaw_links)
         self._read_ticks = read_ticks
@@ -107,9 +118,12 @@ class Recorder:
             records[grasp].append(record)
         return dict(contacts=records[False], grasp_contacts=records[True])
 
-    def write(self, report: dict) -> Path:
+    def write(self, report: dict, commands: Sequence[dict] = ()) -> Path:
+        """Write ``report.json``, and the state log with the command timeline's spans ``commands``."""
         path = self.output / "report.json"
         path.write_text(json.dumps(report, indent=2) + "\n")
+        if self.state is not None:
+            self.state.write(commands)
         return path
 
     def close(self) -> None:

@@ -59,6 +59,15 @@ scene is a new version. The scene folder holds `README.md` (what the scene is, h
 and `ATTRIBUTION.md` (asset provenance); keep the dataset private until the asset licences are
 reviewed.
 
+## Floor plans
+
+A release may ship its floor plans in `plan/` beside its scene file: `plan.json` and one image per
+floor, seen straight down with everything above the floor's cut height left out. `plan.json`
+(`phygs/scene/plan.py`, schema 1) gives each floor's `name`, `image`, `elevation` [m], `cut` [m],
+`width` and `height` [px], `center` [m] and `ppm` [px/m]: world (x, y) on the floor plane is pixel
+(`width` / 2 + (x - cx) `ppm`, `height` / 2 - (y - cy) `ppm`), +x right and +y up. Replays and pages
+that draw a run on the plan read it; a scene without one gets a plan rendered on first use and cached.
+
 ## Fixture scenes
 
 The three small scenes the robot tests use (grid storage, the navigation course, the dynamic

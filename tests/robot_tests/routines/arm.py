@@ -13,7 +13,7 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from phygs_robot_tests.routines import ARM, PARAMS, TOOLS, base
+from phygs_robot_tests.routines import ARM, PARAMS, TOOLS, base, step
 from phygs_robot_tests.routines.geometry import matrix, rotate_z, rotation_about, xyzw
 
 from phygs.session import (
@@ -84,6 +84,7 @@ def gripper(session, command) -> None:
         raise AgentFailed(f"gripper: {feedback.reason}")
 
 
+@step(lambda held=None: "stow" if held is None else "stow(held)")
 def stow(session, held: HeldObject | None = None) -> None:
     """Stow the arm; ``held``: the object in the gripper, so the planned part avoids obstacles with it."""
     feedback = session.wait(session.manipulation.stow(held=held))
@@ -103,6 +104,7 @@ def leave_stow(session) -> None:
         raise AgentFailed(f"leaving the stow: {feedback.reason}")
 
 
+@step(lambda point, views, held=None: f"look_at({views})")
 def look_at(session, point, views: str, held: HeldObject | None = None) -> bool:
     """Try the ``look_views[views]`` in order; False when every view was refused. A failure while
     moving ends the plan."""
@@ -148,6 +150,7 @@ def move_straight_to(session, position, tool: str = "wrist") -> Outcome:
     return run(session, lambda: session.manipulation.execute_trajectory(line))
 
 
+@step(lambda target, approaches=None, look=True: f"pick({target.name})")
 def pick(session, target, approaches=None, look: bool = True) -> HeldObject:
     """Look at the target (a ``TargetHint``), then grasp it: for each pick approach and each grasp
     yaw in turn, a planned move to the pre-grasp, straight in, close, straight back out. An option
@@ -193,6 +196,7 @@ def pick(session, target, approaches=None, look: bool = True) -> HeldObject:
     raise AgentFailed(f"pick: every approach was refused; last: {last}")
 
 
+@step("place")
 def place(session, point, held: HeldObject) -> None:
     """Set the held object down with its bottom center at a world point [m]: a planned move above
     it, straight down along the gripper axis (the wrist keeps its orientation, so the object keeps
@@ -212,6 +216,7 @@ def place(session, point, held: HeldObject) -> None:
     gripper(session, session.manipulation.close_gripper)  # The planners model a closed gripper.
 
 
+@step("place_upright")
 def place_upright(session, point, held: HeldObject) -> None:
     """Place an object picked straight down so it stands upright: look at the point (this also
     leaves the stow), turn the gripper top-down with the wrist ``place_wrist_height_m`` above it

@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
-from phygs_robot_tests.routines import PARAMS, TOOLS, arm, base
+from phygs_robot_tests.routines import PARAMS, TOOLS, arm, base, step
 from phygs_robot_tests.routines.geometry import rotation_about
 
 from phygs.session import AgentFailed
@@ -29,12 +29,14 @@ def place_spot(session, name: str, size: tuple[float, float, float]) -> np.ndarr
     return np.asarray(part.floor_center, dtype=float) + outward * float(np.clip(wanted, 0.0, max(room, 0.0)))
 
 
+@step(lambda name: f"open_drawer({name})")
 def open_drawer(session, name: str) -> float:
     """Pull the drawer by its handle from where the robot stands (:func:`pull_distance`); walk to
     the open stance again when every pitch is refused. Returns the planned pull [m]."""
     return _stroke_from_stance(session, name, "open", lambda: pull_distance(session, name))
 
 
+@step(lambda name: f"close_drawer({name})")
 def close_drawer(session, name: str) -> None:
     """Push the drawer shut (to its closed end, less the limit margin) with the closed gripper,
     from the ``close`` stance the robot stands at."""

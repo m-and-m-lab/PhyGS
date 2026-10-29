@@ -4,20 +4,23 @@
 phygs/
 ├── ui/            The robot UI: a person as the agent (server, bridge, page session, cli.py)
 ├── world/         What a benchmark drives: World (build, run, stop, evaluate, report), EpisodeSpec, the Task
-│                  seam, Truth, the report schema, recorder, provenance, the Nav2 assembly, the viewer protocol
+│                  seam, Truth, the report schema, recorder, provenance, the Nav2 assembly, the viewer protocol,
+│                  the replay
 ├── session/       What an agent gets: AgentSession, its target types and errors, privileged hints
 ├── robots/        One folder per robot (robot.yaml), the description that loads it, its scene, its assembly (control.py)
 ├── skills/        The public clients: locomotion, navigation, manipulation (api.py each)
 ├── execution/     locomotion/ (base controllers), navigation/ (Nav2, footprint, known map, launch),
 │                  manipulation/ (arm, skills, planners)
 ├── sim/           Isaac Lab adapters: cameras, robot state and observations, base and arm readers, footprint, Fabric
-├── recording/     The video, its panels, the command timeline, the skills' narration
-├── scene/         Scenes by id (registry), the fetcher, the USD reader (ground truth), drawers, storage units, plain types
+├── recording/     The video, its panels, the command timeline, the skills' narration, the state log, the
+│                  trace read from a run's logs and the replay's overview strip
+├── scene/         Scenes by id (registry), the fetcher, the USD reader (ground truth), drawers, storage units, floor
+│                  plans, plain types
 ├── runtime/       Clock, ownership, command expiry, reset, emergency stop
 ├── observations/  Measurement types, localization, the front view, the reference colour detectors
 ├── configs/       environment.yaml (every setting, the benchmark-owned ones named), navigation/, ui/, robots/, scenes/
 └── __main__.py    The phygs command
-examples/          run_world.py (phygs run) and agents/ (template, depth_example)
+examples/          run_world.py (phygs run), replay_run.py (phygs replay) and agents/ (template, depth_example)
 tests/             Unit tests; robot_tests/ is the robot-test ladder (package phygs_robot_tests)
 ```
 

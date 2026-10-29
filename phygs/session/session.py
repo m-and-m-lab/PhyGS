@@ -23,6 +23,7 @@ import queue
 import threading
 from collections import Counter
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum
 from pathlib import Path
@@ -258,6 +259,13 @@ class Audit:
             self._file.write(json.dumps(line) + "\n")
             self._file.flush()
 
+    def mark(self, call: str, **fields) -> None:
+        """Write one line that is not a call (a step marker): not counted in the totals."""
+        line = dict(t=round(self._time(), 4), call=call, **{k: jsonable(v) for k, v in fields.items()})
+        if self._file is not None and not self._file.closed:  # A step the agent leaves after the episode.
+            self._file.write(json.dumps(line) + "\n")
+            self._file.flush()
+
     def summary(self) -> dict:
         return dict(
             calls=sum(self.calls.values()),
@@ -334,6 +342,7 @@ class AgentSession:
     ``navigation``, ``manipulation``, ``locomotion`` and ``arm`` are the skill clients the tier
     allows (None otherwise); ``hints`` are the privileged hints, each call refused without its
     grant. Command ids are :class:`Command` ints; :meth:`wait` returns a command's final feedback.
+    :meth:`step` names a part of the agent's plan for the run's timeline.
     """
 
     def __init__(
@@ -358,6 +367,7 @@ class AgentSession:
         self._main, self._audit = main, audit
         self._observe, self._time, self._finish = observe, time_seconds, finish
         self._camera_period = camera_period
+        self._steps: list[str] = []  # The steps open now, outermost first (step).
         self._clients = {name: client for name, client in clients.items() if client is not None}
         for name, client in clients.items():
             proxy = None
@@ -406,6 +416,29 @@ class AgentSession:
     def finish(self, reason: str = "") -> None:
         """End the episode now; returning from ``run`` does the same."""
         self._main.call(self._finish, reason)
+
+    @contextmanager
+    def step(self, name: str) -> Iterator[None]:
+        """Name a step of the agent's plan: ``with session.step("open the drawer"): ...``.
+
+        The audit records where the step begins and ends (``session.step`` lines; an error leaving
+        it is recorded too), so the run's timeline shows the agent's plan beside the robot's
+        commands. Steps nest. A step is not a call: no time passes and it is not counted.
+        """
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("step() takes a non-empty name.")
+        self._audit.mark("session.step", name=name, event="begin", depth=len(self._steps))
+        self._steps.append(name)
+        try:
+            yield
+        except BaseException as error:
+            self._steps.pop()
+            self._audit.mark(
+                "session.step", name=name, event="end", depth=len(self._steps), error=f"{type(error).__name__}: {error}"
+            )
+            raise
+        self._steps.pop()
+        self._audit.mark("session.step", name=name, event="end", depth=len(self._steps))
 
 
 def partial_privileged(privileged: Callable[[str, str, tuple, dict], list[str]], client: str):
