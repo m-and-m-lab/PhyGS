@@ -16,7 +16,7 @@ import numpy as np
 from phygs_robot_tests.routines import ARM, PARAMS, TOOLS, base
 from phygs_robot_tests.routines.geometry import matrix, rotate_z, rotation_about, xyzw
 
-from phygs.episodes.session import (
+from phygs.session import (
     AgentFailed,
     EndEffectorTrajectory,
     HeldObject,

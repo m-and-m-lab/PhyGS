@@ -17,7 +17,6 @@ import numpy as np
 from build_low_branches_scene import LowBranchesScene
 from build_outdoor_scene import OUTPUT, ground_height
 from PIL import Image, ImageFilter
-
 from pxr import Gf, Sdf, UsdGeom, UsdLux, UsdPhysics, UsdShade
 
 DEFAULT_OUTPUT = OUTPUT / "fence_entrance"

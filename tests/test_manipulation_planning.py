@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from fakes import SPOT, FakeScene, advance, isaaclab_world, setup
 
+from phygs.execution.manipulation.collision_map import boxes_in_body
 from phygs.execution.manipulation.planners.interface import IkRequest, PlanRequest
 from phygs.execution.manipulation.planning import JointTrajectory
-from phygs.tools.collision_map import boxes_in_body
 
 REQUEST = PlanRequest(start=[0.0] * 6, boxes=[], goal=[0.0] * 6)
 

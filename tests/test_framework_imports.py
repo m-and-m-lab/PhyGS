@@ -5,7 +5,7 @@
 
 """The framework knows no task: no module outside ``phygs_robot_tests.tasks`` (and the agents,
 which import only the session) imports the tasks package, and no episode spec holds a file path.
-A task reaches the Environment as an object (episodes/task.py); scenes are named by id."""
+A task reaches the World as an object (world/task.py); scenes are named by id."""
 
 from __future__ import annotations
 

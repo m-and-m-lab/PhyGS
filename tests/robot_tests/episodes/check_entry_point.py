@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """The public entry point, as a user first runs it: ``examples/run_world.py`` with the template agent
-(``phygs.agents.template``) on a skills-tier spec (``dev_grid_table``: walk, stow) and a
+(``examples/agents/template.py``) on a skills-tier spec (``dev_grid_table``: walk, stow) and a
 joints-tier spec (``joints_grid``: a body velocity, an arm joint move). Each run is its own process
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code
 and ``report.json`` (and the video with ``--record``).

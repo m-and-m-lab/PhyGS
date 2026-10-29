@@ -6,7 +6,7 @@
 """The retrieve task: its brief, and the evaluator that scores an episode from ground truth.
 
 The entry point builds it from the spec's task block (:func:`phygs_robot_tests.tasks.load_task`)
-and gives it to the Environment, which stops the robot at the end (every command cancelled, the
+and gives it to the World, which stops the robot at the end (every command cancelled, the
 grip kept), settles, and calls :meth:`RetrieveTask.result` once with ground truth. The agent never
 holds it. The thresholds are in ``retrieve.yaml`` beside this file and are hashed into the
 report's provenance.
@@ -28,12 +28,12 @@ import numpy as np
 import yaml
 
 THRESHOLDS = Path(__file__).with_name("retrieve.yaml")
-# Why an episode ended, as the Environment reports it; only these count as within the budget.
+# Why an episode ended, as the World reports it; only these count as within the budget.
 ENDED_IN_TIME = ("finish", "agent_returned", "agent_stopped")
 
 
 class GroundTruth(Protocol):
-    """What the evaluator reads; the Environment's ``Truth`` provides it (robot tests use the same)."""
+    """What the evaluator reads; the World's ``Truth`` provides it (robot tests use the same)."""
 
     def object_pose(self, name: str) -> np.ndarray: ...
     def held(self, name: str, *, lift_m: float, reach_m: float) -> bool: ...

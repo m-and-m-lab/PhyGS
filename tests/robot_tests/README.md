@@ -18,8 +18,8 @@ A test is written the way the real user of its subject would write it.
 - **Agent tests** (`episodes/`) cover what an agent asks for: navigation, arm planning, pick and
   place, drawers, search, retrieve. A test is an episode spec (`configs/episodes/`), a plan that
   drives the robot through the agent session only, and checks on the other side: ground truth
-  after the run (`environment.truth()`) and, during it, a per-tick call
-  (`Environment.run(during=...)`) that samples ground truth or moves a scene body. The plan names
+  after the run (`world.truth()`) and, during it, a per-tick call
+  (`World.run(during=...)`) that samples ground truth or moves a scene body. The plan names
   its steps (`episode.Steps`) so the test knows what it measures. Shared plan pieces are in
   `routines/`; a plan here is what an agent author copies.
 - **Component tests** (`components/`) cover the machinery that carries out an agent's requests:
@@ -62,7 +62,7 @@ Rung 13 stays a component test until the episode harness has a search goal: spec
 
 ```bash
 source /opt/explore_ws/install/setup.bash  # ROS 2 Jazzy plus explore_lite, for rungs 6, 7, 11-15.
-# The house rungs need its release fetched once: phygs.scenes.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
+# The house rungs need its release fetched once: phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
 
 # The ladder up to a rung, with videos; open <folder>/index.html for results and videos.
 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record

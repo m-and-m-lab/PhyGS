@@ -11,8 +11,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from phygs.tools.timeline import CommandTimeline, Span
-from phygs.tools.video import COMMAND_COLORS, FAILED, compose
+from phygs.recording.timeline import CommandTimeline, Span
+from phygs.recording.video import COMMAND_COLORS, FAILED, compose
 
 
 class Client:

@@ -60,24 +60,24 @@ def main() -> None:
     check.data.update(settings=SETTINGS)
 
     def body() -> None:
-        with episode.environment(args, spec) as environment:
-            nav2 = environment.control.navigation.backend  # Trusted diagnostic only: the costmaps.
+        with episode.world(args, spec) as world:
+            nav2 = world.control.navigation.backend  # Trusted diagnostic only: the costmaps.
             walls = [
                 (np.asarray(c, dtype=float), np.asarray(s, dtype=float))
-                for c, s in environment.scene_def.map_boxes(exclude=("obstacle",))
+                for c, s in world.scene_def.map_boxes(exclude=("obstacle",))
             ]
-            _, size = episode.body_box(environment, "obstacle")
-            every = max(1, round(SETTINGS["sample_period_s"] / environment.control.runtime.physics_dt))
+            _, size = episode.body_box(world, "obstacle")
+            every = max(1, round(SETTINGS["sample_period_s"] / world.control.runtime.physics_dt))
             seen = dict(marked=[], route_cost=0, clearance=math.inf, marked_after=None, cleared_after=None)
 
-            def snapshot(environment, step: str) -> dict:
-                pose = environment.truth().base_pose()
+            def snapshot(world, step: str) -> dict:
+                pose = world.truth().base_pose()
                 yaw = math.atan2(pose[1, 0], pose[0, 0])
-                speed = float(np.linalg.norm(environment.scene["robot"].data.root_lin_vel_b.torch[0, :2].cpu().numpy()))
-                taken = dict(time_s=environment.control.runtime.time_seconds, yaw=yaw, speed=speed)
+                speed = float(np.linalg.norm(world.scene["robot"].data.root_lin_vel_b.torch[0, :2].cpu().numpy()))
+                taken = dict(time_s=world.control.runtime.time_seconds, yaw=yaw, speed=speed)
                 if step == "route":  # The walk started: move the box into it.
                     taken["cost_before"] = nav2.costmap_cost(*SETTINGS["blocked_position"][:2])
-                    episode.move_body(environment, "obstacle", SETTINGS["blocked_position"])
+                    episode.move_body(world, "obstacle", SETTINGS["blocked_position"])
                 elif step == "box in view":  # Facing open floor: the box ahead, its near face's cell.
                     clearing = SETTINGS["clearing"]
                     ahead, direction = clearing["distance_m"], np.array([math.cos(yaw), math.sin(yaw)])
@@ -85,22 +85,22 @@ def main() -> None:
                     seen["cell"] = tuple(map(float, pose[:2, 3] + direction * face))
                     taken["cost_free"] = nav2.costmap_cost(*seen["cell"])
                     center = pose[:2, 3] + direction * ahead
-                    episode.move_body(environment, "obstacle", (*center, SETTINGS["blocked_position"][2]))
+                    episode.move_body(world, "obstacle", (*center, SETTINGS["blocked_position"][2]))
                 elif step == "box away":
-                    episode.move_body(environment, "obstacle", SETTINGS["clearing"]["parked_position"])
+                    episode.move_body(world, "obstacle", SETTINGS["clearing"]["parked_position"])
                 return taken
 
-            def each_tick(environment, step: str) -> None:
-                runtime = environment.control.runtime
+            def each_tick(world, step: str) -> None:
+                runtime = world.control.runtime
                 if runtime.tick % 5 == 0:  # The footprint against the box and the walls, every 0.02 s.
-                    box = episode.body_box(environment, "obstacle")
-                    seen["clearance"] = min(seen["clearance"], episode.clearance(environment, [box, *walls]))
+                    box = episode.body_box(world, "obstacle")
+                    seen["clearance"] = min(seen["clearance"], episode.clearance(world, [box, *walls]))
                 if runtime.tick % every:
                     return
                 if step == "route":
                     cost = nav2.costmap_cost(*SETTINGS["blocked_position"][:2])
                     seen["route_cost"] = max(seen["route_cost"], cost if marked(cost) else 0)
-                    box_center, box_size = episode.body_box(environment, "obstacle")
+                    box_center, box_size = episode.body_box(world, "obstacle")
                     seen["marked"].append(
                         (round(runtime.time_seconds, 2), *episode.box_cells_marked(nav2, box_center, box_size))
                     )
@@ -112,9 +112,7 @@ def main() -> None:
                         seen["cleared_after"] = runtime.time_seconds - steps.snapshots["box away"]["time_s"]
 
             steps = episode.Steps(snapshot, each_tick)
-            report = environment.run(
-                lambda session: plan(session, steps), name="check_dynamic_obstacle.plan", during=steps
-            )
+            report = world.run(lambda session: plan(session, steps), name="check_dynamic_obstacle.plan", during=steps)
             snaps = steps.snapshots
             check.data.update(results=steps.results, box_cells_marked=seen["marked"])
             episode.agent_checks(check, report, levels=("skills", "motion"))

@@ -5,7 +5,7 @@
 
 """Episode contact records: the grasp apart from other arm contacts."""
 
-from phygs.episodes.recorder import Recorder, pinched_bodies
+from phygs.world.recorder import Recorder, pinched_bodies
 
 JAWS = ("arm_link_wr1", "arm_link_fngr")
 
@@ -64,7 +64,7 @@ def test_each_hold_is_judged_on_its_own(tmp_path):
 
 
 def test_a_read_counts_as_the_ticks_between_reads(tmp_path):
-    """The Environment reads contacts every few physics ticks; ``ticks`` stays in physics ticks."""
+    """The World reads contacts every few physics ticks; ``ticks`` stays in physics ticks."""
     rec = Recorder(tmp_path, video=False, fps=10.0, jaw_links=JAWS, read_ticks=5)
     for time_seconds in (1.0, 1.02):
         rec.contacts_tick(time_seconds, [("arm_link_el1", "table", 2.0)], "move_to_pose", gripper_closed=False)

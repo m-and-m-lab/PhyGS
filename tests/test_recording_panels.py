@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The panels beside a run's video (helpers.panels) and the shared Front view helpers (helpers.front_view)."""
+"""The panels beside a run's video (recording.panels) and the shared Front view helpers (observations.front_view)."""
 
 import math
 from dataclasses import replace
@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 import torch
 
-from phygs.tools.front_view import (
+from phygs.observations.front_view import (
     _TURBO,
     CameraFrame,
     FrontStitcher,
@@ -21,7 +21,7 @@ from phygs.tools.front_view import (
     camera_frame,
     depth_colors,
 )
-from phygs.tools.panels import (
+from phygs.recording.panels import (
     BACKGROUND,
     COLUMNS,
     FOOTPRINT,

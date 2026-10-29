@@ -18,7 +18,7 @@ from __future__ import annotations
 from phygs_robot_tests.episodes import episode
 from phygs_robot_tests.routines import arm, base, drawer
 
-from phygs.episodes.session import AgentFailed
+from phygs.session import AgentFailed
 
 
 def plan(session) -> None:
@@ -46,8 +46,8 @@ def main() -> None:
     def body() -> None:
         if spec.task["goal"] != "retrieve":
             raise ValueError(f"{spec.id} is not a retrieve episode.")
-        with episode.environment(args, spec) as environment:
-            report = environment.run(plan, name="check_retrieve.plan")
+        with episode.world(args, spec) as world:
+            report = world.run(plan, name="check_retrieve.plan")
             episode.agent_checks(check, report)
             evaluation = report["evaluation"]  # The evaluator's result from ground truth, after the stop.
             checks, measured = evaluation["checks"], evaluation["measured"]

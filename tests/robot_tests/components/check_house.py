@@ -30,7 +30,7 @@ flags.add_argument("--config", type=Path, default=common.CONFIGS / "house.yaml")
 flags.set_defaults(enable_cameras=True)
 args = flags.parse_args()
 config = yaml.safe_load(args.config.read_text())
-from phygs.episodes.scenes import scene_file  # noqa: E402
+from phygs.scene.registry import scene_file  # noqa: E402
 
 config["scene"]["usd_path"] = str(scene_file(config["scene"]["id"], config["scene"].get("version")))
 check = common.Check("check_house search", args)
@@ -52,6 +52,7 @@ from phygs.execution.navigation.footprint import (  # noqa: E402
     transit_footprint,
     validate_transit,
 )
+from phygs.observations.color_detection import magenta_pixel  # noqa: E402
 from phygs.observations.types import (  # noqa: E402
     CameraPermission,
     ObservationAccess,
@@ -62,14 +63,13 @@ from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.pipeline import PipelineConfig  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
-from phygs.simulation.scene_assets import (  # noqa: E402
+from phygs.scene.assets import (  # noqa: E402
     SceneBodies,
     register_scene_bodies,
     validate_spawn_disk,
 )
-from phygs.simulation.world import IsaacLabWorld  # noqa: E402
+from phygs.sim.state import IsaacLabWorld  # noqa: E402
 from phygs.skills.navigation.api import NavigationConfig  # noqa: E402
-from phygs.tools.color_detection import magenta_pixel  # noqa: E402
 
 require = common.require
 

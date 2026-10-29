@@ -14,8 +14,8 @@ import numpy as np
 import pytest
 from pxr import Usd
 
-from phygs.episodes.spec import EpisodeSpec
-from phygs.simulation import scene
+from phygs.scene import reader as scene
+from phygs.world.spec import EpisodeSpec
 
 EPISODES = Path(__file__).resolve().parents[1] / "tests" / "robot_tests" / "configs" / "episodes"
 GRID_DRAWER = EpisodeSpec.load(EPISODES / "dev_grid_drawer.yaml")

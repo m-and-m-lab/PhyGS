@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Image encoding for the UI: JPEG frames and the occupancy map as PNG (depth colours:
-:func:`phygs.tools.front_view.depth_colors`).
+:func:`phygs.observations.front_view.depth_colors`).
 
 Binary WebSocket messages are ``[4-byte big-endian header length][JSON header][payload]``.
 """

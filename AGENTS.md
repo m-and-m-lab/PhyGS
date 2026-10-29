@@ -10,6 +10,7 @@ This file defines how Codex agents and human contributors should work in this re
 | No silent fallback | Do not silently switch to another target, fake camera frame, manual point, placeholder grasp, CPU substitute, or relaxed planner mode. |
 | Skill-client public API | Agents use the shared-runtime clients from `RobotControl.create(...)`: `robot.locomotion`, `robot.navigation`, `robot.manipulation`, and `robot.observe()`. |
 | Robot-neutral framework | Every robot fact is in its `robot.yaml` (`phygs/robots/<name>/`). Framework code asks the robot description for joints, links, tools and cameras (by role); it never names a robot's parts (`tests/test_robot_neutral.py`). See `docs/adding_a_robot.md`. |
+| Layers | Packages import downward only (`docs/layout.md`, `tests/test_layers.py`): ui, world, session, robots, skills, execution, sim and recording, scene and runtime, observations. A new package gets a layer; an upward need is a type to move down or a value to pass in. |
 | Clean and lean code | Keep modules small, separate API facade from IsaacLab backend, avoid global state, and avoid broad compatibility shims. |
 | Robotics benchmark mindset | Prefer explicit configs, deterministic target paths, named assets, measurable outputs, and repeatable smoke tests. |
 

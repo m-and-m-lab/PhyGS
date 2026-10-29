@@ -13,7 +13,7 @@ import math
 import torch
 from phygs_robot_tests.tasks.point_navigation import PhysicalSample
 
-from phygs.simulation.base import BaseLink
+from phygs.sim.base import BaseLink
 
 
 def physical_sample(control, robot, contact_force: float = 0.0) -> PhysicalSample:

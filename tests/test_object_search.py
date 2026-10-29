@@ -9,13 +9,6 @@ from dataclasses import replace
 
 import pytest
 import torch
-
-from phygs.observations.types import (
-    CameraObservation,
-    ObservationPacket,
-    Stamp,
-    Transform,
-)
 from phygs_robot_tests.tasks.object_search import (
     ObjectSearchEvaluator,
     ObjectSearchTask,
@@ -23,6 +16,13 @@ from phygs_robot_tests.tasks.object_search import (
     TargetDeclaration,
 )
 from phygs_robot_tests.tasks.object_search_api import ObjectSearchClient
+
+from phygs.observations.types import (
+    CameraObservation,
+    ObservationPacket,
+    Stamp,
+    Transform,
+)
 
 
 def packet(*, episode: int = 1, tick: int = 0, depth_m: float = 2.0) -> ObservationPacket:

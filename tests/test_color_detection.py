@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import torch
 
-from phygs.tools.color_detection import green_pixel, magenta_pixel
+from phygs.observations.color_detection import green_pixel, magenta_pixel
 
 
 def test_magenta_evidence_ignores_green_distractor_and_invalid_depth():

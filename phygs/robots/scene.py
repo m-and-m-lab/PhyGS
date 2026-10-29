@@ -17,7 +17,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ImuCfg
 from isaaclab.utils import configclass
 
-from phygs.simulation.cameras import RenderCameraCfg
+from phygs.sim.cameras import RenderCameraCfg
 
 if TYPE_CHECKING:
     from phygs.robots.description import RobotDescription

@@ -10,7 +10,7 @@ import pytest
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics
 from scipy.spatial.transform import Rotation
 
-from phygs.simulation.parts import sliding_part
+from phygs.scene.parts import sliding_part
 
 
 def drawer_stage(position, yaw):
@@ -62,7 +62,7 @@ def test_sliding_part_rejects_missing_prims():
 
 def test_a_copied_storage_unit_moves_its_bodies_and_world_slide_anchors_together(tmp_path):
     """A two-tier unit as the house builder authors it, copied to another place and turned."""
-    from phygs.simulation import storage_units as house_storage
+    from phygs.scene import storage_units as house_storage
 
     source = Usd.Stage.CreateNew(str(tmp_path / "house.usda"))
     origin = np.array([20.0, 4.0, 3.2])  # On an upper floor.
@@ -126,7 +126,7 @@ def test_a_copied_storage_unit_moves_its_bodies_and_world_slide_anchors_together
 
 def test_house_storage_finds_a_unit_in_place_and_maps_colliders_per_object():
     """In the house scene itself: the unit's paths, and one map box per object or structure collider."""
-    from phygs.simulation import storage_units as house_storage
+    from phygs.scene import storage_units as house_storage
 
     stage = Usd.Stage.CreateInMemory()
 

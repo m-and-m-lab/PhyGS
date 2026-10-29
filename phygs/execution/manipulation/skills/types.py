@@ -17,6 +17,7 @@ import numpy as np
 
 from phygs.execution.manipulation.planning import JointTrajectory
 from phygs.observations.types import Stamp
+from phygs.scene.types import ArticulatedPart  # noqa: F401 (a skill target; re-exported)
 
 BACKENDS = ("collision_avoidance_planner", "direct")
 
@@ -47,26 +48,6 @@ class ObjectTarget:
 
 
 SkillTarget = PixelTarget | PointTarget | ObjectTarget
-
-
-@dataclass(frozen=True)
-class ArticulatedPart:
-    """A sliding part (drawer) and its handle bar in the world frame; privileged task knowledge.
-
-    ``handle_center`` [m]; ``handle_axis``: unit vector along the bar; ``handle_length`` and
-    ``handle_radius`` [m]; ``direction``: unit vector the part moves in when it opens;
-    ``opening`` [m] now, and its ``limits`` (closed, open) [m]; ``floor_center`` [m]: the middle of
-    the drawer floor the opening exposes now, where an object can be set down (None if unknown).
-    """
-
-    handle_center: tuple[float, float, float]
-    handle_axis: tuple[float, float, float]
-    handle_length: float
-    handle_radius: float
-    direction: tuple[float, float, float]
-    opening: float
-    limits: tuple[float, float]
-    floor_center: tuple[float, float, float] | None = None
 
 
 class SkillFailure(StrEnum):

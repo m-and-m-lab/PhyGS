@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from phygs.tools.front_view import CameraFrame, FrontView
+from phygs.observations.front_view import CameraFrame, FrontView
 
 
 def _nearest_valid(valid: np.ndarray, x: int, y: int, search: int) -> tuple[int, int] | None:

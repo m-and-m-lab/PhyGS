@@ -6,12 +6,12 @@
 """The robot UI as an episode's agent and viewer: the page's requests become session calls, and
 the episode's view becomes the page's frames, map, state and step lines.
 
-:class:`UiSession` has two sides. As the :class:`~phygs.episodes.environment.Environment`'s
+:class:`UiSession` has two sides. As the :class:`~phygs.world.World`'s
 agent (:meth:`UiSession.agent`, on the agent thread) it carries out the person's requests through
-the :class:`~phygs.episodes.session.AgentSession`: every call is the agent API's, audited
+the :class:`~phygs.session.session.AgentSession`: every call is the agent API's, audited
 like any agent's, within the spec's tier and grants. As its viewer (:meth:`UiSession.update`, on the
 main thread once per camera period) it publishes what the person sees from the read-only
-:class:`~phygs.episodes.viewer.EpisodeView`. It never passes simulation objects to the
+:class:`~phygs.world.viewer.EpisodeView`. It never passes simulation objects to the
 server.
 """
 
@@ -30,11 +30,11 @@ from typing import Any
 
 import numpy as np
 
-from phygs.episodes.session import EpisodeEnded
 from phygs.execution.manipulation.planning import EndEffectorTrajectory, JointTrajectory
 from phygs.execution.manipulation.skills.types import HeldObject
 from phygs.execution.navigation.types import NavigationGoal
-from phygs.tools.front_view import camera_frame
+from phygs.observations.front_view import camera_frame
+from phygs.session import EpisodeEnded
 from phygs.ui import translate
 from phygs.ui.bridge import Bridge, MapImage
 
@@ -85,7 +85,7 @@ def plain(value: Any) -> Any:
 class UiSession:
     """The person at the page: an agent that carries out the page's requests, and a viewer.
 
-    Viewer side (:class:`~phygs.episodes.viewer.Viewer`): ``cameras`` are the camera
+    Viewer side (:class:`~phygs.world.viewer.Viewer`): ``cameras`` are the camera
     names to stream; :meth:`update` publishes frames, the step lines, navigation's costmap (shown
     every ``map_period`` [s]: free, obstacle, unknown, and where the robot's centre may not be),
     and the state with ``telemetry`` for the page's telemetry drawer: base velocity (body frame)
@@ -108,11 +108,11 @@ class UiSession:
     to pose without moving (``manipulation.plan``); the page shows the plan and can run exactly that
     trajectory.
 
-    The episode is ``ready`` until the person presses Start (the Environment holds the clock until
+    The episode is ``ready`` until the person presses Start (the World holds the clock until
     the agent's first call), ``running``, then ``ended``: by End, E-stop (the base stops, arm
     commands are cancelled, the episode finishes), the episode's budget or a failure. ``task`` is
     the public task (goal, description) shown with ``budget_seconds`` [s of sim time]. The
-    Environment's report is the episode's; :meth:`summary` adds the page's command counts.
+    World's report is the episode's; :meth:`summary` adds the page's command counts.
     ``demo`` (session -> iterator of steps) runs a scripted route as soon as the episode starts.
     The page's requests are read every pass of the agent (``AGENT_PERIOD_S``); the commands'
     feedback, which is an audited call each, and the demo's steps every ``feedback_period`` [s wall].
@@ -196,7 +196,7 @@ class UiSession:
     # ------------------------------------------------------------------------------------------
     # Agent side (agent thread): every robot call goes through the session.
     def agent(self, session: Any) -> None:
-        """The Environment's agent: serve the page until the episode ends."""
+        """The World's agent: serve the page until the episode ends."""
         while self.agent_step(session):
             time.sleep(AGENT_PERIOD_S)
 
@@ -309,7 +309,7 @@ class UiSession:
     def _episode_request(self, session: Any, action: str) -> None:
         """Start (from ready) or End (while running) the episode."""
         if action == "start" and self.phase == READY:
-            self._time = float(session.time())  # The first call: the Environment's clock starts.
+            self._time = float(session.time())  # The first call: the World's clock starts.
             self.phase, self._start_wall = RUNNING, self._clock()
             self._bridge.push_event(dict(type="episode", sim_time=self._time, phase=RUNNING, status="running"))
             if self._demo_script is not None:
@@ -320,7 +320,7 @@ class UiSession:
             raise ValueError(f"Cannot {action!r} the episode while it is {self.phase}.")
 
     def _end(self, outcome: str, reason: str) -> None:
-        """The episode is over: tell the page (the Environment's report follows with :meth:`show_report`)."""
+        """The episode is over: tell the page (the World's report follows with :meth:`show_report`)."""
         with self._lock:
             self.phase, self._end_wall, self._outcome = ENDED, self._clock(), (outcome, reason)
         self._bridge.push_event(
@@ -354,7 +354,7 @@ class UiSession:
             )
 
     def show_report(self, report: dict) -> dict:
-        """After the Environment ends: the page's result card from its report (evaluation, times) and
+        """After the World ends: the page's result card from its report (evaluation, times) and
         this summary; returns what was shown."""
         summary = self.summary()
         shown = dict(
@@ -661,7 +661,7 @@ class UiSession:
     # ------------------------------------------------------------------------------------------
     # Viewer side (main thread): what the person sees, read-only.
     def update(self, view: Any) -> None:
-        """The Environment's viewer: called on the main thread once per camera period."""
+        """The World's viewer: called on the main thread once per camera period."""
         self._time, self._episode_id = float(view.time_seconds), view.episode_id
         packet = view.observe()
         self._publish_frames(packet)

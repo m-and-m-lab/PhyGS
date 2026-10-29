@@ -10,12 +10,12 @@ Every privileged source is recorded. The built-in A* planner and path follower w
 
 ## Public API
 
-`simulation/navigation.py` builds Nav2 for a simulated Spot: it checks the live collision
+`world/navigation.py` builds Nav2 for a simulated Spot: it checks the live collision
 geometry against the measured footprint profile, chooses the map source and starts the servers.
 See the [Nav2 guide](nav2.md) for the setup and measurements.
 
 ```python
-from phygs.simulation.navigation import nav2_navigation
+from phygs.world.navigation import nav2_navigation
 
 navigation = nav2_navigation(
     stage=sim.stage, scene=scene, robot_config=robot_config, robot_dir=robot_dir,
@@ -32,7 +32,7 @@ command_id = robot.navigation.navigate_to(x=3.8, y=0.0, heading=0.0)
 navigation.stack.close()
 ```
 
-The environment runner continues calling `robot.step()`. The agent polls
+The World keeps calling `robot.step()`. The agent polls
 `robot.navigation.feedback(command_id)` or calls
 `robot.navigation.cancel(command_id)`. Distances are metres and heading is radians
 in the world frame. Omitting heading requests position-only arrival. Position and
@@ -49,10 +49,10 @@ command, on a map prior with unexplored space ([nav2](nav2.md#frontier-explorati
 - `execution/navigation/fine_approach.py`: single-axis moves that finish a goal (internal to `navigate_to`, not a skill).
 - `execution/navigation/backends/nav2.py` and `ros2.py`: the Nav2 adapter and its isolated ROS transport;
   `nav2_stack.py` runs the servers.
-- `simulation/navigation.py`: Nav2 for a simulated Spot (footprint check, map source, servers).
-- `execution/navigation/footprint.py` and `simulation/footprint.py`: sampled collision envelopes.
+- `world/navigation.py`: Nav2 for a simulated Spot (footprint check, map source, servers).
+- `execution/navigation/footprint.py` and `sim/footprint.py`: sampled collision envelopes.
 - `execution/navigation/metrics.py`: independent motion measurements and report comparison.
-- `simulation/maps.py`: the privileged known map from declared boxes. Registered
+- `execution/navigation/known_map.py`: the privileged known map from declared boxes. Registered
   movable boxes use their actual physics poses; changed occupancy increments the
   map version and triggers replanning. Fixed boxes use their declared geometry.
 - `tasks/point_navigation.py`: task configuration and evaluation from physical

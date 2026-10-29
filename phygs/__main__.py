@@ -29,7 +29,7 @@ SCRIPTS = {
     "ui-replay": ROOT / "phygs" / "ui" / "replay_cli.py",
     "tests": ROOT / "tests" / "robot_tests" / "run_suite.py",
 }
-MODULES = {"scenes": "phygs.scenes.fetch"}
+MODULES = {"scenes": "phygs.scene.fetch"}
 
 
 def main(argv: list[str] | None = None) -> int:

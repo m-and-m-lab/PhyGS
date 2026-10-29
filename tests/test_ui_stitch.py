@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from phygs.tools.front_view import CameraFrame, FrontStitcher, depth_colors
+from phygs.observations.front_view import CameraFrame, FrontStitcher, depth_colors
 from phygs.ui.codecs import (
     FREE_GREY,
     OCCUPIED_GREY,

@@ -128,7 +128,7 @@ def test_a_planar_base_builds_from_its_robot_yaml():
 def test_a_base_on_joints_under_a_fixed_root_reads_its_own_pose_not_the_roots():
     """Isaac Lab's Ridgeback-Franka: the root stays at the origin while the base link moves. Reading
     the root (as observations did before robot descriptions) reports a base that never moves."""
-    from phygs.simulation.base import BaseLink
+    from phygs.sim.base import BaseLink
 
     def articulation(fixed: bool):
         turned = [0.0, 0.0, math.sin(math.pi / 4), math.cos(math.pi / 4)]  # 90 deg about z.

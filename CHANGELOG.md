@@ -11,7 +11,69 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
-### 0.3.2 (unreleased, develop)
+### 0.4.0 (unreleased, develop)
+
+The layout of the layout proposal, steps 1 to 4 (`docs/design/framework_layout/`; the differences
+are on its first page). No behaviour, setting, spec key or report key changed. **Breaking:** the old
+module paths are removed in this release, without a deprecation period (decided 2026-10-29); the
+table under Removed gives each new path.
+
+Changed:
+
+- The packages are layers that import downward only: ui, world, session, robots, skills, execution,
+  sim and recording, scene and runtime, observations (`docs/layout.md`). `tests/test_layers.py`
+  enforces it. The runtime import cycles through `simulation/` are gone.
+- **Breaking:** `Environment` is `World` (`from phygs.world import World`); `phygs.world` exports
+  `World`, `EpisodeSpec`, `Truth`, `Task`, `NoTask`, `load_task`, `load_agent`, `run_episode`,
+  `SETTINGS` and the schemas, each imported on first use.
+- The World's module is split by what it does: `world/world.py` (the class), `world/build.py` (the
+  steps that need no simulator: settings and overrides, refused combinations, cameras, observation
+  access; unit-tested now), `world/truth.py` (`Truth`), `world/report.py` (`compose` refuses a
+  report whose keys differ from `KEYS`).
+- Agents import `from phygs.session import ...` (the package re-exports the session's types).
+- The example agents are `examples/agents/` (`template`, `depth_example`); `--agent template` and
+  `load_agent("template")` find them there.
+- `ArticulatedPart` is defined in `phygs.scene.types`; `phygs.session` and the skills' types re-export it.
+- The robot tests set the planner backend through `World(overrides=...)` instead of a settings copy.
+- Docker: `docker/Dockerfile.phygs` with `docker-compose.phygs.patch.yaml` builds Isaac Lab's `ros2`
+  service as what PhyGS runs on: Isaac Lab 3.0.0's base image (Isaac Sim 6.0.1), ROS 2 Jazzy with Nav2,
+  explore_lite, MoveIt, cuRobo V2 and the editable PhyGS install (`docker/README.md`). The image is
+  written to match this machine's container; it has not been built from scratch yet.
+- `planner.curobo_dependencies` is `/opt/curobo_deps` (was `/tmp/spot-planner-deps`, which a new
+  container loses).
+
+Removed (**Breaking**), old → new:
+
+| Old | New |
+| --- | --- |
+| `phygs.episodes.session`, `phygs.episodes.hints` | `phygs.session.session`, `phygs.session.hints` |
+| `phygs.episodes.environment` (`Environment`) | `phygs.world.world` (`World`) |
+| `phygs.episodes.spec`, `.task`, `.viewer`, `.recorder`, `.provenance`, `.report` | `phygs.world.spec`, `.task`, `.viewer`, `.recorder`, `.provenance`, `.report` |
+| `phygs.episodes.scenes` | `phygs.scene.registry` |
+| `phygs.scenes.fetch` | `phygs.scene.fetch` |
+| `phygs.simulation.cameras`, `.fabric`, `.observations`, `.base`, `.arm`, `.footprint` | `phygs.sim.cameras`, `.fabric`, `.observations`, `.base`, `.arm`, `.footprint` |
+| `phygs.simulation.world` | `phygs.sim.state` |
+| `phygs.simulation.scene`, `.parts`, `.scene_assets`, `.storage_units` | `phygs.scene.reader`, `.parts`, `.assets`, `.storage_units` |
+| `phygs.simulation.maps` | `phygs.execution.navigation.known_map` |
+| `phygs.simulation.navigation` | `phygs.world.navigation` |
+| `phygs.tools.front_view`, `.color_detection` | `phygs.observations.front_view`, `.color_detection` |
+| `phygs.tools.video`, `.panels`, `.timeline`, `.narration` | `phygs.recording.video`, `.panels`, `.timeline`, `.narration` |
+| `phygs.tools.collision_map` | `phygs.execution.manipulation.collision_map` |
+| `phygs.agents.template`, `.depth_example` | `examples/agents/template.py`, `depth_example.py` |
+
+Also removed:
+
+- `tools/sync_from_interactive_search.py`: PhyGS is developed in this repository now; a change made
+  in the lab's interactive-search tree is ported by hand.
+- `docker/Dockerfile.curobofix` and its compose patch (the May beta's container: Isaac Sim 5.1, the
+  cuRobo fork, AO-Grasp tools), replaced by `docker/Dockerfile.phygs` (see Changed).
+
+Fixed:
+
+- `pyproject.toml` lists `phygs.execution.manipulation.skills`, which a non-editable install missed.
+- `docs/world.md` no longer names a session schema number; the session has none.
+
+### 0.3.2 (2026-10-29)
 
 - Synced from interactive-search (2026-10-29, `tools/sync_from_interactive_search.py`): Ridgeback-Franka's
   `robot.yaml`, actuators and README; Ridgeback support in the cuRobo, MoveIt and model planners; the
@@ -64,8 +126,8 @@ version: 1.1.0}`; the registry checks the version against the fetch record. The 
 `scene_generation/usd_tools/publish_scene.py` replaces the one-release publisher and adds releases to
 an existing catalog.
 
-Later changes made in interactive-search come here by `tools/sync_from_interactive_search.py` (copy and
-rename; never the pinned policy files); each sync names the interactive-search commit it took.
+Later changes made in interactive-search came here by a sync script (copy and rename; never the pinned
+policy files) until 0.4.0, which removed it: PhyGS is developed here now.
 
 The entries below are interactive-search's, kept as the framework's history.
 

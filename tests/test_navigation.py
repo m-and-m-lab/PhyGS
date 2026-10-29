@@ -14,8 +14,8 @@ import torch
 from phygs_robot_tests.tasks.point_navigation import PhysicalSample, PointNavigationEvaluator, PointNavigationTask
 
 from phygs.execution.locomotion.base import DeadBand
+from phygs.execution.navigation.known_map import BoxGeometry, KnownBoxMap
 from phygs.execution.navigation.map import GridMap, RectangleFootprint
-from phygs.simulation.maps import BoxGeometry, KnownBoxMap
 from phygs.skills.navigation.api import NavigationConfig, NavigationGoal
 
 
@@ -150,8 +150,8 @@ def test_the_navigation_course_refuses_its_goals_for_the_stated_reason():
     import yaml
     from pxr import Usd
 
-    from phygs.episodes.scenes import scene_file
-    from phygs.simulation.scene import collider_boxes
+    from phygs.scene.reader import collider_boxes
+    from phygs.scene.registry import scene_file
 
     project = Path(__file__).resolve().parents[1]
     cases = yaml.safe_load((project / "tests/robot_tests/configs/navigation.yaml").read_text())["cases"]

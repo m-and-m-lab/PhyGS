@@ -49,11 +49,11 @@ def main() -> None:
 
     def body() -> None:
         name, seen = settings["place_drawer"], {}
-        with episode.environment(args, spec) as environment:
-            report = environment.run(lambda session: plan(session, name, seen), name="check_drawer_place.plan")
+        with episode.world(args, spec) as world:
+            report = world.run(lambda session: plan(session, name, seen), name="check_drawer_place.plan")
             episode.agent_checks(check, report)
             check.data["retrieve_evaluation"] = "not_applicable"
-            truth = environment.truth()
+            truth = world.truth()
             target = truth.object_pose(spec.task["target"])
             # The drawer carries the target when it closes: its offset from the spot is mostly the stroke.
             offset = [round(v, 3) for v in (target[:3, 3] - np.asarray(seen["spot"])).tolist()]

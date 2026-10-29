@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Agents act through the session only: modules in phygs.agents import nothing else
+"""Agents act through the session only: the example agents (examples/agents) import nothing else
 of the project (the barrier is a convention until agents run in their own process). The robot
 tests' routines and episode plans keep the same rule, so they prove the session is enough."""
 
@@ -16,9 +16,9 @@ from pathlib import Path
 import pytest
 
 PROJECT = Path(__file__).resolve().parents[1]
-AGENTS = PROJECT / "phygs" / "agents"
+AGENTS = PROJECT / "examples" / "agents"
 ROBOT_TESTS = PROJECT / "tests" / "robot_tests"
-ALLOWED = {"phygs.episodes.session", "numpy", "yaml"}
+ALLOWED = {"phygs.session", "numpy", "yaml"}
 # Routines import each other; an episode test also imports its harness helper (episode.py).
 PLANS = sorted(ROBOT_TESTS.glob("routines/*.py")) + sorted(ROBOT_TESTS.glob("episodes/check_*.py"))
 

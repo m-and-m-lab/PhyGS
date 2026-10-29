@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phygs"
-version = "0.3.2"
+version = "0.4.0"
 description = "PhyGS: physically grounded simulation framework for mobile manipulation in Isaac Lab (robot, world, runtime, skills, measurement)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,29 +23,30 @@ Repository = "https://github.com/m-and-m-lab/PhyGS"
 # phygs at the root; the robot tests are the package phygs_robot_tests, kept under tests/robot_tests.
 packages = [
     "phygs",
-    "phygs.agents",
-    "phygs.episodes",
     "phygs.execution",
     "phygs.execution.locomotion",
     "phygs.execution.manipulation",
     "phygs.execution.manipulation.planners",
+    "phygs.execution.manipulation.skills",
     "phygs.execution.navigation",
     "phygs.execution.navigation.backends",
     "phygs.execution.navigation.launch",
     "phygs.observations",
+    "phygs.recording",
     "phygs.robots",
     "phygs.robots.ridgeback_franka",
     "phygs.robots.spot",
     "phygs.robots.spot.assets.spot_description.spot_description",
     "phygs.runtime",
-    "phygs.scenes",
-    "phygs.simulation",
+    "phygs.scene",
+    "phygs.session",
+    "phygs.sim",
     "phygs.skills",
     "phygs.skills.locomotion",
     "phygs.skills.manipulation",
     "phygs.skills.navigation",
-    "phygs.tools",
     "phygs.ui",
+    "phygs.world",
     "phygs_robot_tests",
     "phygs_robot_tests.components",
     "phygs_robot_tests.episodes",
@@ -59,7 +60,6 @@ packages = [
 
 [tool.setuptools.package-data]
 "phygs" = ["configs/*.yaml", "configs/**/*.yaml", "configs/**/*.rviz"]
-"phygs.agents" = ["*.yaml"]
 "phygs.robots.spot" = ["robot.yaml", "locomotion/*.yaml", "locomotion/*.pt", "navigation/*.json", "assets/*.usd", "assets/*.urdf", "assets/configuration/**/*"]
 "phygs.robots.ridgeback_franka" = ["robot.yaml", "*.urdf", "navigation/*.json"]
 "phygs.robots._template" = ["robot.yaml"]

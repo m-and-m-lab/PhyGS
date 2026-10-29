@@ -15,7 +15,6 @@ from pathlib import Path
 import numpy as np
 import trimesh
 from build_detailed_three_room_scene import SCENES, DetailedHouse
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade
 
 REFERENCE = SCENES / "indoor_2_highres/indoor_2/export_scene.blend/export_scene_sorted_physics_easy.usdc"

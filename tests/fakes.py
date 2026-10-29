@@ -26,7 +26,7 @@ from phygs.execution.navigation.fine_approach import FineApproach
 from phygs.execution.navigation.map import GridMap
 from phygs.robots.description import load_robot
 from phygs.runtime.episode import EpisodeRuntime, EpisodeStatus, JointTargets, RunMode
-from phygs.simulation.observations import IsaacLabObservations, pose_matrix
+from phygs.sim.observations import IsaacLabObservations, pose_matrix
 from phygs.skills.manipulation.api import ManipulationClient
 
 # Spot, the robot the fakes stand in for: its description, the transit posture navigation checks, and
@@ -311,7 +311,7 @@ def isaaclab_world(scene, **options):
         scene: The scene, e.g. a :class:`FakeScene`.
         options: Keyword arguments of the ``IsaacLabWorld`` constructor.
     """
-    from phygs.simulation.world import IsaacLabWorld
+    from phygs.sim.state import IsaacLabWorld
 
     sim = SimpleNamespace(get_physics_dt=lambda: 0.004, is_rendering=False, step=lambda **kwargs: None)
     return IsaacLabWorld(sim, scene, **options)

@@ -42,7 +42,7 @@ from isaaclab.scene import InteractiveScene  # noqa: E402
 from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import ControllerDeclaration, EpisodeRuntime, RunMode  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
-from phygs.simulation.world import IsaacLabWorld  # noqa: E402
+from phygs.sim.state import IsaacLabWorld  # noqa: E402
 
 require = common.require
 # Durations [s]: settling after reset, the arm command, how long it is observed (past its expiry),

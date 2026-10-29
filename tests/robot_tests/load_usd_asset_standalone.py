@@ -101,7 +101,7 @@ args_cli = parser.parse_args()
 scene_provenance = None
 if args_cli.scene_record:
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # phygs from the checkout.
-    from phygs.scenes.fetch import load_record
+    from phygs.scene.fetch import load_record
 
     scene_provenance = load_record(args_cli.scene_record)
     args_cli.usd_path = scene_provenance["usd_path"]

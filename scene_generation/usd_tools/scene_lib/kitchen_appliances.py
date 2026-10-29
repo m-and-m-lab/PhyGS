@@ -4,7 +4,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Hollow kitchen appliances and sparse, independently movable contents."""
 from pxr import Gf, UsdGeom, UsdPhysics, UsdShade
+
 from scene_lib.bear_loop_furnishings import native
+
 
 def appliance(house, name: str, position: tuple, width: float, height: float, depth: float) -> None:
     """Build an anchored cavity and passive side-hinged door, dimensions [m]."""

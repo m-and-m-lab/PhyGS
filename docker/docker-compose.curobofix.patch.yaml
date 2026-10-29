@@ -1,4 +1,0 @@
-services:
-  isaac-lab-base:
-    build:
-      dockerfile: scripts/PhyGS/docker/Dockerfile.curobofix

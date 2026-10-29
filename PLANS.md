@@ -28,7 +28,7 @@ README's dated runs).
 Every robot test in build order, 15 rungs ([phygs_robot_tests/README.md](tests/robot_tests/README.md);
 `run_suite.py ladder --upto N`). What an agent asks for has agent tests (`episodes/`: a spec, a plan
 through the session, checks from ground truth after and during the run via
-`Environment.run(during=...)`); the machinery under the session has component tests
+`World.run(during=...)`); the machinery under the session has component tests
 (`components/`, the robot built from the files episodes use). No seeds or success rates: those are
 the benchmark's.
 
@@ -53,7 +53,7 @@ each episode robot test holds its plan, and the robot tests are in `episodes/` a
 ([robot tests housekeeping](docs/design/archive/robot_tests_housekeeping/index.html)).
 
 - Step 1 done (2026-10-15): spec loader and the two grid specs, scene registry with the grid
-  storage scene, `Environment` (main-thread loop, charged and realtime clocks, planner restart
+  storage scene, `World` (main-thread loop, charged and realtime clocks, planner restart
   after the base moved, contacts, report and audit log), `AgentSession` with grant-checked hints,
   placeholder judge (since 2026-10-28 the retrieve evaluator, `tasks/retrieve.py`), template agent; unit tests (36). Verified headless:
   `output_check/20261015-1359_step1_template_table_b` (template agent: walk 0.6 m, stow; 8 s sim)
@@ -64,7 +64,7 @@ each episode robot test holds its plan, and the robot tests are in `episodes/` a
   `tests/robot_tests/routines/` and `routines/params.yaml`), built from
   `check_manipulation_planning.py`'s agent code with every check removed; robot tests
   `check_retrieve.py`, `check_drawer_stroke.py`, `check_drawer_place.py` (one episode per process,
-  ground truth via `Environment.truth()`, thresholds in `spot_episodes.yaml`, now
+  ground truth via `World.truth()`, thresholds in `spot_episodes.yaml`, now
   `tests/robot_tests/configs/episodes.yaml`). All pass headless
   with cuRobo: `output_check/20261015-1419_step2_retrieve_drawer` (70 s sim),
   `..._step2_drawer_stroke` (opened 0.335 m, closed 0.0003 m), `20261015-1531_step2b_retrieve_table`
@@ -77,9 +77,9 @@ each episode robot test holds its plan, and the robot tests are in `episodes/` a
 - Next: step 3, the house builder (read the house's bodies through `scene_assets.SceneBodies`, the
   scene-body collection of 2026-10-15), house annotations, one oracle parameter set for both
   scenes; then remove the episode code from `check_manipulation_planning.py`. Step 4: the UI on
-  the Environment.
+  the World.
 - Not wired yet: navigation or manipulation without `gt_localization` and `known_map` (refused
-  at build); one Environment per process.
+  at build); one World per process.
 
 ## Current manipulation milestone (2026-10-06)
 

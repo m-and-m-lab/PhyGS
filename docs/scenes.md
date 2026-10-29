@@ -10,7 +10,7 @@ scene:
   ground: false            # true adds a ground plane (the file has no floor)
 ```
 
-`phygs.episodes.scenes.scene_file(id, version)` looks, in order, under `$PHYGS_SCENES`, under
+`phygs.scene.registry.scene_file(id, version)` looks, in order, under `$PHYGS_SCENES`, under
 `~/.cache/phygs/scenes` and under the robot tests' fixtures (`tests/robot_tests/scenes`). In each
 root it accepts a folder `<id>/scene.usda|usdc|usd` or a record `<id>.json` written by the fetcher
 (`usd_path`, `scene_version`, `sha256`, the dataset commit). The USD file is resolved when first
@@ -37,9 +37,9 @@ result names the exact scene it ran in.
 
 ```bash
 ./isaaclab.sh -p -m huggingface_hub.cli.hf auth login                      # once; the dataset is private
-./isaaclab.sh -p -m phygs.scenes.fetch list                                 # ids, versions, sizes, the commit
-./isaaclab.sh -p -m phygs.scenes.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
-./isaaclab.sh -p -m phygs.scenes.fetch fetch --all                          # every catalogued release
+./isaaclab.sh -p -m phygs.scene.fetch list                                 # ids, versions, sizes, the commit
+./isaaclab.sh -p -m phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
+./isaaclab.sh -p -m phygs.scene.fetch fetch --all                          # every catalogued release
 ```
 
 The fetcher resolves the dataset's `main` to a commit (or takes `--revision`), downloads the

@@ -33,11 +33,11 @@ from typing import Any
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from phygs.execution.manipulation.collision_map import boxes_in_body
 from phygs.execution.manipulation.planners.interface import DepthImage, HeldShape, PlanRequest
 from phygs.execution.manipulation.planners.model import gripper_positions, link_transforms, prepare_model
 from phygs.execution.manipulation.planning import JointTrajectory, PlannerProcess
-from phygs.tools.collision_map import boxes_in_body
-from phygs.tools.panels import PlannerView
+from phygs.recording.panels import PlannerView
 
 
 class ArmPlanner:
@@ -102,7 +102,7 @@ class ArmPlanner:
         self._plans = 0
         self._domain: tuple[int, Any] | None = None  # MoveIt's private ROS domain and its lock.
         self.last_plan: dict | None = None  # kind, seconds [wall], result of the latest finished plan.
-        self.last_view: PlannerView | None = None  # The latest finished plan for display (helpers.panels).
+        self.last_view: PlannerView | None = None  # The latest finished plan for display (recording.panels).
         backend = settings["backend"]
         self._env = {
             **os.environ,

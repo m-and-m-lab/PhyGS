@@ -51,29 +51,29 @@ target pose and every arm contact on the test side (ground truth, never the agen
 
 MoveIt runs in system Python; cuRobo runs in a separate Isaac Python process.
 This avoids mixing MoveIt's binary Python dependencies into the simulator.
-Neither is a required dependency of the basic manipulation API.
+Neither is a required dependency of the basic manipulation API. The container
+(`docker/Dockerfile.phygs`) installs both; outside it, the same steps are:
 
 ```bash
 apt-get install -y --no-install-recommends \
   ros-jazzy-moveit-py ros-jazzy-moveit-planners-ompl
 ```
 
-The experiment was qualified with MoveIt 2.12.4 and cuRobo V2 commit
+The planners are qualified with MoveIt 2.12.4 and cuRobo V2 commit
 `78fd485fa82d9b9a063fb4985e371814587e666a`. V1 configuration/API is different.
-To reproduce the isolated V2 install (choose unused directories):
+cuRobo V2 goes in its own folder, which `planner.curobo_dependencies` in
+`phygs/configs/environment.yaml` names (`/opt/curobo_deps`):
 
 ```bash
-git clone https://github.com/NVlabs/curobo.git /tmp/curobo-v2-experiment
-git -C /tmp/curobo-v2-experiment checkout 78fd485fa82d9b9a063fb4985e371814587e666a
-./isaaclab.sh -p -m pip install --target /tmp/spot-planner-deps --no-deps \
-  /tmp/curobo-v2-experiment yourdfpy==0.0.60 numpy-quaternion==2024.0.13 \
+git clone https://github.com/NVlabs/curobo.git /tmp/curobo
+git -C /tmp/curobo checkout 78fd485fa82d9b9a063fb4985e371814587e666a
+./isaaclab.sh -p -m pip install --target /opt/curobo_deps --no-deps \
+  /tmp/curobo yourdfpy==0.0.60 numpy-quaternion==2024.0.13 \
   setuptools_scm==10.3.4 'cuda-core[cu12]==1.2.1'
 ```
 
-This reuses the simulator's existing Torch 2.10/CUDA 12.8 and Warp 1.13. The YAML
-`curobo_dependencies` points to that directory. `/tmp` installations do not survive
-container replacement; retain the pinned checkout/install recipe, not a hidden
-fallback. Dependency errors stop the selected experiment.
+This reuses the simulator's existing Torch 2.10/CUDA 12.8 and Warp 1.13. A missing
+folder stops the run with an error; there is no fallback.
 
 ## Where the code lives
 
@@ -86,7 +86,7 @@ fallback. Dependency errors stop the selected experiment.
 | `phygs/execution/manipulation/planners/interface.py` | Common planner contract: `plan(PlanRequest)` (depth images included) and `ik(IkRequest)`. MoveIt (KDL `set_from_ik`, Octomap) and cuRobo (`ik_solver.solve_pose`, `Mapper`, `RobotSegmenter`) implement it. The skills plan to a start pose with it, then move straight. |
 | `phygs/execution/manipulation/arm_planner.py` | `ArmPlanner`: the one planner host for episodes (and their robot tests) and the UI; known boxes, the robot's depth cameras, or both |
 | `phygs/execution/manipulation/controller.py` | Simulation-time reference following and physical completion |
-| `src/phygs/tools/collision_map.py` | Known boxes into the body frame |
+| `phygs/execution/manipulation/collision_map.py` | Known boxes into the body frame |
 | `tests/robot_tests/episodes/check_arm_planning.py`, `check_pick_place.py` | Agent tests: a plan through the session, independent physical assertions |
 | `tests/robot_tests/configs/arm_planning.yaml`, `pick_place.yaml`, `episodes/table_reach*.yaml` | Thresholds; the table scene and what the planner avoids |
 

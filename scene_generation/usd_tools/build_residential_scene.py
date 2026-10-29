@@ -16,9 +16,8 @@ import numpy as np
 import trimesh
 from build_detailed_three_room_scene import SCENES
 from build_five_room_scene import BAG, BOTTLE, BOWL, CUP, LAMP, REFERENCE, TIN, FiveRoomHouse
-from scene_lib.residential_surfaces import beveled_box, install_materials
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade, Vt
+from scene_lib.residential_surfaces import beveled_box, install_materials
 
 OUTPUT = SCENES / "residential_house_336/scene.usdc"
 ROOMS = {

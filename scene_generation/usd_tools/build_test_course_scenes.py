@@ -26,7 +26,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from build_grid_storage_scene import ROOT, box_body, storage_units  # noqa: E402
-
 from pxr import Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
 
 WALL, OBSTACLE, ROOM = (0.7, 0.25, 0.1), (0.9, 0.15, 0.05), (0.6, 0.6, 0.62)  # Colors.

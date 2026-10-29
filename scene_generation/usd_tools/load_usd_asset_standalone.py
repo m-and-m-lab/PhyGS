@@ -122,9 +122,8 @@ if args_cli.min_fps and args_cli.render_mode == "none":
 app_launcher = AppLauncher(args_cli, multi_gpu=False)
 simulation_app = app_launcher.app
 
-from isaaclab_physx.physics import PhysxCfg
-
 import isaaclab.sim as sim_utils
+from isaaclab_physx.physics import PhysxCfg
 
 
 def main() -> None:

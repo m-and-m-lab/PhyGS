@@ -7,7 +7,7 @@
 
 A release is one scene id at one version: a ZIP made by ``package_scene.py`` plus a manifest
 (``scenes/<id>/<version>/scene.json``: archive path, SHA-256, sizes, USD entry point, physics
-timestep). The dataset's ``catalog.json`` lists every manifest; ``phygs.scenes.fetch`` reads it.
+timestep). The dataset's ``catalog.json`` lists every manifest; ``phygs.scene.fetch`` reads it.
 Releases are never replaced: a changed scene is a new version.
 
     # 1. Package (scene_dir holds scene.usdc, textures/, README.md, ATTRIBUTION.md).

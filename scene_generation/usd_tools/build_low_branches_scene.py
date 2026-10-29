@@ -16,7 +16,6 @@ from pathlib import Path
 import numpy as np
 from build_outdoor_scene import OUTPUT, OutdoorScene, ground_height, trail_center
 from PIL import Image
-
 from pxr import Gf, Sdf, UsdGeom, UsdLux, UsdPhysics
 
 DEFAULT_OUTPUT = OUTPUT / "low_branches"

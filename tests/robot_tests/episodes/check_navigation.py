@@ -98,44 +98,42 @@ def main() -> None:
     check.data.update(cases=cases)
 
     def body() -> None:
-        with episode.environment(args, spec) as environment:
-            robot = environment.scene["robot"]
-            matches = episode.footprint_matches(environment)
+        with episode.world(args, spec) as world:
+            robot = world.scene["robot"]
+            matches = episode.footprint_matches(world)
             check.measure("footprint_profile_matches_robot", matches, matches, "re-measure the footprint (rung 4)")
-            boxes = [
-                (np.asarray(c, dtype=float), np.asarray(s, dtype=float)) for c, s in environment.scene_def.map_boxes()
-            ]
-            every = max(1, round(SETTINGS["clearance_period_s"] / environment.control.runtime.physics_dt))
+            boxes = [(np.asarray(c, dtype=float), np.asarray(s, dtype=float)) for c, s in world.scene_def.map_boxes()]
+            every = max(1, round(SETTINGS["clearance_period_s"] / world.control.runtime.physics_dt))
             by_name = {case["name"]: case for case in cases}
             evaluators, turned, closest = {}, {}, [math.inf]
 
-            def snapshot(environment, step: str) -> dict:
-                sample = episode.physical_sample(environment)
+            def snapshot(world, step: str) -> dict:
+                sample = episode.physical_sample(world)
                 if step in by_name:  # A case starts: its physical evaluator.
                     case = by_name[step]
                     tolerance = case.get("tolerance", DEFAULT_TOLERANCE)
                     budget = SETTINGS["case_budget_s"] + 1.0
                     evaluators[step] = episode.navigation_evaluator(
-                        spec, case["goal"], tolerance, budget, sample.time, environment.robot.fallen_height
+                        spec, case["goal"], tolerance, budget, sample.time, world.robot.fallen_height
                     )
                     turned[step] = (sample.yaw, 0.0)
                 return dict(x=sample.x, y=sample.y, yaw=sample.yaw, speed=sample.speed, yaw_speed=sample.yaw_speed)
 
-            def each_tick(environment, step: str) -> None:
-                if environment.control.runtime.tick % every:
+            def each_tick(world, step: str) -> None:
+                if world.control.runtime.tick % every:
                     return
                 here = robot.data.root_pos_w.torch[0, :2].cpu().numpy()
                 near = [(c, s) for c, s in boxes if np.hypot(*(c[:2] - here)) < 3.0 + np.max(s[:2])]  # Within reach.
-                closest[0] = min(closest[0], episode.clearance(environment, near))
+                closest[0] = min(closest[0], episode.clearance(world, near))
                 if step in evaluators:
-                    sample = episode.physical_sample(environment)
+                    sample = episode.physical_sample(world)
                     evaluators[step].update(sample)
                     yaw0, most = turned[step]
                     turned[step] = (yaw0, max(most, abs(heading_error(sample.yaw, yaw0))))
 
             steps = episode.Steps(snapshot, each_tick)
             start = tuple(spec.robot.start)
-            report = environment.run(
+            report = world.run(
                 lambda session: plan(session, steps, cases, start, returns), name="check_navigation.plan", during=steps
             )
             check.data.update(results=steps.results, evaluators={k: v.result() for k, v in evaluators.items()})

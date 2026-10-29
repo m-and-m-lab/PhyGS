@@ -17,13 +17,12 @@ from pathlib import Path
 
 import numpy as np
 from build_residential_scene import REFERENCE, SCENES, ResidentialHouse
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade, Vt
 from scene_lib.bear_loop_furnishings import furnish_reference_details, install_reference_materials, native
 from scene_lib.bear_loop_layout import BATHROOMS, WALKING_STRIPS
-from scene_lib.house_asset_library import HouseAssetLibrary
 from scene_lib.collision_geometry import box_surface_mesh, convex_collider_to_sdf
+from scene_lib.house_asset_library import HouseAssetLibrary
 from scene_lib.residential_surfaces import install_materials
-
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade, Vt
 
 OUTPUT = SCENES / "bear_loop_house_revised/scene.usdc"
 REFERENCE_URL = "https://media.zillowmediaexperts.com/sites/42413-bear-loop-big-bear-city-ca-92314-15249997"

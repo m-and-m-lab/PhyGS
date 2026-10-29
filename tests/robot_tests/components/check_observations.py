@@ -47,8 +47,8 @@ from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.pipeline import PipelineConfig  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
-from phygs.simulation.base import BaseLink  # noqa: E402
-from phygs.simulation.observations import IsaacLabObservations, pose_matrix  # noqa: E402
+from phygs.sim.base import BaseLink  # noqa: E402
+from phygs.sim.observations import IsaacLabObservations, pose_matrix  # noqa: E402
 
 require = common.require
 

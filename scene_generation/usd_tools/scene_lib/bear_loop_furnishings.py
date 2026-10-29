@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade
 
 from scene_lib.bear_loop_layout import BATHROOMS

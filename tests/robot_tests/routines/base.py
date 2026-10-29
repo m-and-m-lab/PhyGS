@@ -12,7 +12,7 @@ import math
 import numpy as np
 from phygs_robot_tests.routines import PARAMS, STANCES
 
-from phygs.episodes.session import AgentFailed
+from phygs.session import AgentFailed
 
 
 def go_to(session, place: str, use: str, point=None) -> None:

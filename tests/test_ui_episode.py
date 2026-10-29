@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The robot UI's episode as the Environment's agent: Start, End, E-stop and an episode ended from outside."""
+"""The robot UI's episode as the World's agent: Start, End, E-stop and an episode ended from outside."""
 
 from ui_fakes import START, Navigation, Ui, fake_control
 
@@ -27,7 +27,7 @@ def test_nothing_reaches_the_robot_before_start_and_end_finishes_the_episode():
     control, bridge, ui = episode()
     bridge.request({"type": "run", "skill": "navigate_to", "inputs": {"x": 1.0, "y": 0.0}})
     ui.update()
-    # No session call yet: the Environment holds its clock until the agent's first call.
+    # No session call yet: the World holds its clock until the agent's first call.
     assert ui.phase == "ready" and control.navigation.goals == [] and ui.robot.time_calls == 0
     refused = events(bridge, "command")[-1]["feedback"]["reason"]
     assert refused == "RuntimeError: The episode has not started; press Start."
@@ -46,7 +46,7 @@ def test_nothing_reaches_the_robot_before_start_and_end_finishes_the_episode():
     bridge.request({"type": "run", "skill": "stop", "inputs": {}})
     ui.update()
     assert events(bridge, "command")[-1]["feedback"]["reason"] == "RuntimeError: The episode has ended."
-    # The Environment's report follows: its evaluation on the result card.
+    # The World's report follows: its evaluation on the result card.
     shown = ui.show_report({"sim_seconds": 30.0, "evaluation": {"outcome": "success"}, "ended_by": "finish"})
     assert shown["evaluation"] == {"outcome": "success"} and shown["sim_seconds"] == 30.0
     assert events(bridge, "episode")[-1]["report"] == shown
@@ -56,7 +56,7 @@ def test_an_episode_ended_by_the_environment_ends_the_page():
     control, bridge, ui = episode(budget=10.0)
     bridge.request(START)
     ui.update()
-    ui.robot.ended = "budget"  # The Environment spent the budget: the next call raises EpisodeEnded.
+    ui.robot.ended = "budget"  # The World spent the budget: the next call raises EpisodeEnded.
     bridge.request({"type": "run", "skill": "navigate_to", "inputs": {"x": 1.0, "y": 0.0}})
     ui.update()
     assert ui.phase == "ended" and events(bridge, "episode")[-1]["outcome"] == "budget"

@@ -187,8 +187,8 @@ class Check:
 
     def record(self, control, robot, *, eye=(-2.2, -2.2, 2.0), target=(0.6, 0.0, 0.5), period: float = 0.032) -> None:
         """With ``--record``, film ``robot`` (an articulation) every ``period`` [s sim] into
-        ``third_person.mp4`` (helpers.video: title, RTF and frame rates, narration, command timeline),
-        with the panels (helpers.panels) of what the control observes: the stitched front cameras and
+        ``third_person.mp4`` (recording.video: title, RTF and frame rates, narration, command timeline),
+        with the panels (recording.panels) of what the control observes: the stitched front cameras and
         the hand camera with their depth, Nav2's costmap and, with :meth:`show_planner`, the last arm plan.
         A test without any of these (at its first frame) gets no panels.
 
@@ -200,10 +200,10 @@ class Check:
         import yaml
 
         from phygs.execution.navigation.footprint import transit_footprint
-        from phygs.simulation.base import BaseLink
-        from phygs.simulation.cameras import ViewCamera
-        from phygs.tools.panels import PanelFeed
-        from phygs.tools.video import Video
+        from phygs.recording.panels import PanelFeed
+        from phygs.recording.video import Video
+        from phygs.sim.base import BaseLink
+        from phygs.sim.cameras import ViewCamera
 
         camera, self._video = ViewCamera(), Video(self.output / "third_person.mp4", fps=1.0 / period)
         outline = None  # A robot in bring-up has no footprint profile yet (check_footprint measures it).

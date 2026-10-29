@@ -13,14 +13,14 @@ Visual companions: [who sees what](docs/design/visual/pipelines.html) and
 
 Agents call the public skill APIs on an assembled robot (`RobotControl`, built from the robot's
 description: [adding a robot](docs/adding_a_robot.md)). The
-environment runner owns stepping. Every joint target passes through one runtime,
+World owns stepping. Every joint target passes through one runtime,
 which owns the clock, joint ownership, expiry and reset. Task evaluators read
 physical state independently of skill feedback.
 
 ```mermaid
 flowchart TB
     agent(["Agent<br/>(LLM, policy or reference agent)"])
-    runner(["Environment runner<br/>calls robot.step() every physics tick"])
+    runner(["World runner<br/>calls robot.step() every physics tick"])
 
     subgraph api["Public APIs — phygs/skills/*/api.py (object search: tests/robot_tests/tasks/object_search_api.py)"]
         direction LR
@@ -44,14 +44,14 @@ flowchart TB
         pipe["ObservationPipeline<br/>capture, permissions, processors"]
     end
 
-    subgraph sim["Simulation adapters — phygs/simulation"]
+    subgraph sim["Simulation adapters — phygs/sim"]
         direction LR
         world["IsaacLabWorld<br/>apply targets, step physics"]
         sens["IsaacLabObservations<br/>joints, IMU, RGB-D"]
     end
 
     isaac[("Isaac Lab / PhysX / RTX")]
-    evals["Task evaluators — src/tests/robot_tests/tasks<br/>point_navigation, object_search"]
+    evals["Task evaluators — a benchmark's, or tests/robot_tests/tasks<br/>retrieve, point_navigation, object_search"]
 
     agent -->|commands, feedback| loco & nav & manip
     agent -->|reads| obs
@@ -73,69 +73,72 @@ flowchart TB
 
 ```
 
-| Layer | Status | Where |
-| --- | --- | --- |
-| Public skill APIs | Live | `phygs/skills/{locomotion,navigation,manipulation}/api.py`, `tests/robot_tests/tasks/object_search_api.py` |
-| Execution | Live | `phygs/execution/` |
-| Runtime and observation pipeline | Live | `phygs/runtime/` |
-| Robot descriptions and assembly | Live | `phygs/robots/` (`RobotDescription`, `RobotControl`; one folder per robot) |
-| Simulation adapters | Live | `phygs/simulation/` |
-| Tasks and evaluators | Live | `src/tests/robot_tests/tasks/` |
+| Layer | Where |
+| --- | --- |
+| The world and the agent session | `phygs/world/` (World, spec, task seam, truth, report), `phygs/session/` |
+| Public skill APIs | `phygs/skills/{locomotion,navigation,manipulation}/api.py`, `tests/robot_tests/tasks/object_search_api.py` |
+| Robot descriptions and assembly | `phygs/robots/` (`RobotDescription`, `RobotControl`; one folder per robot) |
+| Execution | `phygs/execution/` |
+| Simulation adapters, recording | `phygs/sim/`, `phygs/recording/` |
+| Scenes, runtime and observation pipeline | `phygs/scene/`, `phygs/runtime/`, `phygs/observations/` |
+| Tasks and evaluators | A benchmark's; the robot tests' own in `tests/robot_tests/tasks/` |
+
+The packages are layers that import downward only; the order, the rule and its test are in
+[docs/layout.md](docs/layout.md).
 
 ## Code map
 
 Public locomotion/navigation/manipulation APIs live in `phygs/skills/<name>/api.py`.
-During environment assembly, `RobotControl.create()` explicitly binds navigation
+During assembly, `RobotControl.create()` explicitly binds navigation
 through `LocomotionClient.bind_navigation()`. This one-time binding prevents direct
 motion while navigation is active or stopping. Agents continue to use the existing
 velocity, stop, and `navigate_to` commands. Nav2 terminal feedback preserves the
 original completion, cancellation, or failure reason after physical stopping.
-Execution lives in `phygs/execution`; observation helpers remain
-under `src/phygs/observations`. Robot assembly binds the two
-layers.
-The directory tree is in [phygs/README.md](phygs/README.md).
+Execution lives in `phygs/execution`; robot assembly (`robots/control.py`) binds it to the public
+clients, and the World (`world/world.py`) binds those to the scene and the agent.
 
 | Module | Responsibility |
 | --- | --- |
 | `runtime/episode.py` | Episode identity/status, integer clock, controller declarations, exclusive joints, bounded ownership, human authority, events. |
 | `runtime/pipeline.py` | Capture, task-wide permissions, agent and service views, processor reset and updates. |
 | `runtime/commands.py`, `runtime/timing.py` | Shared command bookkeeping; command durations to exact clock ticks. |
-| `simulation/world.py` | Single-environment IsaacLab snapshot restoration and one actuator-write/physics-step boundary. |
-| `simulation/observations.py` | IsaacLab measurement capture, publication rates, and filtering before delivery to agents. |
-| `simulation/maps.py` | Explicitly privileged box-geometry map provider, including physical object updates. |
-| `simulation/arm.py` | Isaac Lab differential IK for the wrist link. |
-| `simulation/footprint.py`, `simulation/scene_assets.py` | Live collision bounds; USD rigid-body registration for reset. |
+| `observations/types.py` | Permitted products, capture stamps, calibrated snapshots, and exact-time transform queries. |
+| `observations/localization.py` | Localization provider contract and explicitly privileged ground-truth mode. |
+| `observations/front_view.py`, `observations/color_detection.py` | The two front cameras joined into one view; reference colour detectors for diagnostic targets. |
+| `scene/registry.py` | Scenes by id: `scene_file(id, version)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes` (fetched releases, version checked), then `tests/robot_tests/scenes`; no spec holds a file path. |
+| `scene/fetch.py` | Scene releases from the dataset: download, verify, install with a record (`phygs scenes`). |
+| `scene/reader.py` | `UsdScene`: loads any scene USD from its config; objects, drawers, colliders and where an object starts are found in the file by name. |
+| `scene/parts.py`, `scene/storage_units.py`, `scene/assets.py`, `scene/types.py` | Drawers from prismatic joints; the house's storage units; USD rigid-body registration for reset; `ArticulatedPart`. |
+| `sim/state.py` | Single-environment Isaac Lab snapshot restoration and one actuator-write/physics-step boundary (`IsaacLabWorld`). |
+| `sim/observations.py`, `sim/cameras.py` | Isaac Lab measurement capture, publication rates, and filtering before delivery to agents. |
+| `sim/base.py`, `sim/arm.py`, `sim/footprint.py`, `sim/fabric.py` | `BaseLink` (the base link's world pose and velocity); Isaac Lab differential IK for the wrist link; live collision bounds; Fabric writes for rendering. |
+| `recording/` | The run's video, its panels, the command timeline and the skills' narration. |
+| `execution/locomotion/` | Runtime-owned leg targets; policy loading, preprocessing and inference; base controllers. |
+| `execution/navigation/` | Immutable occupancy maps, the known-box map (`known_map.py`), the Nav2 backend (adapter, ROS transport, servers), fine approach, footprint, metrics. |
+| `execution/manipulation/` | Joint/wrist controller, planning contract and worker, the arm planner host (`ArmPlanner`: known boxes and/or the robot's depth), independent path validation, planner adapters, body-frame boxes (`collision_map.py`). |
 | `robots/description.py` | `RobotDescription`: every robot fact, loaded and checked from `robots/<name>/robot.yaml` (no Isaac imports); `RobotInfo`, what agents read (`session.robot`). |
 | `robots/scene.py` | The robot's articulation, cameras and IMU from its description, the ground and the light; the simulation settings. |
 | `robots/control.py` | `RobotControl`: the robot's base controller (`base.kind`), runtime, execution components, pipeline and public clients, assembled once. |
 | `robots/spot/`, `robots/ridgeback_franka/` | One folder per robot: `robot.yaml` and the robot's own code (Spot: `SpotLegActuator`, the walking policy wrapper) and data (policy, calibrations, transit footprint). |
-| `simulation/base.py` | `BaseLink`: the base link's world pose and velocity (the root's for a floating root, the body's under a fixed root). |
 | `robots/posture.py` | Diagnostic arm interpolation used by `ArmClient`. |
-| `execution/locomotion/` | Runtime-owned leg targets; policy loading, preprocessing and inference. |
-| `execution/navigation/` | Immutable occupancy maps, the Nav2 backend (adapter, ROS transport, servers), fine approach, footprint, metrics. |
-| `execution/manipulation/` | Joint/wrist controller, planning contract and worker, the arm planner host (`ArmPlanner`: known boxes and/or the robot's depth), independent path validation, planner adapters. |
-| `helpers/observations/types.py` | Permitted products, capture stamps, calibrated snapshots, and exact-time transform queries. |
-| `helpers/observations/localization.py` | Localization provider contract and explicitly privileged ground-truth mode. |
-| `helpers/collision_map.py` | Robot voxels and body-frame boxes for arm planning. |
+| `session/session.py`, `session/hints.py` | `AgentSession` (action-filtered clients on the main thread, time requests, audit) and grant-checked privileged hints; `phygs.session` re-exports what agents use. |
+| `world/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); agents by name (`load_agent`); no Isaac imports. |
+| `world/task.py` | The task seam: the `Task` protocol the World takes (public goal and description, privileged target, `brief()`, `result()`, `provenance()`) and `NoTask`. The framework never imports a task. |
+| `world/world.py`, `world/build.py` | `World`: builds an episode (the pure steps in `build.py`: settings and overrides, refused combinations, cameras, observation access), owns the main-thread loop, runs an agent, stops, evaluates, writes the report. |
+| `world/truth.py` | `Truth`: ground truth for the evaluator and robot tests. |
+| `world/navigation.py` | Nav2 for the World: the live footprint check, the map source (known boxes or cameras), the servers. |
+| `world/report.py`, `world/recorder.py`, `world/provenance.py` | The report schema and its keys; the episode folder (`report.json`, arm `contacts` apart from the grasp's `grasp_contacts`, the video); robot and scene USD hashes over their layers, policy hashes, git commit. |
 | `tests/robot_tests/tasks/` | The robot tests' tasks, outside the framework: `load_task(block)` builds the task object from a spec's task block; `RetrieveTask` (brief and evaluator: held, stowed, upright, in time; conduct: unintended contact, drawers left open; thresholds in `retrieve.yaml`, hashed into provenance), point navigation and object search evaluators. A benchmark brings its own. |
-| `episodes/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); no Isaac imports. |
-| `episodes/scenes.py` | Scenes by id: `scene_file(id, version)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes` (fetched releases, version checked), then `tests/robot_tests/scenes`; no spec holds a file path. |
-| `episodes/task.py` | The task seam: the `Task` protocol the Environment takes (public goal and description, privileged target, `brief()`, `result()`, `provenance()`) and `NoTask`. The framework never imports `tasks/`. |
-| `episodes/environment.py` | `Environment`: builds an episode, owns the main-thread loop, runs an agent, ground truth for tests, report. |
-| `episodes/recorder.py` | The episode folder: `report.json` (arm `contacts` apart from the grasp's `grasp_contacts`), the video. |
-| `episodes/provenance.py` | The report's `provenance`: robot and scene USD hashes over their layers, policy hashes, git commit. |
-| `episodes/session.py`, `episodes/hints.py` | `AgentSession` (action-filtered clients on the main thread, time requests, audit) and grant-checked privileged hints. |
-| `simulation/scene.py` | `UsdScene`: loads any scene USD from its config; objects, drawers, colliders and where an object starts are found in the file by name. |
-| `agents/` | Agents (`run(session)`), importing only the session: `template`. |
+| `examples/agents/` | Example agents (`run(session)`), importing only `phygs.session`: `template`, `depth_example`. |
 
 ## Runtime: tick, ownership and reset
 
-One `EpisodeRuntime` owns one world. The environment runner calls
+One `EpisodeRuntime` runs each episode. The World calls
 `RobotControl.step()` once per physics tick (0.004 s). Agents never step physics.
 
 ```mermaid
 sequenceDiagram
-    participant R as Environment runner
+    participant R as World runner
     participant S as RobotControl.step()
     participant N as NavigationClient
     participant E as EpisodeRuntime.step()
@@ -220,14 +223,14 @@ joint angles in radians and durations in seconds or explicit integer ticks.
 
 `runtime/pipeline.py` separates task information permissions, captured products,
 agent-visible observations and private service views. It owns processor reset and
-updates. `helpers/observations/types.py` filters packets and reconstructs permitted
+updates. `observations/types.py` filters packets and reconstructs permitted
 transform graphs; hiding localization also removes global transforms.
-`helpers/observations/localization.py` defines a sensor-only estimator extension
+`observations/localization.py` defines a sensor-only estimator extension
 with explicit reference frame and capture-time poses. No estimator is required.
 
 Navigation factories own their dependencies and accept a `NavigationContext` with
 no map argument. The Nav2 factory gets its map source (known boxes or the depth cameras) from
-`simulation/navigation.py`; other stacks may consume observations and maintain their own representations.
+`world/navigation.py`; other stacks may consume observations and maintain their own representations.
 Framework-derived products are optional and retain their native snapshot types.
 The agent-facing skill APIs remain under `phygs/skills/`.
 
@@ -291,13 +294,13 @@ flowchart LR
 ```
 
 Navigation runs on Nav2 only; the built-in A* planner and follower were removed on 2026-10-25.
-`simulation/navigation.py` (`nav2_navigation`) builds it for the episode Environment and the
+`world/navigation.py` (`nav2_navigation`) builds it for the episode's World and the
 robot UI alike: it checks the live collision geometry against the measured footprint profile,
 chooses the map source and starts Nav2's servers (`backends/nav2_stack.py`). By default Nav2's
 obstacle layer maps the two front depth cameras' point clouds on a flat floor unknown beyond 1 m of
 the robot's start (`point_cloud.explored_radius`); the
 privileged `known_map` grant gives it the scene's boxes as a static map instead. The
-Environment does not build maps for navigation.
+World does not build maps for navigation.
 
 `RobotControl.navigation.navigate_to(x, y, heading)` submits a goal; the runtime step advances
 Nav2's control, locomotion and physics. Camera clouds are published between goals only while the
@@ -322,7 +325,7 @@ locomotion client, resource ownership, expiry and runtime clock. A goal is finis
 connection reuse. The simulator still owns emergency termination and the evaluator judges
 physical arrival.
 
-`simulation/footprint.py` projects live enabled collision bounds;
+`sim/footprint.py` projects live enabled collision bounds;
 `execution/navigation/footprint.py` accumulates and validates the measured envelope.
 The robot's measured transit footprint (`navigation.footprint_profile`; Spot's
 `robots/spot/navigation/transit.json`) records geometry, policy and asset identities. ROS launch
@@ -361,7 +364,7 @@ from the measured outline and padding. Episode IDs fence observations across res
 
 ### House scenes and exploration
 
-`simulation/scene_assets.py` registers existing USD rigid bodies before Spot is
+`scene/assets.py` registers existing USD rigid bodies before Spot is
 spawned, so the shared world snapshot restores the house as well as the robot.
 Ordinary joint-connected bodies retain their authored physics. Scene articulations
 require an explicit configuration and fail early in this registration path.
@@ -379,9 +382,9 @@ choose viewpoints themselves. No estimated-localization provider is required for
   cancellation, and measured feedback. Imports no grasp or collision library.
 - `phygs/execution/manipulation/controller.py`: quintic joint
   trajectories, convergence/stop checks, timeout, and arm/gripper ownership.
-- `phygs/simulation/arm.py`: Isaac Lab differential IK; world-frame
+- `phygs/sim/arm.py`: Isaac Lab differential IK; world-frame
   wrist-link pose and matching world Jacobian, including floating-base DoF indexing.
-- `simulation/world.py`: gravity feedforward for the configured implicit arm drives,
+- `sim/state.py`: gravity feedforward for the configured implicit arm drives,
   refreshed each physics tick; the shared world still owns all physical stepping.
 - `robots/control.py`: optional assembly with `manipulation=True` (the arm, gripper and tools of the robot's description). Navigation
   remains subject to its folded-arm envelope; basic manipulation is free-space only.
@@ -443,7 +446,7 @@ end-effector trajectories (`execute_trajectory`) and the gripper commands (see t
 
 Released scenes live in the scene dataset on Hugging Face as immutable releases (one scene id at
 one version: a ZIP, a manifest with its SHA-256 and USD entry point, a catalog listing every
-manifest). `phygs.scenes.fetch` downloads and verifies a release into the local scene cache and
+manifest). `phygs.scene.fetch` downloads and verifies a release into the local scene cache and
 writes a record the scene registry reads, so a spec pins `scene: {id, version}`; nothing downloads
 during a simulation. Authoring and publishing are in `scene_generation/usd_tools/` ([docs/scenes.md](docs/scenes.md)).
 
@@ -455,7 +458,7 @@ records under `CACHE/records/COMMIT/SCENE-VERSION.json`.
 | --- | --- |
 | `phygs/robots/spot/assets/` | Spot robot, cameras, URDF/USD, cuRobo config; `spot_description` (submodule) for the meshes. |
 | `tests/robot_tests/scenes/` | The authored test scenes (grid storage, navigation course, dynamic course), built by `scene_generation/usd_tools/build_*_scene.py`. |
-| `~/.cache/phygs/scenes` (`$PHYGS_SCENES`) | Fetched scene releases (`phygs.scenes.fetch`) and any local scene folder; specs name scenes by id. |
+| `~/.cache/phygs/scenes` (`$PHYGS_SCENES`) | Fetched scene releases (`phygs.scene.fetch`) and any local scene folder; specs name scenes by id. |
 | `scene_generation/infinigen/` | The Infinigen-Indoors fork: scene and object generation, USD export (its own Python environment). |
 | `scene_generation/usd_tools/` | Scene builders, the USD scope sorter, the packager and publisher, `scene_lib` checks. |
 
@@ -465,14 +468,14 @@ Benchmark launchers should reference assets explicitly through YAML config when 
 
 One entry point, `examples/run_world.py`, runs an episode spec (e.g. `tests/robot_tests/configs/episodes/*.yaml`) with
 an agent. The entry point builds the task object from the spec's task block (`phygs_robot_tests.tasks.load_task`) and
-passes it in; the `Environment` loads the spec's robot (`robot.model`, or `--robot`), finds the scene by id, builds it, creates `RobotControl` with the
+passes it in; the `World` loads the spec's robot (`robot.model`, or `--robot`), finds the scene by id, builds it, creates `RobotControl` with the
 spec's actions (`allowed_actions`) and grants (pipeline access, known-box navigation, object
 access for the skills, scene hints), and owns the simulation loop on the main thread. The agent runs
 `run(session)` in its own thread; every session call runs on the main thread between ticks, and
 simulated time passes only while the agent waits (`charged` clock) or always (`realtime`).
 Privileged information reaches agents only through granted `session.hints` calls and granted
-skill targets; `audit.jsonl` logs every call. The evaluator is separate and never given to the agent: at the end the Environment stops the robot (every command cancelled, the grip kept), settles, and calls it once.
-Robot tests hold the Environment and may read ground truth (`Environment.truth()`). Design and
+skill targets; `audit.jsonl` logs every call. The evaluator is separate and never given to the agent: at the end the World stops the robot (every command cancelled, the grip kept), settles, and calls it once.
+Robot tests hold the World and may read ground truth (`World.truth()`). Design and
 plan: [docs/design/episode_harness/index.html](docs/design/episode_harness/index.html).
 
 ## Tests
@@ -488,7 +491,7 @@ checks (`DIR/check.json`) and serves as the reference for using that part. A tes
 subject's real user would write: what an agent asks for (navigation, arm planning, pick and place,
 drawers, retrieve, the entry point) is an agent test, `episodes/check_*.py`: an episode spec, a plan
 through the agent session only, and checks on the test side from ground truth after the run
-(`Environment.truth()`) and during it (`Environment.run(during=...)`, called every tick). The
+(`World.truth()`) and during it (`World.run(during=...)`, called every tick). The
 machinery carrying out an agent's requests (stage and reset, sensors, gait, footprint, the arm's joint
 controller) has component tests, `components/check_*.py`, which drive the modules directly and build
 the robot from the files episodes use. All are automatic and headless by default and take
@@ -538,7 +541,7 @@ To add a new benchmark task:
 
 1. Add a task YAML with robot, scene, target, and timeout sections.
 2. Reference concrete USD assets and target prim paths.
-3. Add a task evaluator under `src/tests/robot_tests/tasks/` that reads physical state.
+3. Add a task evaluator under `tests/robot_tests/tasks/` (or a benchmark) that reads physical state.
 4. Save result artifacts.
 5. Add documentation and a check command.
 

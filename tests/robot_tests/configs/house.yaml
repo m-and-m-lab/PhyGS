@@ -3,7 +3,7 @@ robot:  # The robot is --robot (default spot); this is where it spawns.
   position: [10.2, 6.0, 0.6]  # The storage revision's robot start (configs/episodes/dev_house_drawer.yaml).
   rotation_wxyz: [1.0, 0.0, 0.0, 0.0]
 scene:
-  id: bear_loop_house  # Release 1.1.0 of the scene dataset, found by phygs.episodes.scenes.
+  id: bear_loop_house  # Release 1.1.0 of the scene dataset, found by phygs.scene.registry.
   version: 1.1.0
   dome_light_intensity: 2500.0
   dome_light_color: [0.75, 0.75, 0.75]

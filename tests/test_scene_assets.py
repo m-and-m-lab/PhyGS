@@ -6,7 +6,7 @@
 import pytest
 from pxr import Usd, UsdGeom, UsdPhysics
 
-from phygs.simulation.scene_assets import validate_spawn_disk
+from phygs.scene.assets import validate_spawn_disk
 
 
 def test_spawn_prior_rejects_collider_and_accepts_clear_disk():
@@ -32,7 +32,7 @@ def test_floor_below_height_band_does_not_block_spawn():
 def test_scene_bodies_register_as_one_collection_named_by_path():
     from types import SimpleNamespace
 
-    from phygs.simulation.scene_assets import SCENE_BODIES, register_scene_bodies
+    from phygs.scene.assets import SCENE_BODIES, register_scene_bodies
 
     stage = Usd.Stage.CreateInMemory()
     for path in ("/World/objects/drawer", "/World/objects/bowl"):
@@ -85,7 +85,7 @@ class SimpleData:
 def test_scene_bodies_read_and_write_one_body_by_path():
     import torch
 
-    from phygs.simulation.scene_assets import SCENE_BODIES, SceneBodies
+    from phygs.scene.assets import SCENE_BODIES, SceneBodies
 
     collection = FakeCollection(["/World/objects/drawer", "/World/objects/bowl"])
     bodies = SceneBodies({SCENE_BODIES: collection})
@@ -112,7 +112,7 @@ def test_world_restores_the_scene_bodies_and_drops_held_forces():
     import torch
     from fakes import FakeRobot, FakeScene, isaaclab_world
 
-    from phygs.simulation.scene_assets import SCENE_BODIES
+    from phygs.scene.assets import SCENE_BODIES
 
     collection = FakeCollection(["/World/objects/drawer", "/World/objects/bowl"])
     scene = FakeScene(FakeRobot(("leg",)), collections={SCENE_BODIES: collection})

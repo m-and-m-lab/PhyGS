@@ -15,7 +15,6 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageFilter
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux, UsdPhysics, UsdShade
 
 OUTPUT = Path(__file__).resolve().parents[1] / "outdoor_scene"

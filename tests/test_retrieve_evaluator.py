@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-from phygs.episodes.task import NoTask, Task
 from phygs_robot_tests.tasks import load_task
 from phygs_robot_tests.tasks.retrieve import THRESHOLDS, RetrieveTask, load_thresholds
+
+from phygs.world.task import NoTask, Task
 
 
 class FakeTruth:

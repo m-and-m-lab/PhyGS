@@ -500,7 +500,7 @@ def test_plan_puts_the_hand_where_move_to_pose_would():
 
 
 def test_cancelling_an_arm_move_while_holding_keeps_the_grip():
-    """The Environment's stop at the end cancels the running arm command; the held object must stay
+    """The World's stop at the end cancels the running arm command; the held object must stay
     in the hand: the gripper setpoint survives the stop and the release."""
     world, controller, runtime, client = setup(object_at=-0.4)
     client.open_gripper()

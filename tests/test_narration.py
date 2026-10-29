@@ -7,7 +7,7 @@
 
 import logging
 
-from phygs.tools.narration import Narration
+from phygs.recording.narration import Narration
 
 
 def test_narration_keeps_every_step_with_sim_time_and_the_latest_per_kind(capsys):

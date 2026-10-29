@@ -41,7 +41,7 @@ body_from_optical = observation.transform("body", camera.frame, camera.stamp)
 points_body = points_optical @ body_from_optical[:3, :3].T + body_from_optical[:3, 3]
 ```
 
-The environment runner continues calling `robot.step()`; an agent only consumes
+The World keeps calling `robot.step()`; an agent only consumes
 observations and submits commands. Existing users that omit `observations` incur
 no sensor capture work. Calling `observe()` without configuration fails explicitly.
 

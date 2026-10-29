@@ -15,7 +15,7 @@ Layers, the runtime tick and data flow are in [ARCHITECTURE.md](../../ARCHITECTU
 
 ## API Boundary
 
-Agents receive an assembled robot and call its clients. The environment runner
+Agents receive an assembled robot and call its clients. The World
 owns `robot.step()`:
 
 ```python

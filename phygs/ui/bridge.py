@@ -22,7 +22,7 @@ from typing import Any
 
 import numpy as np
 
-from phygs.tools.front_view import CameraFrame
+from phygs.observations.front_view import CameraFrame
 
 
 @dataclass(frozen=True)

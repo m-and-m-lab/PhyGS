@@ -246,7 +246,7 @@ Every skill says what it does now, one line per step, on the logger
 view`), `navigation` (goal, route, replans, turning to the heading, each status change) and
 `locomotion` (each new velocity command, `stop`). The current manipulation step is also
 `SkillFeedback.step`. `RobotControl.create` attaches a collector (`control.narration`,
-`phygs.tools.narration.Narration`) that prints each line with the episode
+`phygs.recording.narration.Narration`) that prints each line with the episode
 time, keeps the latest line per kind for video overlays (`lines()`), and keeps them all
 (`log`). Checks may add their own lines on `phygs.skills.check`.
 
@@ -361,7 +361,7 @@ History; `pick`, `place` and `move_along_axis` below were removed on 2026-10-18.
 4. **Done (2026-10-08):** `open` and `close` for drawers, and an approach direction for
    `pick`. Built in six sub-steps, each tested before the next: API (unit tests on the
    client), approach direction (top-down poses unchanged), the backends (handle grasp,
-   straight pull, release), the part source (`simulation/parts.py`), the robot test
+   straight pull, release), the part source (`scene/parts.py`), the robot test
    (`check_manipulation_planning.py --task drawer`, a Bear-house-style storage unit), and
    the gate. Gate (`output_check/gate4`): 24/24 runs, 6 layouts × known boxes / depth ×
    MoveIt / cuRobo. Openings within 6 mm of the request (0.20, 0.25 m, and to the limit),

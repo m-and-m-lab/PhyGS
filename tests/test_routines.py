@@ -15,14 +15,14 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from fakes import SPOT
-from scipy.spatial.transform import Rotation
-
-from phygs.episodes.session import AgentFailed, SkillFailure, TargetHint, TrajectoryRefused
 from phygs_robot_tests import routines
 from phygs_robot_tests.episodes.check_retrieve import plan
 from phygs_robot_tests.routines import PARAMS, arm, base
 from phygs_robot_tests.routines import drawer as strokes
 from phygs_robot_tests.routines.geometry import quaternion
+from scipy.spatial.transform import Rotation
+
+from phygs.session import AgentFailed, SkillFailure, TargetHint, TrajectoryRefused
 
 DRAWER = SimpleNamespace(
     handle_center=(0.0, 2.56, 0.465),

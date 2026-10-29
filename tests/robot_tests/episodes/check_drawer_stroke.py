@@ -40,14 +40,14 @@ def main() -> None:
 
     def body() -> None:
         seen = {}
-        with episode.environment(args, spec) as environment:
-            report = environment.run(lambda session: plan(session, seen), name="check_drawer_stroke.plan")
+        with episode.world(args, spec) as world:
+            report = world.run(lambda session: plan(session, seen), name="check_drawer_stroke.plan")
             episode.agent_checks(check, report)
             planned, opened = seen["planned_m"], seen["opened_m"]
             check.measure("planned_m", round(planned, 4), planned >= settings["stroke_min_opening_m"], "pull too short")
             least = planned - settings["opening_tolerance_m"]
             check.measure("opened_m", round(opened, 4), opened >= least, f"opened less than {least} m")
-            closed = environment.truth().part(seen["drawer"]).opening
+            closed = world.truth().part(seen["drawer"]).opening
             check.measure("closed_m", round(closed, 4), closed <= settings["closed_max_m"], "the drawer did not close")
 
     check.run(body)

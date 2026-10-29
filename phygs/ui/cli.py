@@ -12,9 +12,9 @@ there are two) and its look (hand) camera, navigation's own map (Nav2's costmap)
 the skill step lines and the commands. ``--robot`` overrides the spec's robot.
 
 The episode is an episode spec (docs/design/episode_harness) run by the same
-:class:`~phygs.episodes.environment.Environment` as every agent's: the person is the
+:class:`~phygs.world.World` as every agent's: the person is the
 agent (:class:`~phygs.ui.session.UiSession`, every action an audited session call
-within the spec's actions and grants) and the page is its viewer. The Environment writes the episode
+within the spec's actions and grants) and the page is its viewer. The World writes the episode
 report (``report.json``, with the task's evaluation) and ``audit.jsonl``; the UI adds
 ``ui_summary.json``, ``ui_log.jsonl``, ``telemetry.jsonl`` and a ``recording`` that ``replay_cli.py``
 plays back. ``phygs/configs/ui/house_drawer.yaml`` runs the Bear house. The episode ends with End, the
@@ -79,9 +79,6 @@ app = AppLauncher(args).app
 
 import yaml
 
-from phygs.episodes.environment import Environment
-from phygs.episodes.spec import EpisodeSpec
-from phygs.episodes.task import Task, load_task
 from phygs.execution.manipulation.planners.model import link_transforms
 from phygs.robots.description import load_robot
 from phygs.ui import schema
@@ -89,6 +86,9 @@ from phygs.ui.bridge import Bridge
 from phygs.ui.recording import Recorder
 from phygs.ui.server import UiServer
 from phygs.ui.session import RUNNING, UiSession
+from phygs.world import World
+from phygs.world.spec import EpisodeSpec
+from phygs.world.task import Task, load_task
 
 
 def ui_cameras(robot) -> tuple[str, ...]:
@@ -150,7 +150,7 @@ def main() -> int:
     """Run the episode until it ends, then serve its result; returns the exit code (0: ended normally)."""
     config = yaml.safe_load(args.config.read_text())
     spec = EpisodeSpec.load(args.spec)
-    task = load_task(spec.task, args.task_loader)  # The page's brief and the Environment's evaluation come from it.
+    task = load_task(spec.task, args.task_loader)  # The page's brief and the World's evaluation come from it.
     robot = load_robot(args.robot or spec.robot.model)
     cameras, front = ui_cameras(robot), robot.cameras_for("front")
     front = front if len(front) == 2 else ()  # Two cameras make the stitched Front view.
@@ -176,7 +176,7 @@ def main() -> int:
         telemetry_path=args.output / "telemetry.jsonl",
         demo=tour if args.demo == "tour" else None,
     )
-    environment = Environment(
+    world = World(
         spec, args.output, clock="realtime", device=args.device, viewer=ui, hold_clock=True, robot=robot, task=task
     )
     recorder = Recorder(args.output / "recording")
@@ -184,22 +184,22 @@ def main() -> int:
     exit_code = 1
     started = time.monotonic()
     try:
-        environment.reset()  # Settled, the planner up and the skills bound before the page opens.
-        planner = environment.planner
+        world.reset()  # Settled, the planner up and the skills bound before the page opens.
+        planner = world.planner
         if planner is not None:
             urdf = planner.model["urdf"]
             ui.bind(forward=lambda joints: link_transforms(urdf, joints))
         ui.bind(
             health=lambda: dict(
-                pipeline=environment.control.pipeline.metrics,
+                pipeline=world.control.pipeline.metrics,
                 planner=None if planner is None else planner.status(),
             )
         )
-        joint_limits = environment.scene["robot"].data.soft_joint_pos_limits.torch[0].cpu().tolist()
-        names = environment.scene["robot"].joint_names
+        joint_limits = world.scene["robot"].data.soft_joint_pos_limits.torch[0].cpu().tolist()
+        names = world.scene["robot"].joint_names
         arm_limits = {name: joint_limits[names.index(name)] for name in robot.arm.joints}
         hello.update(
-            episode_id=environment.control.runtime.episode_id,
+            episode_id=world.control.runtime.episode_id,
             skills=schema.skills(
                 config["drive"],
                 arm_limits,
@@ -208,7 +208,7 @@ def main() -> int:
                 actions=spec.actions,
                 hand_view=robot.look_camera,
             ),
-            arm_backend=environment.settings["planner"]["backend"] if planner is not None else "none",
+            arm_backend=world.settings["planner"]["backend"] if planner is not None else "none",
         )
         token = args.token or secrets.token_urlsafe(9)
         server = UiServer(
@@ -240,7 +240,7 @@ def main() -> int:
             threading.Timer(args.max_wall_seconds, stop).start()
         if args.autostart or args.demo != "none":
             bridge.request(dict(type="episode", action="start"))
-        report = environment.run(ui.agent, name="robot_ui")
+        report = world.run(ui.agent, name="robot_ui")
         shown = ui.show_report(report)
         (args.output / "ui_summary.json").write_text(json.dumps(shown, indent=1))
         timing = dict(
@@ -251,11 +251,11 @@ def main() -> int:
             ended_by=report["ended_by"],
             truth=dict(  # For reviewers; never on the page.
                 drawer_openings_m={
-                    name: float(environment.scene_def.part(name).opening) for name in environment.scene_def.part_names
+                    name: float(world.scene_def.part(name).opening) for name in world.scene_def.part_names
                 },
                 target_position_m=None
                 if task.target is None
-                else environment.scene_def.object_pose(task.target)[:3, 3].tolist(),
+                else world.scene_def.object_pose(task.target)[:3, 3].tolist(),
             ),
         )
         (args.output / "timing.json").write_text(json.dumps(timing, indent=1))
@@ -274,7 +274,7 @@ def main() -> int:
             server.stop()
         recorder.close()
         ui.close()
-        environment.close()
+        world.close()
         bridge.close()
     return exit_code
 

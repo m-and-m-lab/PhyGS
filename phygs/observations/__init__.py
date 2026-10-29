@@ -3,4 +3,5 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Timestamped observations with explicit information permissions."""
+"""Timestamped observations with explicit information permissions (:mod:`.types`), localization, and
+helpers that read observations: the stitched front view and the reference colour detectors."""

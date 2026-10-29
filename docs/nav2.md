@@ -3,7 +3,7 @@
 The agent API stays `robot.navigation.navigate_to(x, y, heading=None, ...)`. Navigation runs on
 ROS 2 Jazzy Nav2: Smac Lattice plans, MPPI (Omni) follows. The built-in A* planner and follower
 were removed on 2026-10-25. Episodes and the robot UI build it with
-`phygs.simulation.navigation.nav2_navigation` (footprint check, map source, servers;
+`phygs.world.navigation.nav2_navigation` (footprint check, map source, servers;
 see [navigation](navigation.md#public-api)); diagnostics can bind the factory directly:
 
 ```python

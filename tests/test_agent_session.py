@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 from fakes import SPOT
 
-from phygs.episodes.hints import PrivilegedHints
-from phygs.episodes.session import (
+from phygs.session.hints import PrivilegedHints
+from phygs.session.session import (
     AgentSession,
     Audit,
     Command,
@@ -117,7 +117,7 @@ def make_session(tmp_path, grants=("object_targets", "scene_hints")):
 
 
 def run(world, main, agent, *, clock="charged", end_after=None):
-    """The Environment's loop: serve requests; step only while the agent waits (charged clock)."""
+    """The World's loop: serve requests; step only while the agent waits (charged clock)."""
     world.thread = threading.current_thread()
     outcome = {}
 
@@ -299,7 +299,7 @@ def test_feedback_that_carries_the_session_command_id_is_audited():
     feedback to JSON and could not copy a Command (the depth example agent crashed, 2026-10-25)."""
     import copy
 
-    from phygs.episodes.session import Command, jsonable
+    from phygs.session.session import Command, jsonable
 
     @dataclass(frozen=True)
     class Feedback:

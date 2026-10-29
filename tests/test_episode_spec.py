@@ -16,7 +16,7 @@ import pytest
 import yaml
 from phygs_robot_tests.tasks import load_task
 
-from phygs.episodes.spec import ACTION_SETS, ACTIONS, EpisodeSpec, load_agent
+from phygs.world.spec import ACTION_SETS, ACTIONS, EpisodeSpec, load_agent
 
 PROJECT = Path(__file__).resolve().parents[1]
 EPISODES = PROJECT / "tests" / "robot_tests" / "configs" / "episodes"
@@ -186,7 +186,7 @@ def test_task_blocks_are_validated_by_the_task_package_not_the_spec(block, messa
 
 def test_agents_resolve_by_name_or_by_file(tmp_path):
     name, run = load_agent("template")
-    assert name == "template" and run.__module__ == "phygs.agents.template"
+    assert name == "template" and run.__module__ == "agent_template"
     script = tmp_path / "mine.py"
     script.write_text("def go(session):\n    return 'went'\n")
     assert load_agent(f"{script}:go")[1](None) == "went"

@@ -20,9 +20,9 @@ from phygs.execution.navigation.footprint import (
     path_error,
     transit_footprint,
 )
+from phygs.execution.navigation.known_map import BoxGeometry, KnownBoxMap
 from phygs.execution.navigation.map import RectangleFootprint
 from phygs.execution.navigation.metrics import NavigationMeasurements
-from phygs.simulation.maps import BoxGeometry, KnownBoxMap
 
 
 def test_swept_hull_includes_motion_and_enclosing_radius():
@@ -135,7 +135,7 @@ def test_collision_geometry_identity_does_not_depend_on_where_the_robot_stands()
 
     from pxr import Gf, Usd, UsdGeom, UsdPhysics
 
-    from phygs.simulation.footprint import CollisionFootprint
+    from phygs.sim.footprint import CollisionFootprint
 
     def identity(position, yaw):
         stage = Usd.Stage.CreateInMemory()

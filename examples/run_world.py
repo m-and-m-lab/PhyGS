@@ -32,12 +32,14 @@ sys.path.insert(0, str(PROJECT))  # Runs from a checkout without pip install.
 
 from isaaclab.app import AppLauncher
 
-from phygs.episodes.spec import EpisodeSpec, load_agent
-from phygs.episodes.task import load_task
+from phygs.world.spec import EpisodeSpec, load_agent
+from phygs.world.task import load_task
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("--spec", type=Path, required=True, help="Episode spec YAML")
-parser.add_argument("--agent", required=True, help="A name in phygs.agents, or path/to/file.py:function")
+parser.add_argument(
+    "--agent", required=True, help="An example agent by name (examples/agents: template), or path/to/file.py:function"
+)
 parser.add_argument("--output", type=Path, required=True, help="A fresh output folder (date-time prefix)")
 parser.add_argument("--clock", choices=("charged", "realtime"), default="charged")
 parser.add_argument("--record", action="store_true", help="Write a third-person video")
@@ -60,18 +62,18 @@ if (args.output / "report.json").exists():
     parser.error(f"{args.output} holds a finished episode; choose a fresh output folder")
 app = AppLauncher(args).app
 
-from phygs.episodes.environment import Environment  # noqa: E402 (after the app starts)
 from phygs.robots.description import load_robot  # noqa: E402 (numpy before Kit can crash its start)
+from phygs.world import World  # noqa: E402 (after the app starts)
 
 robot = load_robot(args.robot or spec.robot.model)
 robot.validate_urdf()
 
 
 def main() -> int:
-    with Environment(
+    with World(
         spec, args.output, clock=args.clock, record=args.record, device=args.device, robot=robot, task=task
-    ) as environment:
-        report = environment.run(agent, name=agent_name)
+    ) as world:
+        report = world.run(agent, name=agent_name)
     print(
         f"Episode {spec.id}: ended by {report['ended_by']} ({report['agent_outcome']['outcome']}),"
         f" evaluation {report['evaluation']['outcome']}, {report['sim_seconds']} s simulated;"

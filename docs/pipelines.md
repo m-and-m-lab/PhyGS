@@ -162,7 +162,7 @@ selected cameras without exposing world localization.
 Direct locomotion while navigation is active is rejected. Cancel navigation, let
 the environment run until its controlled stop completes, then submit direct motion.
 Public navigation feedback omits the planned path because it can reveal private
-localization and map geometry. The environment runner uses private diagnostics for
+localization and map geometry. The World uses private diagnostics for
 visualization and measurement. Navigation's internal motion commands still pass
 through runtime ownership/expiry.
 Emergency termination cannot resume the same episode.
@@ -195,7 +195,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest \
 ```
 
 The obstacle-avoidance test reads ground truth and Nav2's costmap on the test side
-(`Environment.truth()`, the navigation backend); neither reaches the agent.
+(`World.truth()`, the navigation backend); neither reaches the agent.
 
 The [dedicated Nav2 robot test](nav2.md#dedicated-spotnav2-pipeline-test) launches
 real planner/controller servers alongside Spot for the house search, on camera point-cloud

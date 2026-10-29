@@ -14,11 +14,11 @@ import numpy as np
 import torch
 from fakes import SPOT
 
-from phygs.episodes.viewer import EpisodeView
+from phygs.observations.front_view import CameraFrame
 from phygs.runtime.episode import EpisodeStatus
-from phygs.tools.front_view import CameraFrame
 from phygs.ui.bridge import Bridge
 from phygs.ui.session import UiSession
+from phygs.world.viewer import EpisodeView
 
 ARM_JOINTS = SPOT.arm.joints
 
@@ -158,7 +158,7 @@ class AgentSession:
         raise AttributeError(name)
 
     def _check(self):
-        from phygs.episodes.session import EpisodeEnded
+        from phygs.session.session import EpisodeEnded
 
         if self.ended is not None:
             raise EpisodeEnded(self.ended)

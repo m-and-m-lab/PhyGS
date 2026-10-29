@@ -43,8 +43,8 @@ from phygs.robots.control import RobotControl, base_controller_class  # noqa: E4
 from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
-from phygs.simulation.base import BaseLink  # noqa: E402
-from phygs.simulation.footprint import CollisionFootprint  # noqa: E402
+from phygs.sim.base import BaseLink  # noqa: E402
+from phygs.sim.footprint import CollisionFootprint  # noqa: E402
 
 
 def run(report):

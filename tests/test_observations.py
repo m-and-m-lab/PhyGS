@@ -14,7 +14,7 @@ from fakes import FakeRobot, FakeScene, FakeWorld, ObservationScene, array, isaa
 
 from phygs.observations.types import CameraPermission, ObservationConfig, Stamp
 from phygs.runtime.episode import EpisodeRuntime, EpisodeStatus, RunMode
-from phygs.simulation.observations import IsaacLabObservations, pose_matrix
+from phygs.sim.observations import IsaacLabObservations, pose_matrix
 
 
 def source(scene=None, **kwargs):
@@ -264,7 +264,7 @@ def test_default_camera_rate_and_capture_time_rendering():
 
 
 def test_fabric_pose_writes_only_in_the_step_before_each_capture():
-    from phygs.simulation.fabric import FabricTransformWrites
+    from phygs.sim.fabric import FabricTransformWrites
 
     class Writes:
         enabled = True

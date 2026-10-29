@@ -147,7 +147,7 @@ class NavigationClient:
         self._backend.reset()
 
     def update(self) -> None:
-        """Environment-owned backend tick; agents do not call this method."""
+        """World-owned backend tick; agents do not call this method."""
         self._backend.update()
 
     def close(self) -> None:

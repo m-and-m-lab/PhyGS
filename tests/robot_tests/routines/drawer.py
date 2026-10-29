@@ -13,7 +13,7 @@ import numpy as np
 from phygs_robot_tests.routines import PARAMS, TOOLS, arm, base
 from phygs_robot_tests.routines.geometry import rotation_about
 
-from phygs.episodes.session import AgentFailed
+from phygs.session import AgentFailed
 
 
 def place_spot(session, name: str, size: tuple[float, float, float]) -> np.ndarray:

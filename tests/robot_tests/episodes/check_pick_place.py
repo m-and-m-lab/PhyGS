@@ -30,7 +30,7 @@ from phygs_robot_tests.episodes import episode
 from phygs_robot_tests.routines import PARAMS, arm
 from phygs_robot_tests.routines.geometry import matrix, xyzw
 
-from phygs.episodes.session import AgentFailed
+from phygs.session import AgentFailed
 
 SETTINGS = yaml.safe_load((episode.CONFIGS / "pick_place.yaml").read_text())
 CARRY = ("refused carry", "after refusal", "carry over clutter", "carry back")  # The held object must not touch.
@@ -111,28 +111,28 @@ def main() -> None:
     target = spec.task["target"]
 
     def body() -> None:
-        with episode.environment(args, spec, planner=args.planner) as environment:
-            truth = environment.truth()
-            start_center, size = environment.scene_def.initial_box(target)
+        with episode.world(args, spec, planner=args.planner) as world:
+            truth = world.truth()
+            start_center, size = world.scene_def.initial_box(target)
             furniture = ("table", "clutter")
             closest = {name: math.inf for name in furniture}
 
-            def snapshot(environment, step: str) -> dict:
-                center, _ = episode.body_box(environment, target)
-                taken = dict(wrist=episode.wrist_pose(environment), target_center=center)
-                taken["planner_result"] = (environment.planner.last_plan or {}).get("result")
+            def snapshot(world, step: str) -> dict:
+                center, _ = episode.body_box(world, target)
+                taken = dict(wrist=episode.wrist_pose(world), target_center=center)
+                taken["planner_result"] = (world.planner.last_plan or {}).get("result")
                 if step == "picked":
-                    taken["gripper_bottom"] = episode.jaw_bottom(environment)
+                    taken["gripper_bottom"] = episode.jaw_bottom(world)
                 return taken
 
-            def each_tick(environment, step: str) -> None:
+            def each_tick(world, step: str) -> None:
                 if step in CARRY:  # The held object against the furniture while carried.
-                    held = episode.body_box(environment, target)
+                    held = episode.body_box(world, target)
                     for name in furniture:
-                        closest[name] = min(closest[name], gap(held, episode.body_box(environment, name)))
+                        closest[name] = min(closest[name], gap(held, episode.body_box(world, name)))
 
             steps = episode.Steps(snapshot, each_tick)
-            report = environment.run(
+            report = world.run(
                 lambda session: plan(session, steps, known_map), name="check_pick_place.plan", during=steps
             )
             check.data.update(results=steps.results)
@@ -181,7 +181,7 @@ def main() -> None:
             check.measure("place_error_m", round(offset, 4), offset <= tolerance["position_m"])
             check.measure("place_height_error_m", round(height, 4), abs(height) <= tolerance["height_m"])
             check.measure("place_tilt_deg", round(tilt, 2), tilt <= tolerance["tilt_deg"])
-            held_thresholds = environment.task.thresholds  # One definition of "held": the task's evaluator's.
+            held_thresholds = world.task.thresholds  # One definition of "held": the task's evaluator's.
             held = truth.held(target, lift_m=held_thresholds["held_lift_m"], reach_m=held_thresholds["held_reach_m"])
             check.measure("released", not held, not held, "still in the hand")
             error = truth.stow_error_rad()

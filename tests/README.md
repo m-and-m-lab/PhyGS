@@ -178,9 +178,9 @@ Authenticate once with access to the private dataset:
 Discover available scenes, then download one complete scene:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/scenes/fetch.py list
+./isaaclab.sh -p scripts/PhyGS/phygs/scene/fetch.py list
 
-./isaaclab.sh -p scripts/PhyGS/phygs/scenes/fetch.py fetch \
+./isaaclab.sh -p scripts/PhyGS/phygs/scene/fetch.py fetch \
   --scene_id bear_loop_house --scene_version 1.0.0 \
   --cache_dir scripts/.scene_usd/cache
 ```
@@ -207,7 +207,7 @@ download. Do not modify or commit cached files or generated records.
 For benchmark configurations in this repository, the checked-in YAML pins a version:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/scenes/fetch.py fetch \
+./isaaclab.sh -p scripts/PhyGS/phygs/scene/fetch.py fetch \
   --config scripts/PhyGS/configs/scenes/bear_loop_house.yaml \
   --cache_dir scripts/.scene_usd/cache \
   --record scripts/.scene_usd/cache/bear_loop_house.json

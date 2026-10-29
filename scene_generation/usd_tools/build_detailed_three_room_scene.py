@@ -15,7 +15,6 @@ from pathlib import Path
 
 import numpy as np
 from build_three_room_scene import House
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, Vt
 
 SCENES = Path(__file__).resolve().parents[1]

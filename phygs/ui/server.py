@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from aiohttp import WSMsgType, web
 
-from phygs.tools.front_view import CameraFrame, FrontStitcher, FrontView, depth_colors
+from phygs.observations.front_view import CameraFrame, FrontStitcher, FrontView, depth_colors
 from phygs.ui.bridge import Bridge
 from phygs.ui.codecs import binary_message, jpeg, map_png
 from phygs.ui.recording import Recorder

@@ -26,7 +26,7 @@ import numpy as np
 import yaml
 from phygs_robot_tests.episodes import episode
 
-from phygs.episodes.session import AgentFailed, PointTarget
+from phygs.session import AgentFailed, PointTarget
 
 SETTINGS = yaml.safe_load((episode.CONFIGS / "arm_planning.yaml").read_text())
 
@@ -100,36 +100,36 @@ def plan(session, steps: episode.Steps) -> None:
     session.sleep(0.5)
 
 
-def snapshot(environment, step: str) -> dict:
+def snapshot(world, step: str) -> dict:
     """At each step's first tick: the time, the base, the wrist, and (once the planner runs) its
     model against the physical links."""
-    base = environment.truth().base_pose()
+    base = world.truth().base_pose()
     taken = dict(
-        time_s=round(environment.control.runtime.time_seconds, 3),
+        time_s=round(world.control.runtime.time_seconds, 3),
         base_xy=base[:2, 3].tolist(),
-        wrist=episode.wrist_pose(environment),
-        planner_result=(environment.planner.last_plan or {}).get("result"),
+        wrist=episode.wrist_pose(world),
+        planner_result=(world.planner.last_plan or {}).get("result"),
     )
-    if environment.planner.model:
-        taken["alignment"] = episode.link_alignment(environment)
+    if world.planner.model:
+        taken["alignment"] = episode.link_alignment(world)
     if step == "look held":
-        taken["camera"] = hand_view(environment)
+        taken["camera"] = hand_view(world)
     return taken
 
 
-def hand_view(environment) -> dict:
+def hand_view(world) -> dict:
     """The look camera's latest frame (the one look_at aims): capture time [s] and its world pose (4x4)."""
-    packet = environment.control.observe()
-    camera = packet.cameras[environment.robot.look_camera]
+    packet = world.control.observe()
+    camera = packet.cameras[world.robot.look_camera]
     pose = packet.transform("world", camera.frame, camera.stamp).cpu().numpy()
     return dict(stamp_s=camera.stamp.time_seconds, pose=pose, rgb=camera.rgb.cpu().numpy())
 
 
-def wrist_goal(environment, hand_goal) -> tuple[float, ...]:
+def wrist_goal(world, hand_goal) -> tuple[float, ...]:
     """The wrist pose [x, y, z, qx, qy, qz, qw] that puts the robot's hand tool at ``hand_goal``."""
     from phygs_robot_tests.routines.geometry import matrix, xyzw
 
-    return xyzw(matrix(hand_goal) @ np.linalg.inv(environment.robot.tool("hand")))
+    return xyzw(matrix(hand_goal) @ np.linalg.inv(world.robot.tool("hand")))
 
 
 def view_errors(camera_pose: np.ndarray, point) -> tuple[float, float, float]:
@@ -150,19 +150,19 @@ def main() -> None:
     check.data.update(planner=args.planner, known_map="known_map" in spec.grants, settings=SETTINGS)
 
     def body() -> None:
-        with episode.environment(args, spec, planner=args.planner) as environment:
-            audit = episode.geometry_audit(environment, SETTINGS["geometry_cell_size"])
+        with episode.world(args, spec, planner=args.planner) as world:
+            audit = episode.geometry_audit(world, SETTINGS["geometry_cell_size"])
             check.data["geometry_audit"] = audit
             check.measure("geometry_audit_qualified", audit["qualified"], audit["qualified"], "robot geometry coverage")
-            cameras = episode.CameraTiming(environment, environment.robot.cameras_for("planning"))
-            render = environment.render_ticks
+            cameras = episode.CameraTiming(world, world.robot.cameras_for("planning"))
+            render = world.render_ticks
 
-            def each_tick(environment, step: str) -> None:
-                if environment.control.runtime.tick % render == 0:
-                    cameras(environment)
+            def each_tick(world, step: str) -> None:
+                if world.control.runtime.tick % render == 0:
+                    cameras(world)
 
             steps = episode.Steps(snapshot, each_tick)
-            report = environment.run(lambda session: plan(session, steps), name="check_arm_planning.plan", during=steps)
+            report = world.run(lambda session: plan(session, steps), name="check_arm_planning.plan", during=steps)
             check.data.update(results=steps.results, commands=len(report["commands"]))
             episode.agent_checks(check, report, levels=("skills", "motion"))
             snaps = steps.snapshots
@@ -184,7 +184,7 @@ def main() -> None:
             # The reached poses, the cancel, the stow.
             tolerance = SETTINGS["pose_tolerance"]
             for name, goal in SETTINGS["poses"].items():  # The wrist where the hand goal puts it.
-                position, rotation = episode.pose_error(snaps[f"at {name}"]["wrist"], wrist_goal(environment, goal))
+                position, rotation = episode.pose_error(snaps[f"at {name}"]["wrist"], wrist_goal(world, goal))
                 ok = position <= tolerance["position_m"] and rotation <= tolerance["rotation_rad"]
                 check.measure(f"pose_{name}_error", dict(m=round(position, 4), rad=round(rotation, 4)), ok)
             cancel, limits = steps.results["cancel"], SETTINGS["cancel"]
@@ -193,7 +193,7 @@ def main() -> None:
             check.measure(
                 "cancel_speed_radps", round(cancel["speed_radps"], 4), cancel["speed_radps"] <= limits["speed_radps"]
             )
-            error = environment.truth().stow_error_rad()
+            error = world.truth().stow_error_rad()
             check.measure("stow_error_rad", round(error, 4), error <= SETTINGS["stow_tolerance_rad"], "not stowed")
             walked = float(np.linalg.norm(np.subtract(snaps["walked"]["base_xy"], snaps["walk"]["base_xy"])))
             check.measure("walk_distance_m", round(walked, 3), walked >= SETTINGS["walk"]["minimum_distance_m"])
@@ -205,8 +205,8 @@ def main() -> None:
             rotation = max(item["rotation_rad"] for item in aligned)
             ok = worst["position_m"] <= fk["position_m"] and rotation <= fk["rotation_rad"]
             check.measure("planner_link_alignment", dict(worst, rotation_rad=rotation), ok, "model off the links")
-            raised = dict(zip(environment.robot.arm.joints, environment.robot.planning.default_joints, strict=True))
-            refused = episode.blocked_start(environment, raised)
+            raised = dict(zip(world.robot.arm.joints, world.robot.planning.default_joints, strict=True))
+            refused = episode.blocked_start(world, raised)
             check.data["blocked_start"] = refused
             check.measure("blocked_start_refused", not refused["success"], not refused["success"], "accepted")
 

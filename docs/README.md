@@ -10,13 +10,12 @@ decisions behind them.
 | --- | --- |
 | Install, run, first commands | [README.md](../README.md) |
 | How the system fits together: layers, runtime tick, navigation flow (with diagrams) | [ARCHITECTURE.md](../ARCHITECTURE.md) |
-| The package layout, module by module, and the import rule | [layout.md](layout.md) · [phygs/README.md](../phygs/README.md) |
-| Driving the framework from a benchmark: spec, task, Environment, ground truth, report, versions | [world.md](world.md) |
+| The package layout, the layers and the import rule, what moved in 0.4.0 | [layout.md](layout.md) |
+| Driving the framework from a benchmark: spec, task, World, ground truth, report, versions | [world.md](world.md) |
 | What is done, what is next, known gaps, decisions | [PLANS.md](../PLANS.md) · [status board](design/visual/status.html) |
 | What changed and when (including every rename of the repository split) | [CHANGELOG.md](../CHANGELOG.md) |
 | Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [tests/robot_tests/README.md](../tests/robot_tests/README.md) |
 | Rules for coding agents and contributors | [AGENTS.md](../AGENTS.md) |
-| Syncing changes from the lab's development tree (interactive-search) | `tools/sync_from_interactive_search.py --help` |
 
 ## Topic guides
 
@@ -37,7 +36,8 @@ decisions behind them.
 
 ## Design pages
 
-Plain HTML in git, no build step. GitHub shows HTML as source, so open them locally:
+Plain HTML in git, no build step. They name modules by the paths of their date; [layout.md](layout.md)
+maps the paths that moved in 0.4.0. GitHub shows HTML as source, so open them locally:
 
 ```bash
 # From the PhyGS checkout. Then open http://localhost:8000/index.html (VS Code forwards the port).
@@ -50,10 +50,10 @@ python3 -m http.server 8000 --directory docs/design/episode_harness
 | [manipulation_contract/](design/manipulation_contract/index.html) | Joint and end-effector trajectories, guards, what agents compose. Implemented 2026-10-18. |
 | [robot_portability/](design/robot_portability/index.html) | One folder per robot, roles instead of names, the bring-up ladder per robot; Ridgeback-Franka as the second robot. Implemented 2026-10-28. |
 | [evaluator_and_robot_tests/](design/evaluator_and_robot_tests/index.html) | How a task evaluator reads ground truth and how the robot tests form a numbered ladder. |
-| [framework_benchmark_split/](design/framework_benchmark_split/index.html) | What belongs to the framework and what to a benchmark; the one `Task` seam between them. The seam is implemented (`phygs/episodes/task.py`). |
+| [framework_benchmark_split/](design/framework_benchmark_split/index.html) | What belongs to the framework and what to a benchmark; the one `Task` seam between them. The seam is implemented (`phygs/world/task.py`). |
 | [ui/](design/ui/design.html) | The robot UI. |
 | [visual/](design/visual/status.html) | Status board, pipelines, frames. |
-| [framework_layout/](design/framework_layout/index.html) | Proposal (2026-10-29, not implemented): the layout PhyGS should have as a framework (session/world/sim/scene/recording layers, imports downward only, one `phygs` command, agents as examples), the module mapping, and five steps with deprecations. |
+| [framework_layout/](design/framework_layout/index.html) | The layout proposal (2026-10-29): session/world/sim/scene/recording layers, imports downward only, one `phygs` command, agents as examples. Implemented in 0.3.2 (the command) and 0.4.0 (the rest); what differs from the proposal is on its first page. |
 | [archive/](design/archive/robot_tests_housekeeping/index.html) | Superseded designs kept for the record. |
 
 ## Scene generation

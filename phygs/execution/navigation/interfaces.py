@@ -52,7 +52,7 @@ class NavigationBackend(Protocol):
 
 @dataclass(frozen=True)
 class NavigationContext:
-    """Environment execution and permitted observations; no mandatory map type."""
+    """World-side execution and permitted observations; no mandatory map type."""
 
     runtime: EpisodeRuntime
     locomotion: LocomotionClient

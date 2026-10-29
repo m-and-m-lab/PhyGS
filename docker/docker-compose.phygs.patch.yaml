@@ -1,0 +1,8 @@
+# Build Isaac Lab's ros2 service from PhyGS's Dockerfile (Isaac Lab's base image plus ROS 2 Jazzy,
+# Nav2, explore_lite, MoveIt, cuRobo V2 and PhyGS). Everything else (volumes, GPU, env files) is
+# Isaac Lab's ros2 service. Paths are relative to Isaac Lab's docker/ folder.
+services:
+  isaac-lab-ros2:
+    build:
+      context: ../
+      dockerfile: scripts/PhyGS/docker/Dockerfile.phygs

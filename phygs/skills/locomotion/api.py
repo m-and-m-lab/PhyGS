@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 __all__ = ["LocomotionClient", "CommandFeedback"]
 
-# Locomotion step narration (see phygs.tools.narration).
+# Locomotion step narration (see phygs.recording.narration).
 STEPS = logging.getLogger("phygs.skills.locomotion")
 
 

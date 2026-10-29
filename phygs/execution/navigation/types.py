@@ -113,7 +113,7 @@ class NavigationFeedback:
     replans: int = 0
 
 
-# Navigation step narration (see phygs.tools.narration).
+# Navigation step narration (see phygs.recording.narration).
 STEPS = logging.getLogger("phygs.skills.navigation")
 
 

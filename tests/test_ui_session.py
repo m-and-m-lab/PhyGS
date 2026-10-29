@@ -26,8 +26,8 @@ from ui_fakes import (
     run_requests,
 )
 
+from phygs.observations.front_view import CameraFrame
 from phygs.skills.navigation.api import NavigationClient
-from phygs.tools.front_view import CameraFrame
 from phygs.ui import schema
 from phygs.ui.bridge import Bridge, MapImage
 from phygs.ui.codecs import parse_binary_message

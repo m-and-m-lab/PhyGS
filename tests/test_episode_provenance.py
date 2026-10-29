@@ -7,7 +7,7 @@
 
 import subprocess
 
-from phygs.episodes.provenance import code_version, layers_sha256, usd_sha256
+from phygs.world.provenance import code_version, layers_sha256, usd_sha256
 
 
 def test_an_edit_to_a_composed_layer_changes_the_robot_hash(tmp_path):
@@ -48,17 +48,32 @@ def test_code_version_reports_the_commit_and_uncommitted_edits(tmp_path):
     assert code_version(tmp_path) == dict(commit=clean["commit"], dirty=True)
 
 
-def test_the_report_schema_lists_every_key_the_environment_writes():
-    """The keys in ``report.py`` and the keys ``Environment.run`` writes are the same set."""
-    import re
+def test_the_report_schema_lists_every_key_the_world_writes():
+    """The keys in ``report.py`` and the keys ``World.run`` composes are the same set, and
+    :func:`compose` refuses a report with one missing or one extra."""
+    import ast
     from pathlib import Path
 
-    from phygs.episodes.report import KEYS, REPORT_SCHEMA
+    import pytest
 
-    source = (Path(__file__).resolve().parents[1] / "phygs" / "episodes" / "environment.py").read_text()
-    block = source[source.index("self.report = dict(") : source.index("self.recorder.write(self.report)")]
-    written = set(re.findall(r"^\s{12}(\w+)=", block, flags=re.M)) | {"contacts", "grasp_contacts"}  # **contacts
+    from phygs.world.report import KEYS, REPORT_SCHEMA, compose
+
+    tree = ast.parse((Path(__file__).resolve().parents[1] / "phygs" / "world" / "world.py").read_text())
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "compose"
+    ]
+    assert len(calls) == 1
+    written = {keyword.arg for keyword in calls[0].keywords if keyword.arg}
+    written |= {"contacts", "grasp_contacts"}  # From **contacts.
     assert REPORT_SCHEMA == 1 and set(KEYS) == written, sorted(set(KEYS) ^ written)
+    fields = dict.fromkeys(KEYS)
+    assert list(compose(**fields)) == list(KEYS)
+    with pytest.raises(ValueError, match="missing"):
+        compose(**{key: None for key in KEYS[1:]})
+    with pytest.raises(ValueError, match="not in KEYS"):
+        compose(**fields, extra=1)
 
 
 def test_the_phygs_command_dispatches_and_prints_its_version(capsys):

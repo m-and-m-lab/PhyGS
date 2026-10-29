@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Room-specific contents with explicit compartment bounds and independent bodies."""
 import json
+
 from scene_lib.bear_loop_furnishings import native
 
 # Source identity, physical dimensions [m], mass [kg]. Different assets retain their source materials.

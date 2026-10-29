@@ -11,7 +11,6 @@ from pathlib import Path
 
 import numpy as np
 import trimesh
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, Vt
 
 ASSETS = Path(__file__).parent.parent / "assets/residential"

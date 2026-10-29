@@ -10,13 +10,11 @@ from __future__ import annotations
 import time
 
 import numpy as np
-import torch
-
 import omni.physics.tensors as tensors
-from pxr import Gf, Usd, UsdGeom, UsdPhysics
-
+import torch
 from isaaclab.sim import SimulationContext
 from isaaclab.sim.utils.stage import get_current_stage_id
+from pxr import Gf, Usd, UsdGeom, UsdPhysics
 
 
 class SceneChecks:

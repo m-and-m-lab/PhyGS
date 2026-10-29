@@ -5,8 +5,8 @@
 
 """The robot tests' tasks: the retrieve task with its evaluator, point navigation and object search.
 
-:func:`load_task` turns a spec's ``task`` block into the task object the Environment takes
-(:class:`~phygs.episodes.task.Task`). The framework never imports this package; the robot tests
+:func:`load_task` turns a spec's ``task`` block into the task object the World takes
+(:class:`~phygs.world.task.Task`). The framework never imports this package; the robot tests
 do, and the entry points reach it through ``--task_loader phygs_robot_tests.tasks:load_task``. A
 benchmark ships its own tasks the same way.
 """
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from phygs_robot_tests.tasks.retrieve import RetrieveTask
 
-from phygs.episodes.task import NoTask, Task
+from phygs.world.task import NoTask, Task
 
 GOALS = ("retrieve", "none")
 

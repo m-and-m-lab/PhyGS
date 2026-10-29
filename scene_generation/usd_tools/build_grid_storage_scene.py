@@ -23,9 +23,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]  # scripts/
 sys.path.insert(0, str(ROOT / "interactive-search" / "src"))
 
-from phygs.simulation import storage_units  # noqa: E402
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade  # noqa: E402
+
+from phygs.scene import storage_units  # noqa: E402
 
 OUTPUT = ROOT / ".scene_usd" / "grid_storage" / "scene.usda"
 SOURCE = ROOT / ".scene_usd" / "bear_loop_house_storage_revision" / "scene.usdc"

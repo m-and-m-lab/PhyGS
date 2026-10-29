@@ -12,7 +12,6 @@ import shutil
 from pathlib import Path
 
 import numpy as np
-
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, Vt
 
 

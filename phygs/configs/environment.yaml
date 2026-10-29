@@ -1,11 +1,11 @@
-# Environment of every episode (examples/run_world.py, phygs/episodes/environment.py):
+# Settings of every episode (examples/run_world.py, phygs/world/world.py):
 # timing, skills, arm planner and navigation settings, whatever the robot. The robot is the spec's
 # (robot.model): its cameras, camera roles, arm, gripper and limits are in its robot.yaml
 # (phygs/robots/<name>/; docs/adding_a_robot.md).
 #
 # Sections: timing (physics_dt .. contact_read_ticks), rendering (light, record), the navigation
 # map (map), navigation, skills, planner. A benchmark pins the keys it owns through
-# Environment(overrides=...) rather than a copy of this file; the ones a benchmark is expected to
+# World(overrides=...) rather than a copy of this file; the ones a benchmark is expected to
 # set are stop_all_timeout_seconds, end_settle_seconds, contact_record_n, skills.backend and
 # planner.backend. Everything else is the framework's.
 physics_dt: 0.004  # [s]; 250 Hz, the project's physics rate (the robot's walking policy must accept it).
@@ -48,8 +48,8 @@ navigation:
 skills:
   backend: collision_avoidance_planner  # Or direct (straight joint moves, no planner).
 planner:
-  backend: curobo  # Or moveit (needs ROS 2 Humble and ROS_DOMAIN_ID).
-  curobo_dependencies: /tmp/spot-planner-deps
+  backend: curobo  # Or moveit (ROS 2 Jazzy's MoveIt in the system Python; needs ROS_DOMAIN_ID).
+  curobo_dependencies: /opt/curobo_deps  # cuRobo V2, installed beside the simulator's Torch (docker/Dockerfile.phygs).
   planning_time_seconds: 30.0
   obstacle_padding: 0.01  # Planner clearance [m].
   held_sphere_limit: 256  # cuRobo's reserved spheres for a held object.

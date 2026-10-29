@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any
 
 from phygs.observations.localization import LocalizationEstimator
 from phygs.observations.types import ObservationAccess
+from phygs.recording.narration import Narration
+from phygs.recording.timeline import CommandTimeline
 from phygs.robots.posture import PostureController
 from phygs.runtime.commands import CommandClient
 from phygs.runtime.episode import EpisodeRuntime, EpisodeStatus, RunMode
@@ -26,8 +28,6 @@ from phygs.runtime.pipeline import (
 )
 from phygs.runtime.timing import duration_ticks
 from phygs.skills.locomotion import api as locomotion_api
-from phygs.tools.narration import Narration
-from phygs.tools.timeline import CommandTimeline
 
 if TYPE_CHECKING:
     from isaaclab.scene import InteractiveScene
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from phygs.execution.navigation.interfaces import NavigationBackendFactory
     from phygs.observations.types import ObservationConfig, ObservationPacket
     from phygs.robots.description import RobotDescription
-    from phygs.simulation.world import IsaacLabWorld
+    from phygs.sim.state import IsaacLabWorld
     from phygs.skills.manipulation.api import HeldObject, ManipulationClient
     from phygs.skills.navigation.api import NavigationClient, NavigationConfig
 
@@ -109,7 +109,7 @@ def base_controller(robot: RobotDescription, articulation, *, physics_dt: float,
 
 @dataclass
 class RobotControl:
-    """Environment-side setup with small locomotion and arm clients for agents."""
+    """World-side setup with small locomotion and arm clients for agents."""
 
     runtime: EpisodeRuntime
     locomotion: locomotion_api.LocomotionClient
@@ -153,7 +153,7 @@ class RobotControl:
         posture client and, with ``manipulation``, the arm and gripper controller. The arm and the
         gripper start (and every reset returns them) at their configured start, ``arm.stow`` and
         ``initial_joints``: Isaac Lab spawns joints at the USD's own positions."""
-        from phygs.simulation.world import IsaacLabWorld
+        from phygs.sim.state import IsaacLabWorld
 
         if not allowed_actions or not set(allowed_actions) <= {"motion", "navigation", "arm", "manipulation"}:
             raise ValueError("Unsupported action interfaces.")
@@ -193,7 +193,7 @@ class RobotControl:
         locomotion = base_controller(robot, articulation, physics_dt=sim.get_physics_dt(), source=mode)
         arm_names, gripper = robot.arm.joints, robot.gripper.joints
         posture = PostureController(arm_names, source=mode)
-        from phygs.simulation.fabric import FabricTransformWrites
+        from phygs.sim.fabric import FabricTransformWrites
 
         cameras = observations is not None and bool(observations.cameras)
         fabric_writes = FabricTransformWrites() if FabricTransformWrites.applies(sim, cameras) else None
@@ -208,8 +208,8 @@ class RobotControl:
         observation_source = None
         pipeline = None
         if observations is not None:
-            from phygs.simulation.base import BaseLink
-            from phygs.simulation.observations import IsaacLabObservations
+            from phygs.sim.base import BaseLink
+            from phygs.sim.observations import IsaacLabObservations
 
             base = BaseLink(articulation, robot.base_link)
             observation_source = IsaacLabObservations(
@@ -232,7 +232,7 @@ class RobotControl:
         joint_limits = {joint: tuple(limits[articulation.joint_names.index(joint)]) for joint in arm_names + gripper}
         if manipulation:
             from phygs.execution.manipulation.controller import ManipulationController, MotionConfig
-            from phygs.simulation.arm import WristPoseServo
+            from phygs.sim.arm import WristPoseServo
 
             controller = ManipulationController(
                 arm_names + gripper,
