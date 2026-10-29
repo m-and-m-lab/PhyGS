@@ -10,11 +10,11 @@ agent, read the report. Everything here is `phygs.world` (and `phygs.scene` for 
 from phygs.world import EpisodeSpec, World, load_agent   # World after the Isaac Sim app has started
 
 spec = EpisodeSpec.load("episode.yaml")                  # validated before Isaac Sim starts; scene by id
-task = my_benchmark.load_task(spec.task)                 # brief, privileged target, result(), provenance()
+task = my_benchmark.load_task(spec.task)                 # brief, privileged target, reset/update/result, provenance
 name, agent = load_agent("template")                     # an example agent by name, or any run(session) function
 with World(spec, output_folder, task=task, clock="charged",
            overrides={"end_settle_seconds": 1.0, "planner": {"backend": "curobo"}}) as world:
-    report = world.run(agent, name=name)                 # stops the robot, keeps the grip, settles, evaluates
+    report = world.run(agent, name=name)                 # checks, resets the task, runs, stops, settles, evaluates
 ```
 
 `examples/run_world.py` is this with argument parsing; `phygs run` is its command. `phygs.world`
@@ -26,9 +26,9 @@ starts and only `World` (with `Truth` and `run_episode`) needs it.
 | Piece | Module | What it is |
 | --- | --- | --- |
 | Spec | `world/spec.py` (`EpisodeSpec`, `SCHEMA = 3`, `load_agent`) | Scene by id and version, robot and start, objects, an opaque `task` block, actions, observations, grants, budget, seed. A benchmark adds its own blocks beside these and strips them before `from_dict`. |
-| Task | `world/task.py` (`Task` protocol, `NoTask`, `load_task(block, loader)`) | `goal`, `description` (public), `target` (privileged), `brief()`, `result(truth, ended_by, contacts, drawers_open_at_start)`, `provenance()`. The framework never imports a task; it takes the object. |
+| Task | `world/task.py` (`Task` protocol, `NoTask`, `load_task(block, loader)`) | `goal`, `description` (public), `target` (privileged), `brief()`, `reset(truth)` (the settled world, before the agent starts), `update(truth)` (every `evaluation_period_seconds` while the agent runs), `result(truth, end)` (once, after the stop and settle; `end` is an `EpisodeEnd`: how it ended, the simulated time, the unintended arm contacts), `provenance()`. The framework never imports a task; it takes the object. |
 | World | `world/world.py` (`World`, `run_episode`) | Builds the scene, robot, runtime, backends; checks the settled world before the agent starts (`world/start.py`); runs the agent in a thread; audits; stops; evaluates; writes the report. `overrides` pins settings over `configs/environment.yaml` (`world/build.py`, `SETTINGS`). |
-| Ground truth | `World.truth()` → `Truth` (`world/truth.py`) | Object poses and boxes, `held`, drawer openings, base pose, arm joints, stow error. Only the task's evaluator and robot tests read it. |
+| Ground truth | `World.truth()` → `Truth` (`world/truth.py`) | Object poses and boxes, `held`, `pinched` (every jaw pressing on a body), arm contacts, the drawer a body started in, how far bodies moved from where they were placed, drawer openings, base pose, arm joints, stow error. Only the task's evaluator and robot tests read it. |
 | Report | `world/report.py` (`REPORT_SCHEMA`, `KEYS`, `compose`), `world/recorder.py`, `world/provenance.py` | `report.json` keys with their meaning; `audit.jsonl`; the video; hashes of every asset and threshold and the code version. `status` says whether the episode can be scored: `completed`, `setup_error` (the start check failed, the agent never ran) or `error` (the simulator or the World broke). Only `completed` episodes count in a rate. |
 | Scenes | `scene/registry.py` (`scene_file(id, version)`), `scene/fetch.py` (`phygs scenes`) | Roots: `$PHYGS_SCENES`, `~/.cache/phygs/scenes`, the fixtures. [scenes.md](scenes.md). |
 | Session | `phygs.session` (`AgentSession`, target types) | What the agent gets; a benchmark's agents import only this. |
@@ -43,6 +43,7 @@ records them in its own rules file, never a copy of the settings:
 | `end_settle_seconds` | How long the robot settles after the stop before the evaluator reads ground truth [s]. |
 | `stop_all_timeout_seconds` | How long the stop at the end may take [s]. |
 | `contact_record_n` | Arm contacts above this force go into the report [N]. |
+| `evaluation_period_seconds` | How often the task samples ground truth while the agent runs (`Task.update`) [s]. |
 | `start_check` | The limits of the check before the agent starts: bodies at rest and in place, the robot upright, drawers closed (`drawer_open_max_m: null` lets them start open). |
 | `skills.backend` | `collision_avoidance_planner` or `direct`. |
 | `planner.backend` | `curobo` or `moveit`. |

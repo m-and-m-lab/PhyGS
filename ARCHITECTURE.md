@@ -121,7 +121,7 @@ clients, and the World (`world/world.py`) binds those to the scene and the agent
 | `robots/posture.py` | Diagnostic arm interpolation used by `ArmClient`. |
 | `session/session.py`, `session/hints.py` | `AgentSession` (action-filtered clients on the main thread, time requests, audit) and grant-checked privileged hints; `phygs.session` re-exports what agents use. |
 | `world/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); agents by name (`load_agent`); no Isaac imports. |
-| `world/task.py` | The task seam: the `Task` protocol the World takes (public goal and description, privileged target, `brief()`, `result()`, `provenance()`) and `NoTask`. The framework never imports a task. |
+| `world/task.py` | The task seam: the `Task` protocol the World takes (public goal and description, privileged target, `brief()`, `reset()`, `update()`, `result(truth, end)`, `provenance()`), `EpisodeEnd` and `NoTask`. The framework never imports a task. |
 | `world/world.py`, `world/build.py` | `World`: builds an episode (the pure steps in `build.py`: settings and overrides, refused combinations, cameras, observation access), owns the main-thread loop, runs an agent, stops, evaluates, writes the report. |
 | `world/truth.py` | `Truth`: ground truth for the evaluator and robot tests. |
 | `world/navigation.py` | Nav2 for the World: the live footprint check, the map source (known boxes or cameras), the servers. |
@@ -470,7 +470,7 @@ access for the skills, scene hints), and owns the simulation loop on the main th
 `run(session)` in its own thread; every session call runs on the main thread between ticks, and
 simulated time passes only while the agent waits (`charged` clock) or always (`realtime`).
 Privileged information reaches agents only through granted `session.hints` calls and granted
-skill targets; `audit.jsonl` logs every call. The evaluator is separate and never given to the agent: at the end the World stops the robot (every command cancelled, the grip kept), settles, and calls it once.
+skill targets; `audit.jsonl` logs every call. The evaluator is separate and never given to the agent: the World resets it on the settled world before the agent starts, has it sample ground truth while the agent runs, and at the end stops the robot (every command cancelled, the grip kept), settles, and asks it for the result.
 Robot tests hold the World and may read ground truth (`World.truth()`). A benchmark author's view
 of the same: [docs/world.md](docs/world.md).
 

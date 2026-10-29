@@ -52,7 +52,7 @@ from phygs.world.provenance import code_version, file_sha256, usd_sha256
 from phygs.world.recorder import Recorder
 from phygs.world.spec import SCHEMA, EpisodeSpec, load_agent
 from phygs.world.start import check as check_start
-from phygs.world.task import NoTask, Task
+from phygs.world.task import EpisodeEnd, NoTask, Task
 from phygs.world.task import summary as task_summary
 from phygs.world.truth import Truth
 from phygs.world.viewer import EpisodeView, Viewer
@@ -207,6 +207,7 @@ class World:
         self._during: Callable[[World], None] | None = None  # The robot test's per-tick call (run).
         self._reset_done = False
         self.start_check: dict | None = None  # The check before the agent starts (reset).
+        self._evaluate_ticks: int | None = None  # While the agent runs: the task's update every this many ticks.
         self._finished: str | None = None
         self._outcome: tuple[str, str] | None = None
         self._last_render = 0.0
@@ -301,7 +302,6 @@ class World:
                     pose_planner=lambda pose, held=None: self.planner.request(world_pose=pose, held=held),
                 )
             )
-        self._openings_at_start = self.truth().part_openings()
         self.start_check = check_start(self.truth(), self.robot.fallen_height, self.settings["start_check"])
         if not self.start_check["passed"]:
             print("Start check failed: " + "; ".join(self.start_check["problems"]), flush=True)
@@ -351,6 +351,8 @@ class World:
         self._during = during
         ended_by = reason = None
         if self.start_check["passed"]:
+            self.task.reset(self.truth())
+            self._evaluate_ticks = max(1, round(self.settings["evaluation_period_seconds"] / runtime.physics_dt))
             thread.start()
         else:
             ended_by, reason = "setup_error", "; ".join(self.start_check["problems"])
@@ -393,10 +395,12 @@ class World:
             for _ in range(round(self.settings["end_settle_seconds"] / runtime.physics_dt)):
                 self._tick()
         self._during = None
+        self._evaluate_ticks = None
         audit.close()
         contacts = self.recorder.contact_report()
+        end = EpisodeEnd(ended_by, round(runtime.time_seconds - start, 3), tuple(contacts["contacts"]))
         evaluation = (
-            self.task.result(self.truth(), ended_by, contacts["contacts"], self._openings_at_start)
+            self.task.result(self.truth(), end)
             if broken is None and runtime.status != EpisodeStatus.FAILED and ended_by != "setup_error"
             else {"outcome": "not_evaluated", "reason": f"the episode ended with {ended_by}"}
         )
@@ -517,6 +521,8 @@ class World:
         fallen = self.robot.fallen_height
         if fallen is not None and float(self.base.pose()[2]) < fallen:
             runtime.emergency_stop("The robot fell")
+        if self._evaluate_ticks is not None and runtime.tick % self._evaluate_ticks == 0:
+            self.task.update(self.truth())
         if self._during is not None:
             self._during(self)
         if self.viewer is not None and runtime.tick % self.render_ticks == 0:

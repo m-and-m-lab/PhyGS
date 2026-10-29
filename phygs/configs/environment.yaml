@@ -14,6 +14,7 @@ settling_seconds: 1.0  # Standing still at reset [s].
 stop_all_timeout_seconds: 3.0  # After the agent ends: the robot stops (grip kept) within this [s] or is reported timed out.
 end_settle_seconds: 1.0  # Then standing still before the evaluator reads the final state [s].
 contact_record_n: 0.5  # Arm contact above this [N] is recorded in the report, not limited.
+evaluation_period_seconds: 0.2  # While the agent runs, the task samples ground truth this often [s] (Task.update).
 # After the settle, before the agent starts (phygs/world/start.py): a world outside these limits is a
 # setup error; the agent never runs and the report says why. Measured 2026-10-29 after the 1 s settle:
 # the grid and course scenes 0 m/s and 0 m; bear_loop_house 1.1.0 up to 0.026 m/s (an item in the

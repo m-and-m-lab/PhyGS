@@ -12,7 +12,7 @@ import pytest
 from phygs_robot_tests.tasks import load_task
 from phygs_robot_tests.tasks.retrieve import THRESHOLDS, RetrieveTask, load_thresholds
 
-from phygs.world.task import NoTask, Task
+from phygs.world.task import EpisodeEnd, NoTask, Task
 
 
 class FakeTruth:
@@ -46,7 +46,9 @@ class FakeTruth:
 
 def evaluate(truth, ended_by="finish", contacts=(), at_start=None):
     task = RetrieveTask("the box", "box")
-    return task.result(truth, ended_by, list(contacts), at_start or {})
+    task.reset(FakeTruth(openings=at_start or {}))  # The settled world before the agent starts.
+    task.update(truth)  # Nothing to sample for this evaluator.
+    return task.result(truth, EpisodeEnd(ended_by, 30.0, tuple(contacts)))
 
 
 def test_the_thresholds_file_is_complete_and_a_missing_key_is_an_error(tmp_path):
@@ -94,7 +96,11 @@ def test_a_drawer_the_agent_left_open_counts_but_one_open_at_the_start_does_not(
 
 def test_a_goal_of_none_is_not_evaluated_and_retrieve_needs_a_target():
     none = load_task({"goal": "none"})
-    assert isinstance(none, NoTask) and none.result(FakeTruth(), "finish", [], {})["outcome"] == "not_evaluated"
+    none.reset(FakeTruth())
+    assert (
+        isinstance(none, NoTask)
+        and none.result(FakeTruth(), EpisodeEnd("finish", 1.0, ()))["outcome"] == "not_evaluated"
+    )
     with pytest.raises(ValueError, match="target"):
         RetrieveTask("the box", "")
 

@@ -6,10 +6,12 @@
 """The retrieve task: its brief, and the evaluator that scores an episode from ground truth.
 
 The entry point builds it from the spec's task block (:func:`phygs_robot_tests.tasks.load_task`)
-and gives it to the World, which stops the robot at the end (every command cancelled, the
-grip kept), settles, and calls :meth:`RetrieveTask.result` once with ground truth. The agent never
-holds it. The thresholds are in ``retrieve.yaml`` beside this file and are hashed into the
-report's provenance.
+and gives it to the World, which calls :meth:`RetrieveTask.reset` before the agent starts, stops
+the robot at the end (every command cancelled, the grip kept), settles, and calls
+:meth:`RetrieveTask.result` once with ground truth. The agent never holds it. This is the robot
+tests' version; a benchmark ships its own evaluator (ForageBench's adds progress and stricter
+checks). The thresholds are in ``retrieve.yaml`` beside this file and are hashed into the report's
+provenance.
 
 The result has two parts that are never merged. The **outcome** says whether the task was done:
 the target is in the hand, the arm is stowed, the robot is upright and the episode ended within
@@ -26,6 +28,8 @@ from typing import Protocol
 
 import numpy as np
 import yaml
+
+from phygs.world.task import EpisodeEnd
 
 THRESHOLDS = Path(__file__).with_name("retrieve.yaml")
 # Why an episode ended, as the World reports it; only these count as within the budget.
@@ -63,6 +67,7 @@ class RetrieveTask:
             raise ValueError("A retrieve task needs a description and the target's name.")
         self.description, self.target = description, target
         self.thresholds = load_thresholds() if thresholds is None else dict(thresholds)
+        self.openings_at_start: dict[str, float] = {}
 
     def brief(self) -> str:
         """What a person is told on the robot UI's Start card."""
@@ -75,16 +80,18 @@ class RetrieveTask:
         text = yaml.safe_dump(self.thresholds, sort_keys=True).encode()
         return {"evaluator_thresholds": hashlib.sha256(text).hexdigest()}
 
-    def result(
-        self, truth: GroundTruth, ended_by: str, contacts: list[dict], drawers_open_at_start: dict[str, float]
-    ) -> dict:
-        """Score the settled end state.
+    def reset(self, truth: GroundTruth) -> None:
+        """Each drawer's opening [m] before the agent starts: a drawer the agent opened and left open
+        counts at the end, one that started open does not."""
+        self.openings_at_start = truth.part_openings()
 
-        ``ended_by`` is the report's end reason; ``contacts`` the report's unintended arm contacts
-        (link, body, peak_n); ``drawers_open_at_start`` each drawer's opening [m] when the episode
-        began, so a drawer the agent opened and left open counts and one that started open does not.
-        """
-        t = self.thresholds
+    def update(self, truth: GroundTruth) -> None:
+        """Nothing to sample during the run: this evaluator reads the end state only."""
+
+    def result(self, truth: GroundTruth, end: EpisodeEnd) -> dict:
+        """Score the settled end state; ``end`` says how the episode ended and holds the unintended
+        arm contacts (link, body, peak_n)."""
+        t, ended_by, contacts = self.thresholds, end.ended_by, end.contacts
         checks = dict(
             held=truth.held(self.target, lift_m=t["held_lift_m"], reach_m=t["held_reach_m"]),
             stowed=truth.stow_error_rad() <= t["stow_tolerance_rad"],
@@ -98,7 +105,7 @@ class RetrieveTask:
         left_open = {
             name: round(opening, 3)
             for name, opening in truth.part_openings().items()
-            if opening > t["drawer_closed_m"] and drawers_open_at_start.get(name, 0.0) <= t["drawer_closed_m"]
+            if opening > t["drawer_closed_m"] and self.openings_at_start.get(name, 0.0) <= t["drawer_closed_m"]
         }
         conduct = dict(
             contacts=len(unintended),

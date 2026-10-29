@@ -5,8 +5,8 @@
 
 """Ground truth of a running world, for a task's evaluator and the robot tests; never for agents.
 
-:meth:`World.truth() <phygs.world.world.World.truth>` returns one. A task's ``result`` reads it once,
-after the robot has stopped and settled; a robot test may read it at any tick.
+:meth:`World.truth() <phygs.world.world.World.truth>` returns one. A task reads it at ``reset``, at
+each ``update`` while the agent runs and at ``result``; a robot test may read it at any tick.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import numpy as np
 
 from phygs.scene.reader import pose_matrix
 from phygs.scene.types import ArticulatedPart
+from phygs.world.recorder import pinched_bodies
 
 if TYPE_CHECKING:
     from phygs.world.world import World
@@ -53,6 +54,20 @@ class Truth:
     def part_openings(self) -> dict[str, float]:
         """Every drawer's opening [m] now."""
         return {name: self._scene.part(name).opening for name in self._scene.part_names}
+
+    def arm_contacts(self, threshold_n: float) -> list[tuple[str, str, float]]:
+        """Arm and gripper contacts above ``threshold_n`` [N] now: (link, body, force [N]), against the
+        scene bodies in the robot's work area."""
+        return self._scene.contacts(threshold_n)
+
+    def pinched(self, name: str, threshold_n: float) -> bool:
+        """Whether every jaw link of the gripper presses on the body ``name`` with at least
+        ``threshold_n`` [N] now."""
+        return name in pinched_bodies(self.arm_contacts(threshold_n), self._description.gripper.jaw_links)
+
+    def started_inside(self, name: str) -> str | None:
+        """The drawer a body started inside, or None."""
+        return self._scene.placement(name)[0]
 
     def body_motion(self) -> dict[str, tuple[float, float]]:
         """Every scene body with colliders: (speed [m/s], distance [m] from where it was placed)."""

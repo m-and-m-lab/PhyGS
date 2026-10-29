@@ -32,6 +32,7 @@ EXPORTS = {
     "load_agent": "phygs.world.spec",
     "SCHEMA": "phygs.world.spec",
     "Task": "phygs.world.task",
+    "EpisodeEnd": "phygs.world.task",
     "NoTask": "phygs.world.task",
     "load_task": "phygs.world.task",
     "REPORT_SCHEMA": "phygs.world.report",
@@ -42,6 +43,7 @@ __all__ = [
     "REPORT_SCHEMA",
     "SCHEMA",
     "SETTINGS",
+    "EpisodeEnd",
     "EpisodeSpec",
     "EpisodeView",
     "NoTask",
@@ -58,7 +60,7 @@ if TYPE_CHECKING:
     from phygs.world.build import SETTINGS
     from phygs.world.report import REPORT_SCHEMA
     from phygs.world.spec import SCHEMA, EpisodeSpec, load_agent
-    from phygs.world.task import NoTask, Task, load_task
+    from phygs.world.task import EpisodeEnd, NoTask, Task, load_task
     from phygs.world.truth import Truth
     from phygs.world.viewer import EpisodeView, Viewer
     from phygs.world.world import World, run_episode

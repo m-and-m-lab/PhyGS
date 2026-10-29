@@ -11,7 +11,29 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
-### 0.5.0 (unreleased, develop)
+### 0.6.0 (unreleased, develop)
+
+The task evaluator samples the run (ForageBench's phase C, 2026-10-29). A change to the `Task`
+protocol, so a minor release; the report's keys are unchanged (schema 2).
+
+Changed:
+
+- **Breaking:** `Task` has `reset(truth)` (the settled world, before the agent starts; called only
+  when the start check passed), `update(truth)` (every `evaluation_period_seconds` of simulated time
+  while the agent runs) and `result(truth, end)`. `end` is the new `phygs.world.EpisodeEnd`
+  (`ended_by`, `sim_seconds`, `contacts`), in place of `result(truth, ended_by, contacts,
+  drawers_open_at_start)`; a task that needs the drawers' openings at the start reads them in
+  `reset`. Migrate a task by adding the two methods (no-ops are fine) and reading `end.ended_by` and
+  `end.contacts`.
+- The robot tests' `RetrieveTask` and `NoTask` follow the protocol; their results are unchanged.
+
+Added:
+
+- `Truth.arm_contacts(threshold_n)`, `Truth.pinched(name, threshold_n)` (every jaw link presses on
+  the body), `Truth.started_inside(name)` (the drawer a body started in).
+- Setting `evaluation_period_seconds` (0.2 s).
+
+### 0.5.0 (2026-10-29)
 
 Run statuses and the check before the agent starts (ForageBench's phase A, 2026-10-29). Report
 schema 2, so a minor release (docs/world.md, Versions). The repository holds the framework only
@@ -57,7 +79,7 @@ Changed:
   scored as the agent's failure (`ArmPlanner.failure`). Seen 2026-10-29: a CUDA out-of-memory in the
   planner while another simulator held the GPU was reported as `agent_failed`.
 
-### 0.4.0 (unreleased, develop)
+### 0.4.0 (2026-10-29)
 
 The layout of the layout proposal, steps 1 to 4 (`docs/design/framework_layout/`; the differences
 are on its first page). No behaviour, setting, spec key or report key changed. **Breaking:** the old
