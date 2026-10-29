@@ -46,7 +46,7 @@ def test_the_planning_model_carries_the_robots_links_and_its_two_finger_gripper(
     sphere = [{"center": [0.0, 0.0, 0.0], "radius": 0.05}]
     model = prepare_model(ROBOT, tmp_path, geometry={"forearm": sphere}, locked_joints=locked, usd_boxes={})
     assert model["joints"] == list(ROBOT.arm.joints) and model["base_link"] == "base_link"
-    assert model["wrist_link"] == "wrist" and model["jaw_links"] == ["finger_left", "finger_right"]
+    assert model["wrist_link"] == "wrist" and model["held_contact_links"] == ["wrist", "finger_left", "finger_right"]
     assert model["locked_joints"] == locked and gripper_positions(model, 0.01) == {
         "finger_left_joint": 0.01,
         "finger_right_joint": 0.01,

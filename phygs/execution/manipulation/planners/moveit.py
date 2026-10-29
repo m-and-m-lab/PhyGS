@@ -288,7 +288,9 @@ class Planner:
             self.holding = False
         if held is not None:
             attach = AttachedCollisionObject(
-                link_name=wrist, object=box_object(HELD, held, wrist), touch_links=list(self.config["jaw_links"])
+                link_name=wrist,
+                object=box_object(HELD, held, wrist),
+                touch_links=list(self.config["held_contact_links"]),
             )
             scene.process_attached_collision_object(attach)
             self.holding = True

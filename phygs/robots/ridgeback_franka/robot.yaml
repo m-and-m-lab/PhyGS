@@ -57,7 +57,8 @@ gripper:
     hand: {position: [0.0, 0.0, 0.1034], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
     # An object's grasp point, 3.7 cm inside the fingertips and ~8 mm below the finger roots
     # (z 0.058 m): the fingers cover the object's top ~4 cm. At the fingertips they closed on nothing;
-    # 2.8 cm inside they squeezed the 4 cm box out and toppled it (table_reach, 2026-10-28).
+    # 2.8 cm inside, with the asset's stiff fingers, they squeezed the 4 cm box out. Here the picks
+    # pass (table_reach, cuRobo and MoveIt, known boxes and depth, 2026-10-28).
     grasp: {position: [0.0, 0.0, 0.066], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
     # A bar handle's axis: between the fingertips, until the drawer rungs say otherwise. Both fingers
     # close, so a held object stays centred (no fixed_jaw).

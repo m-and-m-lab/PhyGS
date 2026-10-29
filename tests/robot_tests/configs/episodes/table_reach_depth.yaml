@@ -14,7 +14,7 @@ robot:
   model: spot  # phygs/robots/spot; the base spawns at the robot's own height.
   start: [0.0, 0.0, 0.0]  # x, y, heading [m, m, rad]: the table's near edge 0.6 m ahead.
   starts:  # Robots whose bodies need other room. The Ridgeback's front reaches 0.71 m (1.4 cm from
-    # the table here) and its arm the free table spot (IK, 2026-10-28).
+    # the table here); its arm reaches the pre-place of configs/pick_place.yaml (IK, 2026-10-28).
     ridgeback_franka: [-0.12, 0.0, 0.0]
 objects:  # World positions [m] of the bodies' origins (box centres).
   target: {position: [0.80, 0.0, 0.46]}

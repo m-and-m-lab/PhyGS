@@ -92,7 +92,7 @@ export PHYGS=scripts/PhyGS                  # The checkout, relative to the Isaa
 
 ## 🚀 Quick start
 
-All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container). The first three need no download: the grid storage scene is a fixture in the repository.
+All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container). The first three need no download: the grid storage scene is a fixture in the repository. With the package installed, `phygs <command>` (or `./isaaclab.sh -p -m phygs <command>`) runs the same scripts: `phygs run`, `phygs ui`, `phygs scenes`, `phygs tests`, `phygs version`.
 
 ```bash
 # 1. Run a world with the template agent (it looks around and finishes). The report lands in --output.

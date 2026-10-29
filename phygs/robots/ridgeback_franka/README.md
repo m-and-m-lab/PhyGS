@@ -32,8 +32,9 @@ python3 scripts/PhyGS/phygs/robots/ridgeback_franka/fetch.py
 | 06 navigation_course | Passes (2026-10-28, `output_check/20261028-1205_ridgeback_nav_course`): around the wall, to a heading, by velocity commands, the goal in the wall refused (invalid_goal), the one in the closed pen unreachable, a cancel; arrivals within 1.9 cm, closest approach to a box 0.27 m. |
 | 05 arm | Passes (2026-10-28, `output_check/20261028-1417_arm_rungs_two_robots/ridgeback_arm`): raise, open and close, sweep, a free-space wrist pose, cancel (1.2 mm drift), reset. |
 | 08 arm_planning_known (cuRobo) | Passes (2026-10-28, `output_check/20261028-1440_ridgeback_arm_planning/ridgeback_arm_planning_known`, start x -0.12 m): look_at 0.50 m at 60 deg on the target, hand goals over the clutter and a free spot within 1.3 mm, cancel, stow, walk; the planner's model on the links (0 m), a blocked start refused, no arm contact. Needed: the fingers never checked against each other, cuRobo with no locked joints. |
-| other rungs | Not run yet with `--robot ridgeback_franka`. |
+| 08 arm_planning_known (MoveIt), 09 arm_planning_depth (cuRobo, MoveIt) | Pass (2026-10-28, `output_check/20261028-1911_ridgeback_arm_variants`): look_at 0.50 m at 60 deg, stow, a blocked start refused, no arm contact. |
+| 10 pick_place (cuRobo, MoveIt) | Passes (2026-10-28, `output_check/20261028-1855_pick_place_two_robots`, `ridgeback_pick_place_{known,depth,known_moveit}`; depth with MoveIt in `output_check/20261028-1911_ridgeback_arm_variants`): the box picked straight down and lifted 0.19 m, the carry into the clutter refused, the carry over it with the box 0.9-2.0 cm clear, set down within 0.6 mm (MoveIt 2.2 mm), upright, then stowed; no arm contact. Needed: the plain Franka finger gains (the asset's 1e5 stiffness toppled the box), the `grasp` frame 3.7 cm inside the fingertips, the palm allowed to touch the held box (`held_contact_links`), the place spot at x 0.80 m (the old one's pre-place was 2.1 cm out of reach). |
+| other rungs | Not run yet with `--robot ridgeback_franka` (drawers, retrieve: their stances per scene are Spot's). |
 
-Known open points: the camera mounts are first guesses; the `grasp` and `handle` tool frames sit
-between the fingertips until the pick and drawer rungs measure them; the routines' stances per
-scene are Spot's.
+Known open points: the camera mounts are first guesses; the `handle` tool frame sits between the
+fingertips until the drawer rungs measure it; the routines' stances per scene are Spot's.

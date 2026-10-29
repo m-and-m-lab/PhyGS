@@ -2,6 +2,12 @@
 # timing, skills, arm planner and navigation settings, whatever the robot. The robot is the spec's
 # (robot.model): its cameras, camera roles, arm, gripper and limits are in its robot.yaml
 # (phygs/robots/<name>/; docs/adding_a_robot.md).
+#
+# Sections: timing (physics_dt .. contact_read_ticks), rendering (light, record), the navigation
+# map (map), navigation, skills, planner. A benchmark pins the keys it owns through
+# Environment(overrides=...) rather than a copy of this file; the ones a benchmark is expected to
+# set are stop_all_timeout_seconds, end_settle_seconds, contact_record_n, skills.backend and
+# planner.backend. Everything else is the framework's.
 physics_dt: 0.004  # [s]; 250 Hz, the project's physics rate (the robot's walking policy must accept it).
 camera_period: 0.032  # [s]; every rendered frame (31.25 per simulated second).
 settling_seconds: 1.0  # Standing still at reset [s].

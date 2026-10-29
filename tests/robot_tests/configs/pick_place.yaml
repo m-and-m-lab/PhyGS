@@ -6,7 +6,10 @@
 # episodes/check_pick_place.py: pick, carry and place at the grid table (specs table_reach and
 # table_reach_depth). Thresholds from the component check check_manipulation_planning.py (measured
 # 2026-10-14 to 10-25; removed 2026-10-28).
-place_xy: [0.92, -0.16]  # The free table spot the target is set down on [m] (away from both boxes).
+# The free table spot the target is set down on [m]: beside its start, across from the clutter. At
+# x 0.92 (until 2026-10-28) the pre-place 0.19 m above it was 2.1 cm out of the Ridgeback-Franka's
+# reach (IK) from where its base fits at the table.
+place_xy: [0.80, -0.16]
 # The table layout for a plan without known boxes (table_reach_depth): the clutter's centre [m] and
 # top [m], the table top [m], as the spec places the clutter and the scene sizes it (hints.boxes()
 # on table_reach, 2026-10-28: clutter 0.1 x 0.1 x 0.2 m at z 0.5, table top 0.4 m).

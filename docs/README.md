@@ -10,11 +10,13 @@ decisions behind them.
 | --- | --- |
 | Install, run, first commands | [README.md](../README.md) |
 | How the system fits together: layers, runtime tick, navigation flow (with diagrams) | [ARCHITECTURE.md](../ARCHITECTURE.md) |
-| The package layout, module by module | [phygs/README.md](../phygs/README.md) |
+| The package layout, module by module, and the import rule | [layout.md](layout.md) · [phygs/README.md](../phygs/README.md) |
+| Driving the framework from a benchmark: spec, task, Environment, ground truth, report, versions | [world.md](world.md) |
 | What is done, what is next, known gaps, decisions | [PLANS.md](../PLANS.md) · [status board](design/visual/status.html) |
 | What changed and when (including every rename of the repository split) | [CHANGELOG.md](../CHANGELOG.md) |
 | Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [tests/robot_tests/README.md](../tests/robot_tests/README.md) |
 | Rules for coding agents and contributors | [AGENTS.md](../AGENTS.md) |
+| Syncing changes from the lab's development tree (interactive-search) | `tools/sync_from_interactive_search.py --help` |
 
 ## Topic guides
 
@@ -51,6 +53,7 @@ python3 -m http.server 8000 --directory docs/design/episode_harness
 | [framework_benchmark_split/](design/framework_benchmark_split/index.html) | What belongs to the framework and what to a benchmark; the one `Task` seam between them. The seam is implemented (`phygs/episodes/task.py`). |
 | [ui/](design/ui/design.html) | The robot UI. |
 | [visual/](design/visual/status.html) | Status board, pipelines, frames. |
+| [framework_layout/](design/framework_layout/index.html) | Proposal (2026-10-29, not implemented): the layout PhyGS should have as a framework (session/world/sim/scene/recording layers, imports downward only, one `phygs` command, agents as examples), the module mapping, and five steps with deprecations. |
 | [archive/](design/archive/robot_tests_housekeeping/index.html) | Superseded designs kept for the record. |
 
 ## Scene generation

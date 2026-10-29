@@ -17,7 +17,7 @@ The folder can be anywhere. Robots of this repository are in `phygs/robots/<name
 | Robot | Base | Status |
 | --- | --- | --- |
 | [spot](../phygs/robots/spot/README.md) | Legs, learned walking policy | Reference robot: every check |
-| [ridgeback_franka](../phygs/robots/ridgeback_franka/README.md) | Planar joints (omnidirectional) | Bring-up, footprint and navigation pass; the arm tasks are next |
+| [ridgeback_franka](../phygs/robots/ridgeback_franka/README.md) | Planar joints (omnidirectional) | Bring-up, footprint, navigation, arm, arm planning, pick and place pass; drawers and retrieve are next |
 
 Pick a robot by name or by path. An episode spec names its robot (`robot.model`); `--robot` runs
 the same episode, test or UI with another one:

@@ -4,13 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phygs"
-version = "0.3.1"
+version = "0.3.2"
 description = "PhyGS: physically grounded simulation framework for mobile manipulation in Isaac Lab (robot, world, runtime, skills, measurement)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "BSD-3-Clause" }
 # Runs inside the Isaac Lab container; Isaac Sim, Isaac Lab, torch, numpy, yaml and warp come with it.
 dependencies = []
+
+[project.scripts]
+phygs = "phygs.__main__:main"
 
 [project.urls]
 Homepage = "https://m-and-m-lab.github.io/PhyGS/"

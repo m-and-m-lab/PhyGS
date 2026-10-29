@@ -101,7 +101,9 @@ def prepare_model(robot, output: Path, *, geometry: dict, locked_joints: dict, u
         wrist_link=robot.arm.wrist_link,
         joints=list(joints),
         arm_links=list(robot.arm_links),
-        jaw_links=list(gripper.jaw_links),  # May touch a held object.
+        # May touch a held object: the jaws and the palm (the wrist link; a two-finger hand holds an
+        # object's top close under it).
+        held_contact_links=list(dict.fromkeys((robot.arm.wrist_link, *gripper.jaw_links))),
         # Locked in the model at the primary's position [m or rad]; a request may give its measured one.
         gripper_joint=gripper.primary,
         gripper_ratios=dict(zip(gripper.joints, gripper.ratios, strict=True)),

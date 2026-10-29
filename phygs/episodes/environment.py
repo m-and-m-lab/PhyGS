@@ -30,6 +30,7 @@ from isaaclab.scene import InteractiveScene
 from phygs.episodes.hints import PrivilegedHints
 from phygs.episodes.provenance import code_version, file_sha256, usd_sha256
 from phygs.episodes.recorder import Recorder
+from phygs.episodes.report import REPORT_SCHEMA
 from phygs.episodes.session import (
     AgentFailed,
     AgentSession,
@@ -139,6 +140,10 @@ class Environment:
     The robot is the spec's (``robot.model``); ``robot`` (a description, a robot name or the path of
     a ``robot.yaml``) runs the episode with another one.
 
+    ``overrides`` is a mapping applied over the settings file (top-level keys replace; a mapping
+    under a key merges one level, e.g. ``{"planner": {"backend": "moveit"}}``), so a benchmark
+    can pin its end-of-episode and backend settings without writing a copy of the file.
+
     ``task`` is the task object built from the spec's task block
     (:func:`phygs_robot_tests.tasks.load_task`): the agent's brief, the privileged target and the
     evaluation. The Environment never reads the block itself; without a task object a spec whose
@@ -158,6 +163,7 @@ class Environment:
         hold_clock: bool = False,
         robot: RobotDescription | str | Path | None = None,
         task: Task | None = None,
+        overrides: dict | None = None,
     ) -> None:
         if clock not in CLOCKS:
             raise ValueError(f"Unknown clock {clock!r}; expected one of {CLOCKS}.")
@@ -174,6 +180,11 @@ class Environment:
         self.viewer, self._hold_clock = viewer, hold_clock
         self._last_view = -math.inf  # Wall time [s] of the viewer's last update while the clock is held.
         settings = yaml.safe_load(settings_path.read_text())
+        for key, value in (overrides or {}).items():
+            if isinstance(value, dict) and isinstance(settings.get(key), dict):
+                settings[key] = {**settings[key], **value}
+            else:
+                settings[key] = value
         self.settings = settings
         if not isinstance(robot, RobotDescription):
             robot = load_robot(spec.robot.model if robot is None else robot)
@@ -535,6 +546,7 @@ class Environment:
             else {"outcome": "not_evaluated", "reason": f"the episode ended with {ended_by}"}
         )
         self.report = dict(
+            schemas=dict(spec=SCHEMA, report=REPORT_SCHEMA),
             spec=self.spec.summary(),
             task=task_summary(self.task),
             provenance=self.provenance,

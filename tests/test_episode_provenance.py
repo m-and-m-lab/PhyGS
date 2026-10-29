@@ -46,3 +46,25 @@ def test_code_version_reports_the_commit_and_uncommitted_edits(tmp_path):
     assert code_version(tmp_path)["dirty"] is False
     (tmp_path / "a.py").write_text("x = 2\n")
     assert code_version(tmp_path) == dict(commit=clean["commit"], dirty=True)
+
+
+def test_the_report_schema_lists_every_key_the_environment_writes():
+    """The keys in ``report.py`` and the keys ``Environment.run`` writes are the same set."""
+    import re
+    from pathlib import Path
+
+    from phygs.episodes.report import KEYS, REPORT_SCHEMA
+
+    source = (Path(__file__).resolve().parents[1] / "phygs" / "episodes" / "environment.py").read_text()
+    block = source[source.index("self.report = dict(") : source.index("self.recorder.write(self.report)")]
+    written = set(re.findall(r"^\s{12}(\w+)=", block, flags=re.M)) | {"contacts", "grasp_contacts"}  # **contacts
+    assert REPORT_SCHEMA == 1 and set(KEYS) == written, sorted(set(KEYS) ^ written)
+
+
+def test_the_phygs_command_dispatches_and_prints_its_version(capsys):
+    from phygs import __version__
+    from phygs.__main__ import SCRIPTS, main
+
+    assert main(["version"]) == 0 and capsys.readouterr().out.strip() == __version__
+    assert main([]) == 2 and main(["nothing"]) == 2
+    assert all(path.is_file() for path in SCRIPTS.values())

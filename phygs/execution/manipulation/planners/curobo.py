@@ -93,7 +93,7 @@ def robot_config(config: dict) -> dict:
             null_space_weight=[1.0] * (len(config["joints"]) + len(locked)),
         ),
     )
-    kinematics["self_collision_ignore"][HELD_LINK] = list(config["jaw_links"])
+    kinematics["self_collision_ignore"][HELD_LINK] = list(config["held_contact_links"])
     return {"robot_cfg": {"kinematics": kinematics}}
 
 

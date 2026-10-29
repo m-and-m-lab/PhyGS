@@ -11,6 +11,21 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.3.2 (unreleased, develop)
+
+- Synced from interactive-search (2026-10-29, `tools/sync_from_interactive_search.py`): Ridgeback-Franka's
+  `robot.yaml`, actuators and README; Ridgeback support in the cuRobo, MoveIt and model planners; the
+  table-reach episodes' per-robot starts; the pick-place config; `tests/test_second_robot.py`; the
+  adding-a-robot guide and design page.
+- The `phygs` command (`python -m phygs`; console script with the editable install): `run`, `ui`,
+  `ui replay`, `scenes`, `tests`, `version`, each dispatching to the existing script.
+- Report: `episodes/report.py` with `REPORT_SCHEMA = 1` and the key list; every report records
+  `schemas: {spec, report}`.
+- `Environment(overrides=...)`: a mapping applied over `configs/environment.yaml` (one-level merge), for
+  benchmarks that pin end-of-episode and backend settings. `environment.yaml` names those keys.
+- `docs/world.md` (the benchmark author's page), `docs/layout.md` (the layers and the import rule) and
+  the layout proposal `docs/design/framework_layout/` (step 0 of it is this entry).
+
 ### Repository split (2026-10-28)
 
 PhyGS `develop` now holds the simulation framework copied out of the lab's internal
@@ -48,6 +63,9 @@ version: 1.1.0}`; the registry checks the version against the fetch record. The 
 `bear_loop_house` 1.1.0 (the storage revision, packaged and prepared for the dataset the same day);
 `scene_generation/usd_tools/publish_scene.py` replaces the one-release publisher and adds releases to
 an existing catalog.
+
+Later changes made in interactive-search come here by `tools/sync_from_interactive_search.py` (copy and
+rename; never the pinned policy files); each sync names the interactive-search commit it took.
 
 The entries below are interactive-search's, kept as the framework's history.
 
