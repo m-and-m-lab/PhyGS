@@ -80,7 +80,10 @@ class Worker:
     def submit(self, request):
         self.requests.append(request)
         future = Future()
-        future.set_result(self.result)
+        if isinstance(self.result, BaseException):  # The process broke: no response.
+            future.set_exception(self.result)
+        else:
+            future.set_result(self.result)
         return future
 
     def close(self):
@@ -232,3 +235,24 @@ def test_warm_up_plans_once_per_gripper_angle_before_the_episode(host):
     requests = Worker.started[0].requests
     assert [request.gripper for request in requests] == pytest.approx([-0.05, -1.4])
     assert all(request.boxes == [] and request.images is None for request in requests)
+
+
+def test_a_failed_plan_is_the_callers_but_a_broken_planner_process_is_recorded_for_the_world(host):
+    """A plan the library could not find fails the request only; a process that raised (out of GPU
+    memory, a crash, a timeout) is also kept in ``failure``, so the World ends the episode as an error."""
+    make, _, _ = host
+    planner = make(boxes=lambda exclude: {})
+    worker = Worker.started[0]
+    worker.result = dict(success=False, reason="no collision-free path")
+    refused = planner.request(world_pose=(1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 1.0))
+    planner.poll()
+    with pytest.raises(RuntimeError, match="no collision-free path"):
+        refused.result()
+    assert planner.failure is None
+    worker.result = RuntimeError("OutOfMemoryError: CUDA out of memory")
+    broken = planner.request(world_pose=(1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 1.0))
+    planner.poll()
+    with pytest.raises(RuntimeError, match="out of memory"):
+        broken.result()
+    assert planner.failure == "RuntimeError: OutOfMemoryError: CUDA out of memory"
+    planner.close()

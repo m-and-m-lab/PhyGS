@@ -29,12 +29,11 @@ The `main` branch is the May 2026 beta (`phygs_simulation/`). The `develop` bran
 
 ## 📦 What PhyGS is
 
-Four parts, in one Python package (`phygs`) plus a scene generator in its own environment:
+Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetched by id and version; they are made outside this repository (the paper's scene generator, a fork of Infinigen-Indoors, is on the `main` branch).
 
-1. **Scene generation** (`scene_generation/`): a fork of Infinigen-Indoors that adds object articulation and semantic population and keeps physics (joints, collision meshes, rigid-body properties, lighting) through export from Blender to USD; the builders of the authored test scenes; the scene packager and publisher. It runs in a separate Python environment (Blender, `bpy`); scenes cross into the simulator as USD files only.
-2. **Robot and runtime** (`phygs/robots`, `phygs/runtime`, `phygs/sim`): a robot is one folder with a `robot.yaml` (joints, gripper tool frames, cameras by role, limits) and code only for its base controller and actuators. Spot with arm is the reference robot, walking under a learned policy at 250 Hz physics; Ridgeback-Franka is the second robot. One runtime owns the clock, every joint, command expiry, reset and the emergency stop.
-3. **Skills and backends** (`phygs/skills`, `phygs/execution`): three public clients, `locomotion` (velocity), `navigation` (`navigate_to`, `explore`, on Nav2 with a measured transit footprint, mapping the cameras' point clouds or a known map) and `manipulation` (joint and wrist moves, end-effector lines, gripper, `stow`, `look_at`, with cuRobo or MoveIt planning on known boxes or on depth). Every command has an id, feedback and cancel.
-4. **The world and measurement** (`phygs/world`, `phygs/session`, `phygs/scene`, `phygs/recording`): an episode is a spec (scene by id, robot start, objects, actions, observations, grants, budget, seed); the `World` builds it, runs an agent's `run(session)` in its own thread, audits every call, records contacts and a third-person video, and hands ground truth to the task's evaluator once, after the robot has stopped. Provenance in every report: the USD, policy and threshold hashes and the code version.
+1. **Robot and runtime** (`phygs/robots`, `phygs/runtime`, `phygs/sim`): a robot is one folder with a `robot.yaml` (joints, gripper tool frames, cameras by role, limits) and code only for its base controller and actuators. Spot with arm is the reference robot, walking under a learned policy at 250 Hz physics; Ridgeback-Franka is the second robot. One runtime owns the clock, every joint, command expiry, reset and the emergency stop.
+2. **Skills and backends** (`phygs/skills`, `phygs/execution`): three public clients, `locomotion` (velocity), `navigation` (`navigate_to`, `explore`, on Nav2 with a measured transit footprint, mapping the cameras' point clouds or a known map) and `manipulation` (joint and wrist moves, end-effector lines, gripper, `stow`, `look_at`, with cuRobo or MoveIt planning on known boxes or on depth). Every command has an id, feedback and cancel.
+3. **The world and measurement** (`phygs/world`, `phygs/session`, `phygs/scene`, `phygs/recording`): an episode is a spec (scene by id, robot start, objects, actions, observations, grants, budget, seed); the `World` builds it, runs an agent's `run(session)` in its own thread, audits every call, records contacts and a third-person video, and hands ground truth to the task's evaluator once, after the robot has stopped. Provenance in every report: the USD, policy and threshold hashes and the code version.
 
 ## 🧲 Honest physics, stated first
 
@@ -64,22 +63,20 @@ PhyGS/
 ├── tests/robot_tests/           # The robot tests (importable): 15 rungs, routines, test tasks, fixture scenes, run_suite.py
 ├── tests/                       # Unit tests (no simulator) and the import guards
 ├── examples/                    # run_world.py (one episode spec with an agent); agents/ (template, depth example)
-├── scene_generation/            # infinigen/ (fork, own environment), usd_tools/ (builders, packager, publisher), docs/
 ├── docker/                      # Isaac Lab container patch (cuRobo)
-└── docs/                        # Topic guides, design/ pages, docs/README.md index
+└── docs/                        # Topic guides and the docs/README.md index
 ```
 
 ## 🛠️ Installation
 
-PhyGS runs inside the [Isaac Lab](https://github.com/isaac-sim/IsaacLab) Docker container; scene generation runs in its own environment. Validated against Isaac Sim 6.0.1 and Isaac Lab 3.0.0 (Ubuntu 24.04, Python 3.12) on Linux x86_64 with an NVIDIA GPU.
+PhyGS runs inside the [Isaac Lab](https://github.com/isaac-sim/IsaacLab) Docker container. Validated against Isaac Sim 6.0.1 and Isaac Lab 3.0.0 (Ubuntu 24.04, Python 3.12) on Linux x86_64 with an NVIDIA GPU.
 
 | Step | Command or guide | When |
 | --- | --- | --- |
-| Clone with submodules | `cd IsaacLab/scripts && git clone --recursive -b develop https://github.com/m-and-m-lab/PhyGS.git` | Always. `scene_generation/infinigen` is only needed to generate scenes. |
+| Clone with submodules | `cd IsaacLab/scripts && git clone --recursive -b develop https://github.com/m-and-m-lab/PhyGS.git` | Always (`--recursive` brings Spot's meshes). |
 | Build and enter the container | From `IsaacLab/docker`: `./container.py start ros2 --files ../scripts/PhyGS/docker/docker-compose.phygs.patch.yaml`, then `./container.py enter ros2` | Always. The image adds ROS 2 Jazzy with Nav2, explore_lite, MoveIt, cuRobo V2 and the editable PhyGS install to Isaac Lab's base image ([docker/README.md](docker/README.md)). |
 | Without the container | Install as `docker/Dockerfile.phygs` does: [docs/nav2.md](docs/nav2.md#ros-2-jazzy-setup) (ROS 2, Nav2, explore_lite), [docs/manipulation_planners.md](docs/manipulation_planners.md#dependencies) (cuRobo, MoveIt), then `./isaaclab.sh -p -m pip install -e scripts/PhyGS --no-deps` | Only outside Docker. |
 | CPU governor | `sudo cpupower frequency-set -g performance` on the host | Recommended; `powersave` costs about 20% real-time factor. |
-| Scene generation environment | [scene_generation/docs](scene_generation/docs/) and `scene_generation/infinigen/README.md` | Only to generate scenes. Never mix it with the simulator's Python. |
 
 In every shell that runs an episode or a navigation test:
 
@@ -137,7 +134,7 @@ def run(session):
 | `grants` and `hints` | Privileged channels the spec grants (`gt_localization`, `known_map`, `object_targets`, `scene_hints`); every use is audited and listed in the report. |
 | `finish(reason)` | Ends the episode. The World then cancels everything, keeps the grip, settles and evaluates. |
 
-Everything the agent does goes into `audit.jsonl`; the report (`report.json`) has the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. Design pages: [the session](docs/design/episode_harness/session.html), [the manipulation contract](docs/design/manipulation_contract/index.html).
+Everything the agent does goes into `audit.jsonl`; the report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
 
 ## 🤖 Robots
 
@@ -150,9 +147,9 @@ Adding a robot is one folder with a `robot.yaml` ([docs/adding_a_robot.md](docs/
 
 ## 🏠 Scenes
 
-- **Fixtures** in `tests/robot_tests/scenes/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course. Built by `scene_generation/usd_tools/build_*_scene.py`.
-- **Released scenes** (the scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): a catalog of immutable releases, one scene id at one version each. `phygs.scene.fetch` downloads, verifies (SHA-256, every dependency inside the archive) and installs a release under `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`) with a record the scene registry reads; a spec pins it with `scene: {id: bear_loop_house, version: 1.1.0}`. Publishing a new version: `scene_generation/usd_tools/package_scene.py` then `publish_scene.py` ([docs/scenes.md](docs/scenes.md)).
-- **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says `scene: {id: <folder>, ground: true|false}`; no spec holds a file path. Generation: [scene_generation/](scene_generation/) (Infinigen fork, own environment) and the builders.
+- **Fixtures** in `tests/robot_tests/scenes/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course, as files.
+- **Released scenes** (the scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): a catalog of immutable releases, one scene id at one version each. `phygs.scene.fetch` downloads, verifies (SHA-256, every dependency inside the archive) and installs a release under `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`) with a record the scene registry reads; a spec pins it with `scene: {id: bear_loop_house, version: 1.1.0}`. The release format is in [docs/scenes.md](docs/scenes.md).
+- **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says `scene: {id: <folder>, ground: true|false}`; no spec holds a file path.
 - **The scene contract** the framework reads from a USD: rigid bodies by name, prismatic joints as drawers, colliders for the known map, the robot's start on the floor. The reader is `phygs/scene/reader.py`.
 
 ## 🧪 Robot tests
@@ -178,11 +175,11 @@ Rungs that use the house need its release fetched once: `./isaaclab.sh -p -m phy
 
 ## 📚 Documentation
 
-Start at the [docs index](docs/README.md): one guide per topic (observations, pipelines, locomotion, navigation, Nav2, mapping, manipulation skills and planners, adding a robot), the design pages under `docs/design/` (episode harness, manipulation contract, robot portability, the robot UI, the evaluator and the framework/benchmark split) and the scene generation notes. [ARCHITECTURE.md](ARCHITECTURE.md) is the code map and the runtime tick; [CHANGELOG.md](CHANGELOG.md) records every change, including the renames of the repository split.
+Start at the [docs index](docs/README.md): one guide per topic (observations, pipelines, locomotion, navigation, Nav2, mapping, manipulation skills and planners, adding a robot, the robot UI, scenes, the World for benchmark authors). [ARCHITECTURE.md](ARCHITECTURE.md) is the code map and the runtime tick; [CHANGELOG.md](CHANGELOG.md) records every change, including the renames of the repository split.
 
 ## 📈 Status and plans
 
-[PLANS.md](PLANS.md) lists milestones, known gaps and the decision log; the [status board](docs/design/visual/status.html) shows each capability and its last physical check. After the move into this repository (2026-10-28) the retrieve, entry-point and navigation rungs were rerun here and pass with Spot; the other rungs last passed in the lab's development tree the same week. Ridgeback-Franka passes bring-up, footprint and navigation.
+[PLANS.md](PLANS.md) lists milestones, known gaps and the decision log. After the move into this repository (2026-10-28) the retrieve, entry-point and navigation rungs were rerun here and pass with Spot; the other rungs last passed in the lab's development tree the same week. Ridgeback-Franka passes bring-up, footprint and navigation.
 
 ## 🧭 Coding philosophy
 

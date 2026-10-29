@@ -12,7 +12,7 @@ uses (`Dockerfile.phygs`):
 | cuRobo V2 (a pinned commit) | `/opt/curobo_deps` (`planner.curobo_dependencies`) | The default arm planner |
 | PhyGS (editable), `huggingface_hub` | pip in Isaac Sim's Python | The `phygs` command, scene releases |
 
-Scene generation (`scene_generation/infinigen`) is not in this image; it has its own environment.
+Scene generation is not part of PhyGS; scenes come in as released USD files (`docs/scenes.md`).
 
 ## Build and enter
 

@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Local browser UI for a person to run Spot through the public skill APIs (``docs/design/ui/design.html``).
+"""Local browser UI for a person to run Spot through the public skill APIs (``docs/ui.md``).
 
 The simulation runs headless. :class:`~phygs.ui.session.UiSession` runs in the
 runner thread and turns the agent view of the observation pipeline into plain data;

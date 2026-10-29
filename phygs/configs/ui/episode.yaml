@@ -1,4 +1,4 @@
-# Robot UI (phygs/ui/cli.py; design: docs/design/ui/design.html). Paths are relative to this file.
+# Robot UI (phygs/ui/cli.py; docs/ui.md). Paths are relative to this file.
 # The episode itself (world, cameras, Nav2, arm planner, timing) is the World's, as for every
 # agent: phygs/configs/environment.yaml. This file holds only what the page adds.
 max_depth: 6.0  # Depth colour range in the UI [m].

@@ -44,7 +44,7 @@ CAMERA_WINDOW_S = 2.0  # Sim time [s] over which a camera's frame rate is measur
 AGENT_PERIOD_S = 0.05  # Wall time [s] between the agent's passes over the page's requests.
 # Skill step lines the UI shows; "check" lines come from robot tests, not skills.
 STEP_KINDS = ("manipulation", "navigation", "locomotion")
-# Command status -> UI state (docs/design/ui/design.html, section 6). Anything else is a failure.
+# Command status -> UI state (the page's tiles, cards and timeline; docs/ui.md). Anything else is a failure.
 UI_STATES = {
     "queued": "executing",
     "active": "executing",

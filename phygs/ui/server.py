@@ -5,7 +5,7 @@
 
 """UI server thread: serves the page and one WebSocket client from the bridge's plain data.
 
-Protocol (docs/design/ui/design.html, section 13). Text messages are JSON:
+Protocol (docs/ui.md, Protocol). Text messages are JSON:
 ``hello``, ``state``, ``step``, ``command``, ``episode``, ``error``, ``probe`` from the server;
 ``view`` ({main, mode}), ``episode`` ({action: start or end}), ``run`` ({skill, inputs}), ``drive``
 ({v_x, v_y, v_rot}), ``preview`` ({skill, inputs}), ``cancel`` ({id}), ``probe`` ({view, tick,

@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Replay a recorded robot UI episode in the browser, without the simulation (docs/design/ui/design.html).
+"""Replay a recorded robot UI episode in the browser, without the simulation (docs/ui.md).
 
 Give the output folder of ``cli.py`` (or its ``recording`` folder). Open the printed URL;
 the page shows what the person saw, read-only, with pause, speed and restart.

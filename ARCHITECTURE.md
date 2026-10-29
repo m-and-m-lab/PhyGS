@@ -6,8 +6,6 @@ tests. The older Spot SDK / AO-Grasp / CuRobo stack was removed on 2026-10-08 (s
 [the last section](#removed-spot-sdk-facade-ao-grasp-and-curobo-runner)).
 
 Topic guides with usage and measurements are listed in the [docs index](docs/README.md).
-Visual companions: [who sees what](docs/design/visual/pipelines.html) and
-[frames and conventions](docs/design/visual/frames.html).
 
 ## At a glance
 
@@ -234,8 +232,7 @@ no map argument. The Nav2 factory gets its map source (known boxes or the depth 
 Framework-derived products are optional and retain their native snapshot types.
 The agent-facing skill APIs remain under `phygs/skills/`.
 
-See [configuration, ownership and migration](docs/pipelines.md), the
-[who-sees-what page](docs/design/visual/pipelines.html) and the pipeline contract tests.
+See [configuration, ownership and migration](docs/pipelines.md) and the pipeline contract tests.
 Remaining work includes a native Nav2 sensor bridge, a real estimated
 localization implementation, rate-limited route-aware replanning, and recorded
 observation replay. These are independent extensions, not prerequisites for raw
@@ -437,8 +434,8 @@ link frames). Our depth mapper feeds navigation and the independent trajectory g
 Observed obstacles block motion and unknown space does not; the evaluator measures contact
 in unseen space.
 
-The skills (`stow`, `look_at`) are described in [manipulation skills](docs/manipulation_skills.md)
-and the low-level commands in the [manipulation contract](docs/design/manipulation_contract/index.html).
+The skills (`stow`, `look_at`) and the low-level commands are described in
+[manipulation skills](docs/manipulation_skills.md).
 There are no pick, place or drawer skills: an agent composes them from `move_to_pose`,
 end-effector trajectories (`execute_trajectory`) and the gripper commands (see the robot tests' routines, `tests/robot_tests/routines/`).
 
@@ -448,7 +445,8 @@ Released scenes live in the scene dataset on Hugging Face as immutable releases 
 one version: a ZIP, a manifest with its SHA-256 and USD entry point, a catalog listing every
 manifest). `phygs.scene.fetch` downloads and verifies a release into the local scene cache and
 writes a record the scene registry reads, so a spec pins `scene: {id, version}`; nothing downloads
-during a simulation. Authoring and publishing are in `scene_generation/usd_tools/` ([docs/scenes.md](docs/scenes.md)).
+during a simulation. Scenes are made and published outside PhyGS; [docs/scenes.md](docs/scenes.md) has the
+release format PhyGS reads.
 
 Catalog discovery also supports scene-ID subsets and all catalogued releases without
 a local YAML. Each command resolves one Hub commit and generates per-scene local
@@ -457,10 +455,8 @@ records under `CACHE/records/COMMIT/SCENE-VERSION.json`.
 | Source | Usage |
 | --- | --- |
 | `phygs/robots/spot/assets/` | Spot robot, cameras, URDF/USD, cuRobo config; `spot_description` (submodule) for the meshes. |
-| `tests/robot_tests/scenes/` | The authored test scenes (grid storage, navigation course, dynamic course), built by `scene_generation/usd_tools/build_*_scene.py`. |
+| `tests/robot_tests/scenes/` | The robot tests' fixture scenes (grid storage, navigation course, dynamic course), as files. |
 | `~/.cache/phygs/scenes` (`$PHYGS_SCENES`) | Fetched scene releases (`phygs.scene.fetch`) and any local scene folder; specs name scenes by id. |
-| `scene_generation/infinigen/` | The Infinigen-Indoors fork: scene and object generation, USD export (its own Python environment). |
-| `scene_generation/usd_tools/` | Scene builders, the USD scope sorter, the packager and publisher, `scene_lib` checks. |
 
 Benchmark launchers should reference assets explicitly through YAML config when possible.
 
@@ -475,8 +471,8 @@ access for the skills, scene hints), and owns the simulation loop on the main th
 simulated time passes only while the agent waits (`charged` clock) or always (`realtime`).
 Privileged information reaches agents only through granted `session.hints` calls and granted
 skill targets; `audit.jsonl` logs every call. The evaluator is separate and never given to the agent: at the end the World stops the robot (every command cancelled, the grip kept), settles, and calls it once.
-Robot tests hold the World and may read ground truth (`World.truth()`). Design and
-plan: [docs/design/episode_harness/index.html](docs/design/episode_harness/index.html).
+Robot tests hold the World and may read ground truth (`World.truth()`). A benchmark author's view
+of the same: [docs/world.md](docs/world.md).
 
 ## Tests
 

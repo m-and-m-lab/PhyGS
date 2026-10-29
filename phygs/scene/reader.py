@@ -347,6 +347,19 @@ class UsdScene:
         """World box (center, size) [m] a body started at."""
         return self._initial[name]
 
+    def body_motion(self) -> dict[str, tuple[float, float]]:
+        """Every simulated body with colliders: its speed [m/s] and how far its centre is from where
+        the episode placed it [m]."""
+        import torch
+
+        speeds = torch.linalg.vector_norm(self._bodies.velocities()[:, :3], dim=-1).cpu().tolist()
+        by_path = dict(zip(self._bodies.names, speeds))
+        return {
+            name: (by_path[self.bodies[name]], float(np.linalg.norm(self.object_box(name)[0] - start)))
+            for name, (start, _) in self._initial.items()
+            if self.bodies[name] in by_path
+        }
+
     def part(self, name: str) -> ArticulatedPart:
         """A drawer now: handle, opening direction, travel limits, opening [m]."""
         if name not in self.drawers:

@@ -54,6 +54,10 @@ class Truth:
         """Every drawer's opening [m] now."""
         return {name: self._scene.part(name).opening for name in self._scene.part_names}
 
+    def body_motion(self) -> dict[str, tuple[float, float]]:
+        """Every scene body with colliders: (speed [m/s], distance [m] from where it was placed)."""
+        return self._scene.body_motion()
+
     def inside(self, name: str, part: str) -> bool:
         """Whether an object's centre is inside a part (a drawer)."""
         return self._scene.inside(self._scene.object_box(name)[0], part)

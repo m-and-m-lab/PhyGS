@@ -1,4 +1,4 @@
-# The robot UI's default episode (an episode spec, docs/design/episode_harness/spec.html): retrieve the
+# The robot UI's default episode (an episode spec, docs/world.md): retrieve the
 # small box from the grid storage unit's top drawer. Tier motion, so the page offers Drive to
 # look around (unknown floor is blocked). Only gt_localization is granted: the page shows the
 # true pose and maps the cameras' depth with it; the map and the drawers come from the cameras.

@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Run a headless robot episode with the robot UI (docs/design/ui/design.html).
+"""Run a headless robot episode with the robot UI (docs/ui.md).
 
 The simulation runs headless. Open the printed URL in a browser on this machine (remote:
 ``ssh -L 8765:127.0.0.1:8765 <host>``). The page shows the task; the simulation starts when
@@ -11,7 +11,7 @@ the person presses Start. The UI shows the robot's front cameras (stitched into 
 there are two) and its look (hand) camera, navigation's own map (Nav2's costmap), the robot state,
 the skill step lines and the commands. ``--robot`` overrides the spec's robot.
 
-The episode is an episode spec (docs/design/episode_harness) run by the same
+The episode is an episode spec (docs/world.md) run by the same
 :class:`~phygs.world.World` as every agent's: the person is the
 agent (:class:`~phygs.ui.session.UiSession`, every action an audited session call
 within the spec's actions and grants) and the page is its viewer. The World writes the episode

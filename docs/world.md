@@ -27,11 +27,11 @@ starts and only `World` (with `Truth` and `run_episode`) needs it.
 | --- | --- | --- |
 | Spec | `world/spec.py` (`EpisodeSpec`, `SCHEMA = 3`, `load_agent`) | Scene by id and version, robot and start, objects, an opaque `task` block, actions, observations, grants, budget, seed. A benchmark adds its own blocks beside these and strips them before `from_dict`. |
 | Task | `world/task.py` (`Task` protocol, `NoTask`, `load_task(block, loader)`) | `goal`, `description` (public), `target` (privileged), `brief()`, `result(truth, ended_by, contacts, drawers_open_at_start)`, `provenance()`. The framework never imports a task; it takes the object. |
-| World | `world/world.py` (`World`, `run_episode`) | Builds the scene, robot, runtime, backends; runs the agent in a thread; audits; stops; evaluates; writes the report. `overrides` pins settings over `configs/environment.yaml` (`world/build.py`, `SETTINGS`). |
+| World | `world/world.py` (`World`, `run_episode`) | Builds the scene, robot, runtime, backends; checks the settled world before the agent starts (`world/start.py`); runs the agent in a thread; audits; stops; evaluates; writes the report. `overrides` pins settings over `configs/environment.yaml` (`world/build.py`, `SETTINGS`). |
 | Ground truth | `World.truth()` → `Truth` (`world/truth.py`) | Object poses and boxes, `held`, drawer openings, base pose, arm joints, stow error. Only the task's evaluator and robot tests read it. |
-| Report | `world/report.py` (`REPORT_SCHEMA`, `KEYS`, `compose`), `world/recorder.py`, `world/provenance.py` | `report.json` keys with their meaning; `audit.jsonl`; the video; hashes of every asset and threshold and the code version. |
+| Report | `world/report.py` (`REPORT_SCHEMA`, `KEYS`, `compose`), `world/recorder.py`, `world/provenance.py` | `report.json` keys with their meaning; `audit.jsonl`; the video; hashes of every asset and threshold and the code version. `status` says whether the episode can be scored: `completed`, `setup_error` (the start check failed, the agent never ran) or `error` (the simulator or the World broke). Only `completed` episodes count in a rate. |
 | Scenes | `scene/registry.py` (`scene_file(id, version)`), `scene/fetch.py` (`phygs scenes`) | Roots: `$PHYGS_SCENES`, `~/.cache/phygs/scenes`, the fixtures. [scenes.md](scenes.md). |
-| Session | `phygs.session` (`AgentSession`, target types) | What the agent gets; a benchmark's agents import only this. [design](design/episode_harness/session.html). |
+| Session | `phygs.session` (`AgentSession`, target types) | What the agent gets; a benchmark's agents import only this. |
 
 ## Settings a benchmark owns
 
@@ -43,6 +43,7 @@ records them in its own rules file, never a copy of the settings:
 | `end_settle_seconds` | How long the robot settles after the stop before the evaluator reads ground truth [s]. |
 | `stop_all_timeout_seconds` | How long the stop at the end may take [s]. |
 | `contact_record_n` | Arm contacts above this force go into the report [N]. |
+| `start_check` | The limits of the check before the agent starts: bodies at rest and in place, the robot upright, drawers closed (`drawer_open_max_m: null` lets them start open). |
 | `skills.backend` | `collision_avoidance_planner` or `direct`. |
 | `planner.backend` | `curobo` or `moveit`. |
 

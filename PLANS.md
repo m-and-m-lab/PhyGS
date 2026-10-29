@@ -4,12 +4,11 @@
 
 
 This file tracks project status, milestones, and implementation priorities for the Interactive Search robotics benchmark.
-Status at a glance: [status board](docs/design/visual/status.html). Change history: [CHANGELOG.md](CHANGELOG.md).
+Change history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Robot portability (2026-10-28)
 
-Design: [docs/design/robot_portability/index.html](docs/design/robot_portability/index.html); guide:
-[docs/adding_a_robot.md](docs/adding_a_robot.md).
+Guide: [docs/adding_a_robot.md](docs/adding_a_robot.md).
 
 | Phase | Status |
 | --- | --- |
@@ -45,12 +44,11 @@ the benchmark's.
 
 ## Episode harness (2026-10-15)
 
-Design and migration plan: [docs/design/episode_harness/index.html](docs/design/episode_harness/index.html).
+The World for benchmark authors: [docs/world.md](docs/world.md).
 One task (interactive search, retrieve: target held, arm stowed), one entry point
 (`examples/run_world.py`), one oracle agent, a separate evaluator, flat robot tests.
 Since 2026-10-18 the oracle is not an agent: its routines are in `tests/robot_tests/routines/`,
-each episode robot test holds its plan, and the robot tests are in `episodes/` and `components/`
-([robot tests housekeeping](docs/design/archive/robot_tests_housekeeping/index.html)).
+each episode robot test holds its plan, and the robot tests are in `episodes/` and `components/`.
 
 - Step 1 done (2026-10-15): spec loader and the two grid specs, scene registry with the grid
   storage scene, `World` (main-thread loop, charged and realtime clocks, planner restart
@@ -205,7 +203,7 @@ The older sections remain an inventory of existing components and outstanding wo
     `docs/manipulation_skills.md`; `pick`, `place`, `look_at` and `stow` are implemented
     and gated (2026-10-12: 42/44), `move_along_axis` since 2026-10-13. The `open`/`close`
     skills were removed on 2026-10-16, and `pick`, `place` and `move_along_axis` on 2026-10-18
-    (manipulation contract, `docs/design/manipulation_contract/`): agents compose them from
+    (the manipulation contract): agents compose them from
     `move_to_pose`, end-effector trajectories and the gripper. See the qualification update below.
 
 The shared foundation has a point-navigation task specification. General task

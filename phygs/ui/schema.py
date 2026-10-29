@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The skills the UI can run, as sent to the page in ``hello`` (docs/design/ui/design.html, section 8).
+"""The skills the UI can run, as sent to the page in ``hello`` (docs/ui.md, Running a skill).
 
 Each entry names the public API call, the tile, the channel (base or arm), the picker the page
 switches to, and the inputs with units and defaults. The page builds its tiles and command bar

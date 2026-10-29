@@ -5,7 +5,7 @@
 
 """Storage units of a built house scene: in place, or copied into a check scene at another pose.
 
-The house builder (``scene_generation/usd_tools/build_bear_loop_scene.py``, ``storage()``) authors a
+The house builder (outside PhyGS, with the scene releases) authors a
 unit as an anchored carcass body ``/World/objects/<unit>`` and one drawer body per tier
 (``<unit>_drawer``, ``<unit>_tier_<n>_drawer``, bottom first), each with its handle
 cylinder, on prismatic joints anchored to the world (``/World/joints/<unit>_slide``,

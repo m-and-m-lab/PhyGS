@@ -31,6 +31,8 @@ RUNS = {
     "joints_grid": (["joints", "motion"], ("locomotion", "arm")),
 }
 REPORT_KEYS = (
+    "status",
+    "start_check",
     "spec",
     "provenance",
     "ended_by",
@@ -77,6 +79,7 @@ def main() -> int:
             measure(f"{spec}_report", missing or "complete", not missing)
             if missing:
                 continue
+            measure(f"{spec}_status", report["status"], report["status"] == "completed")
             outcome = (report["ended_by"], report["agent_outcome"]["outcome"])
             measure(f"{spec}_ended", outcome, outcome == ("finish", "agent_returned"))
             used = report["usage"]["levels_used"]

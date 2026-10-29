@@ -5,7 +5,7 @@
 
 """What a pixel the person points at in a camera view is: its depth and 3D point.
 
-Resolved against the exact frame the person saw (docs/design/ui/design.html, section 9), not the
+Resolved against the exact frame the person saw (docs/ui.md, Running a skill), not the
 latest capture. A pixel without depth takes the nearest valid pixel within ``search`` pixels.
 """
 

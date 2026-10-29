@@ -1,4 +1,4 @@
-# Robot UI episode in the Bear house (an episode spec, docs/design/episode_harness/spec.html): retrieve
+# Robot UI episode in the Bear house (an episode spec, docs/world.md): retrieve
 # the small cardboard box from the kitchen island's bottom drawer, as dev_house_drawer, but with
 # the UI's tier and grants: tier motion (Drive to look around) and only gt_localization (the page
 # shows the true pose and maps the cameras' depth with it).

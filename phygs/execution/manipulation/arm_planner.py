@@ -102,6 +102,8 @@ class ArmPlanner:
         self._plans = 0
         self._domain: tuple[int, Any] | None = None  # MoveIt's private ROS domain and its lock.
         self.last_plan: dict | None = None  # kind, seconds [wall], result of the latest finished plan.
+        # Why the planner process broke (crashed, ran out of memory, timed out), not a failed plan.
+        self.failure: str | None = None
         self.last_view: PlannerView | None = None  # The latest finished plan for display (recording.panels).
         backend = settings["backend"]
         self._env = {
@@ -226,6 +228,8 @@ class ArmPlanner:
         episode = self._episode_id()
 
         def finish(done: Future) -> None:
+            if done.exception() is not None:
+                self.failure = f"{type(done.exception()).__name__}: {done.exception()}"
             try:
                 result = done.result()
                 self._record(plan_request, result)

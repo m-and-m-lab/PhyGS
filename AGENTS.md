@@ -105,8 +105,7 @@ When changing architecture or workflow, update:
 | `ARCHITECTURE.md` | Pipeline, API, backend, or data-flow changes. |
 | `PLANS.md` | Milestones, completed work, or known gaps. |
 | `CHANGELOG.md` | Any user-visible change: one past-tense line under Unreleased. |
-| `docs/README.md` | A guide or visual page is added, renamed, or superseded. Follow its "Keeping the docs tidy" rules. |
-| `docs/design/visual/*.html` | The source guide of that page changes. Update the page or mark it stale. |
+| `docs/README.md` | A guide is added, renamed, or superseded. Follow its "Keeping the docs tidy" rules. |
 | Local directory README | Large directory ownership or launch commands change. |
 
 ## What Agents Must Not Do

@@ -109,8 +109,7 @@ Notes kept from validation:
 
 ## Episodes (examples/run_world.py)
 
-One entry point runs an episode spec with an agent (design:
-[docs/design/episode_harness/index.html](../docs/design/episode_harness/index.html)). Headless by default;
+One entry point runs an episode spec with an agent ([docs/world.md](../docs/world.md)). Headless by default;
 `--viz kit` opens a window, `--record` writes `third_person.mp4`, `--clock realtime` keeps time
 running while the agent thinks.
 
@@ -122,7 +121,7 @@ running while the agent thinks.
 
 ## Robot UI
 
-A local browser UI for a person to run Spot (design: [docs/design/ui/design.html](../docs/design/ui/design.html)).
+A local browser UI for a person to run Spot ([docs/ui.md](../docs/ui.md)).
 The simulation runs headless; the page shows only the agent view: the Front view stitched from
 the two front cameras, the frontleft, frontright and hand cameras (RGB or depth), the map built
 from the front cameras' depth, the robot state, skill step lines, commands and a timeline. Its
@@ -154,67 +153,10 @@ short fixed route; `--autostart` starts without the page. Unit tests: `test_ui_s
 `test_ui_translate.py`, `test_ui_session.py`, `test_ui_episode.py`,
 `test_ui_replay.py`, `test_ui_previews.py`, `test_ui_telemetry.py`.
 
-## Standalone scene loading
+## Scenes
 
-```bash
-CUDA_VISIBLE_DEVICES=0 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/load_usd_asset_standalone.py \
-  --usd_path scripts/.scene_usd/bear_loop_house_revised/scene.usdc \
-  --device cpu --viz kit --physics_dt 0.004166666666666667 --no_render_every_step
-```
-
-Optional `--validate_scene` checks use `scene_generation/usd_tools/scene_lib/scene_checks.py`. For a bounded
-headless check, use `--headless --viz none --render_mode none --num_steps 1200 --validate_scene`
-with the same physics timestep. House-generation and other scene checks live under
-the scene tools' own tests (`scene_generation/usd_tools`).
-
-## ForageBench scene setup
-
-Authenticate once with access to the private dataset:
-
-```bash
-./isaaclab.sh -p -m huggingface_hub.cli.hf auth login
-```
-
-Discover available scenes, then download one complete scene:
-
-```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/scene/fetch.py list
-
-./isaaclab.sh -p scripts/PhyGS/phygs/scene/fetch.py fetch \
-  --scene_id bear_loop_house --scene_version 1.0.0 \
-  --cache_dir scripts/.scene_usd/cache
-```
-
-Fetch downloads the manifest, scene and textures, verifies the archive, and creates an extracted
-cache and scene record. It prints the USD path, resolved repository commit, and **Scene record**
-path. Use that printed record path to load offline:
-
-```bash
-CUDA_VISIBLE_DEVICES=0 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/load_usd_asset_standalone.py \
-  --scene_record /PATH/PRINTED/BY/FETCH.json \
-  --device cpu --viz kit --no_render_every_step --report /tmp/bear_loop_run.json
-```
-
-Records live under `CACHE/records/COMMIT/SCENE-VERSION.json`. The record supplies its USD path and
-default physics timestep. The report includes dataset ID, commit, scene version, checksum, and
-actual timestep. An explicit `--physics_dt` overrides the scene default and is recorded separately.
-
-Download every catalogued scene release with `fetch --all --cache_dir scripts/.scene_usd/cache`;
-for a subset, pass several IDs after `--scene_id`. `--repo_id` defaults to
-`mandmlabresearch/ForageBench`; pass `--revision FULL_COMMIT_SHA` to reproduce a previous
-download. Do not modify or commit cached files or generated records.
-
-For benchmark configurations in this repository, the checked-in YAML pins a version:
-
-```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/scene/fetch.py fetch \
-  --config scripts/PhyGS/configs/scenes/bear_loop_house.yaml \
-  --cache_dir scripts/.scene_usd/cache \
-  --record scripts/.scene_usd/cache/bear_loop_house.json
-```
-
-Scene release preparation and upload remain in `scripts/scene_generation/usd_tools`; see
-`scripts/.scene_usd/foragebench/PIPELINE.md`.
+Fetching a released scene, the cache and the release format: [docs/scenes.md](../docs/scenes.md).
+Scene-building and scene-inspection tools are not part of PhyGS.
 
 ## Test philosophy
 

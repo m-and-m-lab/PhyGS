@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Public runtime arm/gripper API: low-level commands and the ``stow`` and ``look_at`` skills
-(see docs/manipulation_skills.md and docs/design/manipulation_contract/)."""
+(see docs/manipulation_skills.md)."""
 
 from __future__ import annotations
 

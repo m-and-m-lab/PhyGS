@@ -67,7 +67,7 @@ def test_the_report_schema_lists_every_key_the_world_writes():
     assert len(calls) == 1
     written = {keyword.arg for keyword in calls[0].keywords if keyword.arg}
     written |= {"contacts", "grasp_contacts"}  # From **contacts.
-    assert REPORT_SCHEMA == 1 and set(KEYS) == written, sorted(set(KEYS) ^ written)
+    assert REPORT_SCHEMA == 2 and set(KEYS) == written, sorted(set(KEYS) ^ written)
     fields = dict.fromkeys(KEYS)
     assert list(compose(**fields)) == list(KEYS)
     with pytest.raises(ValueError, match="missing"):

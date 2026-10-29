@@ -17,7 +17,7 @@ The robot is the spec's (``robot.model``); ``--robot`` runs the same episode wit
 name (``phygs/robots/<name>``) or the path of a ``robot.yaml`` (docs/adding_a_robot.md).
 
 The exit code says the episode ran to its end (0) or the run broke (1); the outcome is in
-<output>/report.json. Design: docs/design/episode_harness/index.html.
+<output>/report.json. The World and the report: docs/world.md.
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ def main() -> int:
     ) as world:
         report = world.run(agent, name=agent_name)
     print(
-        f"Episode {spec.id}: ended by {report['ended_by']} ({report['agent_outcome']['outcome']}),"
+        f"Episode {spec.id} {report['status']}: ended by {report['ended_by']} ({report['agent_outcome']['outcome']}),"
         f" evaluation {report['evaluation']['outcome']}, {report['sim_seconds']} s simulated;"
         f" {args.output}/report.json",
         flush=True,

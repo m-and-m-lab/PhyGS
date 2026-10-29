@@ -13,9 +13,10 @@ world builds its report with :func:`compose`, which refuses a key missing from o
 
 from __future__ import annotations
 
-REPORT_SCHEMA = 1
+REPORT_SCHEMA = 2
 KEYS = (
     "schemas",  # {spec, report}: the schema numbers this report follows.
+    "status",  # completed, setup_error or error (:func:`status`): whether the episode can be scored.
     "spec",  # The episode spec as run (scene id and version, robot, start, objects, actions, grants, budget, seed).
     "task",  # The task's public part: goal and description.
     "provenance",  # Hashes of the robot USD, policy files, scene USD, evaluator thresholds; the code version.
@@ -23,9 +24,10 @@ KEYS = (
     "clock",  # charged | realtime.
     "sim_seconds",  # Simulated time the episode used [s].
     "wall_seconds",  # Wall time [s].
-    "ended_by",  # finish, agent_returned/stopped/failed/error, budget, runtime_*, environment_error.
+    "ended_by",  # finish, agent_returned/stopped/failed/error, budget, runtime_*, environment_error, setup_error.
     "reason",  # The agent's finish reason, or what ended it.
-    "agent_outcome",  # {outcome, detail} of the agent thread.
+    "agent_outcome",  # {outcome, detail} of the agent thread (not_started after a setup error).
+    "start_check",  # The check before the agent started: passed, problems, measured, limits.
     "stopped",  # What the end-of-episode stop cancelled, how long it took, whether it timed out.
     "evaluation",  # The task's result: outcome, reason, checks, measured, conduct, clean, thresholds.
     "usage",  # Session calls per client, privileged reads, levels used.
@@ -43,6 +45,22 @@ IMPLICIT = {
     "known_map": "navigation and the arm planner avoid the scene's known boxes (without it, Nav2 maps the"
     " navigation cameras' depth and the arm plans on depth)",
 }
+
+
+# What ended an episode the framework cannot vouch for: the simulator or the World broke.
+ERRORS = ("environment_error", "runtime_failed")
+STATUSES = ("completed", "setup_error", "error")
+
+
+def status(ended_by: str, runtime_failed: bool = False) -> str:
+    """Whether an episode can be scored. ``completed``: it ran to an end its task scores, whatever the
+    agent did (a fall, a crash of the agent or the budget is the agent's failure). ``setup_error``: the
+    start check failed and the agent never ran; fix the scene or the episode. ``error``: the simulator
+    or the World broke (``runtime_failed``: a component such as the arm planner process failed, even
+    when the agent stopped first); rerun it. Neither of the last two counts in a success rate."""
+    if ended_by == "setup_error":
+        return "setup_error"
+    return "error" if runtime_failed or ended_by in ERRORS else "completed"
 
 
 def implicit_grants(grants: tuple[str, ...]) -> dict[str, str]:

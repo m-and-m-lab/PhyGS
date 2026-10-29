@@ -11,6 +11,52 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.5.0 (unreleased, develop)
+
+Run statuses and the check before the agent starts (ForageBench's phase A, 2026-10-29). Report
+schema 2, so a minor release (docs/world.md, Versions). The repository holds the framework only
+(phase B, 2026-10-29): scene-building code and design history left it.
+
+Removed:
+
+- **Breaking:** `scene_generation/` (the Infinigen-Indoors fork, the USD scene builders, the
+  packager and publisher, the generation notes). PhyGS loads scenes as released USD files by id and
+  version and does not build them; the scene tools are kept with the lab's scenes, and the generator
+  of the paper is on the `main` branch. `docs/scenes.md` keeps the release format PhyGS reads.
+- `tests/robot_tests/load_usd_asset_standalone.py`, a scene-inspection tool that went with them.
+- `docs/design/` (the design pages and their history). The docs describe the code as it is; the robot
+  UI's page became the guide `docs/ui.md`, and links to the pages point at the guides.
+
+Added:
+
+- `docs/ui.md`: the robot UI guide (running it, what it shows and never shows, running a skill, what a
+  run leaves, replay, the protocol).
+- `tests/test_packaging.py`: `pyproject.toml` lists every package in the tree (the list stays explicit
+  because the robot tests install as `phygs_robot_tests`).
+- `.vscode/` is ignored; untrack the committed `settings.json` with `git rm --cached`.
+
+Added:
+
+- The check before the agent starts (`phygs/world/start.py`, settings `start_check`): after the
+  reset's settle, the robot must stand (base within 15 degrees of vertical, above its fallen height),
+  every scene body must be at rest (under 0.1 m/s) within 0.05 m of where the episode placed it, and
+  every drawer closed (under 0.03 m; `drawer_open_max_m: null` lets drawers start open). When it
+  fails, the World writes the report with `ended_by: setup_error` and never starts the agent.
+  Measured on every robot-test scene; the house reaches 0.026 m/s and 0.023 m, the others 0.
+- `Truth.body_motion()`: each scene body's speed and distance from where it was placed.
+
+Changed:
+
+- Report schema 2: `status` (`completed`, `setup_error` or `error`, from `phygs.world.report.status`)
+  says whether an episode can be scored; only `completed` episodes belong in a rate. `error` is the
+  simulator or the World breaking (`environment_error`, `runtime_failed`); an agent's crash, a fall
+  or the budget is `completed`, the agent's failure. `start_check` records the check's result,
+  measured values and limits.
+- An arm planner process that breaks (out of GPU memory, a crash, a timeout; not a plan it could not
+  find) fails the runtime, so the episode ends `runtime_failed` with status `error` instead of being
+  scored as the agent's failure (`ArmPlanner.failure`). Seen 2026-10-29: a CUDA out-of-memory in the
+  planner while another simulator held the GPU was reported as `agent_failed`.
+
 ### 0.4.0 (unreleased, develop)
 
 The layout of the layout proposal, steps 1 to 4 (`docs/design/framework_layout/`; the differences

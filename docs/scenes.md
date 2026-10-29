@@ -50,34 +50,17 @@ The cache is `--cache_dir` (default `~/.cache/phygs/scenes`, which is also `$PHY
 default). Rerunning verifies the cached files; nothing is overwritten. Nothing downloads during a
 simulation.
 
-## Publishing a new version
+## Making a release
 
-From the Isaac Lab root, with `$PHYGS` the checkout:
-
-```bash
-# 1. Package: the USD's dependency closure plus README.md and ATTRIBUTION.md, verified after extraction.
-./isaaclab.sh -p $PHYGS/scene_generation/usd_tools/package_scene.py \
-  --scene_dir /scenes/bear_loop_house_storage_revision --output /scenes/bear_loop_house_storage_revision.zip
-
-# 2. Manifest and catalog entry in a local release folder (a checkout of the dataset's metadata).
-./isaaclab.sh -p $PHYGS/scene_generation/usd_tools/publish_scene.py prepare \
-  --archive /scenes/bear_loop_house_storage_revision.zip --release_dir /scenes/releases \
-  --scene_id bear_loop_house --version 1.1.0
-
-# 3. Edit the dataset card (releases/README.md), then one commit: catalog, manifest, card, ZIP.
-./isaaclab.sh -p $PHYGS/scene_generation/usd_tools/publish_scene.py upload \
-  --archive /scenes/bear_loop_house_storage_revision.zip --release_dir /scenes/releases \
-  --scene_id bear_loop_house --version 1.1.0
-```
-
-`prepare` refuses a manifest that exists and `upload` refuses a release the dataset already holds,
-so a published scene is never replaced. The archive's top-level folder is the scene's authoring
-name (`bear_loop_house_storage_revision`); the id and version are the dataset's. The scene folder
-must hold `README.md` (what the scene is, how it was validated) and `ATTRIBUTION.md` (asset
-provenance); keep the dataset private until the asset licences are reviewed.
+Scenes are built, packaged and published outside PhyGS; PhyGS only reads releases. A release must
+follow the format above: one scene id at one version, a ZIP with the USD's dependency closure, a
+manifest with its SHA-256 and entry point, an entry in the catalog. It is never replaced: a changed
+scene is a new version. The scene folder holds `README.md` (what the scene is, how it was validated)
+and `ATTRIBUTION.md` (asset provenance); keep the dataset private until the asset licences are
+reviewed.
 
 ## Fixture scenes
 
 The three small scenes the robot tests use (grid storage, the navigation course, the dynamic
-course) are committed as `tests/robot_tests/scenes/<id>/scene.usda`, built by
-`scene_generation/usd_tools/build_grid_storage_scene.py` and `build_test_course_scenes.py`.
+course) are committed as files, `tests/robot_tests/scenes/<id>/scene.usda`; their builders live with the
+other scene-building code, outside PhyGS.
