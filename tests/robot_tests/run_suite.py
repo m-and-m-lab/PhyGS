@@ -74,6 +74,8 @@ LADDER = [
     (13, "search_house", "components/check_nav2_pipeline.py", [], ("explore",)),
     (14, "retrieve_grid", RETRIEVE, spec("dev_grid_drawer"), ("ros2", "curobo")),
     (14, "retrieve_house", RETRIEVE, spec("dev_house_drawer"), ("ros2", "curobo")),
+    # Three episodes in one World: each repeat starts from the same checked state (World.next_episode).
+    (14, "retrieve_repeat", RETRIEVE, [*spec("dev_grid_drawer"), "--repeats", "3"], ("ros2", "curobo")),
     (15, "entry_point", "episodes/check_entry_point.py", [], ("ros2", "curobo")),
 ]
 # Groups by subsystem, as before the ladder (2026-10-28): rungs of the ladder.

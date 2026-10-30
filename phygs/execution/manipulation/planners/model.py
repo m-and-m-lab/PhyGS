@@ -122,6 +122,12 @@ def gripper_positions(model: dict, value: float) -> dict[str, float]:
     return {joint: value * ratio for joint, ratio in model["gripper_ratios"].items()}
 
 
+def planner_angle(gripper: float) -> float:
+    """The gripper angle [rad] a cuRobo planner is built for: one planner per 0.01 rad, since cuRobo
+    fixes locked joints when it builds a planner."""
+    return round(gripper, 2)
+
+
 def joint_neighbours(root: ET.Element, links: list[str], *, hops: int) -> list[tuple[str, str]]:
     """Pairs (a < b) of links exactly ``hops`` moving joints apart; links joined by fixed joints count as one."""
     groups = {link.get("name"): link.get("name") for link in root.findall("link")}

@@ -15,6 +15,8 @@ name, agent = load_agent("template")                     # an example agent by n
 with World(spec, output_folder, task=task, clock="charged",
            overrides={"end_settle_seconds": 1.0, "planner": {"backend": "curobo"}}) as world:
     report = world.run(agent, name=name)                 # checks, resets the task, runs, stops, settles, evaluates
+    world.next_episode(output_folder / "s1", seed=1)     # the same spec again, without building again
+    report_1 = world.run(agent, name=name)
 ```
 
 `examples/run_world.py` is this with argument parsing; `phygs run` is its command. `phygs.world`
@@ -66,6 +68,7 @@ records them in its own rules file, never a copy of the settings:
 | `stop_all_timeout_seconds` | How long the stop at the end may take [s]. |
 | `contact_record_n` | Arm contacts above this force go into the report [N]. |
 | `evaluation_period_seconds` | How often the task samples ground truth while the agent runs (`Task.update`) [s]. |
+| `agent_wall_seconds` | The episode ends as `agent_timeout` (the agent's failure) after this much wall time [s]; `null` for no limit. Thinking costs no simulated time on the charged clock, so this bounds a hung agent. |
 | `start_check` | The limits of the check before the agent starts: bodies at rest and in place, the robot upright, drawers closed (`drawer_open_max_m: null` lets them start open). |
 | `skills.backend` | `collision_avoidance_planner` or `direct`. |
 | `planner.backend` | `curobo` or `moveit`. |
@@ -74,6 +77,25 @@ records them in its own rules file, never a copy of the settings:
 
 - Owns: the task object and its thresholds, the episode files and their extra blocks, which grants and actions an agent gets (a track), the settings above, how results are aggregated.
 - Does not own: the robot, the physics rate, the cameras, the skills, the runtime, the report's keys, how a scene is read. A benchmark that needs one of those changed asks PhyGS for a release.
+
+## Repeats in one World
+
+`World.next_episode(output, seed=...)` gets a World ready for another episode of the same spec in a
+fresh folder. The next `run` restores the robot and every scene body to the start (the runtime's
+snapshot of the settled scene), clears Nav2's costmaps and goals, settles and runs the start check,
+exactly as the first episode did; the arm planner and Nav2 stay up, so a repeat skips Isaac Sim's
+start-up (about 40-60 s per episode on 2026-10-29). Each repeat writes its own report, audit, state
+log, video and plan requests; the planner's model and log and Nav2's logs stay in the first episode's
+folder. A different spec (another scene, robot or object placement) still needs a new World. The robot
+test `retrieve_repeat` checks that three repeats in one World start from the same checked state and
+succeed as the first does.
+
+What carries over is only what costs no simulated time. The cuRobo planner builds a planner per
+gripper angle (about 8 s each); the World warms the measured and open angles before the first
+episode, and the arm planner builds any other angle inside one tick before the plan that needs it,
+so a repeat is never faster in simulated time for having warm planners. Plans can still differ in
+detail between a first episode and a repeat (each planner's random state carries on), as they do
+between two processes: compare repeats by their outcomes and times, not plan by plan.
 
 ## Versions
 

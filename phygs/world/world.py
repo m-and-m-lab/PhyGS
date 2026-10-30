@@ -66,7 +66,10 @@ CLOCKS = ("charged", "realtime")
 
 
 class World:
-    """One episode: ``World(spec, output)``, then :meth:`run` an agent; close after use.
+    """Episodes of one spec: ``World(spec, output)``, then :meth:`run` an agent; close after use.
+    :meth:`next_episode` makes it ready for another episode of the same spec in another folder (a
+    repeat with a new seed) without building again: the scene, the robot, Nav2 and the arm planner
+    stay up, and the next :meth:`run` restores the start state, settles and checks it.
 
     A ``viewer`` (:class:`~phygs.world.viewer.Viewer`, e.g. the robot UI's page) watches alongside
     the agent: its cameras are captured through the declared ``viewer`` observation consumer, and
@@ -201,10 +204,26 @@ class World:
         if record:
             self._panels = PanelFeed(self.control, footprint=build.transit_outline(robot), planner=self.planner)
         self.provenance.update(task.provenance())
+        self.recorder = self._open_recorder(output, view)
+        self.report: dict | None = None
+        self._during: Callable[[World], None] | None = None  # The robot test's per-tick call (run).
+        self._reset_done = False
+        self._services_ready = False  # The arm planner started and warmed, the skills bound (first reset).
+        self.episodes = 1  # Episodes this World has opened (next_episode adds one).
+        self.start_check: dict | None = None  # The check before the agent starts (reset).
+        self._evaluate_ticks: int | None = None  # While the agent runs: the task's update every this many ticks.
+        self._finished: str | None = None
+        self._outcome: tuple[str, str] | None = None
+        self._last_render = 0.0
+
+    def _open_recorder(self, output: Path, view) -> Recorder:
+        """The episode folder's recorder, with the state log ``phygs replay`` reads."""
+        spec, robot, settings = self.spec, self.robot, self.settings
+        dt, period = settings["physics_dt"], settings["camera_period"]
         # What phygs replay needs to build the scene again, beside the states (recording.state_log).
         state = StateLog(
             output / STATE_FILE,
-            joint_names=robot_asset.joint_names,
+            joint_names=self._robot_asset.joint_names,
             body_names=self._bodies.names,
             meta=dict(
                 period=period,
@@ -224,22 +243,39 @@ class World:
                 record_view=[list(map(float, point)) for point in view],
             ),
         )
-        self.recorder = Recorder(
+        return Recorder(
             output,
-            video=record,
+            video=self._record,
             fps=1.0 / period,
             jaw_links=robot.gripper.jaw_links,
             read_ticks=settings["contact_read_ticks"],
             state=state,
         )
-        self.report: dict | None = None
-        self._during: Callable[[World], None] | None = None  # The robot test's per-tick call (run).
-        self._reset_done = False
-        self.start_check: dict | None = None  # The check before the agent starts (reset).
-        self._evaluate_ticks: int | None = None  # While the agent runs: the task's update every this many ticks.
-        self._finished: str | None = None
-        self._outcome: tuple[str, str] | None = None
-        self._last_render = 0.0
+
+    def next_episode(self, output: Path, *, seed: int | None = None) -> None:
+        """Get ready for another episode of the same spec in ``output`` (a fresh folder), with
+        ``seed`` (default: the spec's). Only after :meth:`run` returned. The next :meth:`run`
+        restores the robot and every scene body to the start (the runtime's snapshot), clears Nav2's
+        costmaps and goals, settles and runs the start check, as the first episode did; the arm
+        planner and Nav2 keep running, so the episode starts without Isaac Sim's start-up. Each
+        episode's plan requests go to its own folder; the planner's model and log and Nav2's logs
+        stay in the first episode's."""
+        if self.report is None:
+            raise RuntimeError("Run this episode before the next one.")
+        output = Path(output)
+        if (output / "report.json").exists():
+            raise FileExistsError(f"{output} holds a finished episode; choose a fresh output folder.")
+        output.mkdir(parents=True, exist_ok=True)
+        self.recorder.close()
+        if seed is not None:
+            self.spec = self.spec.with_seed(seed)
+        self.output = output
+        self.recorder = self._open_recorder(output, build.record_view(self.spec))
+        if self.planner is not None:
+            self.planner.set_output(output)
+        self.report, self._reset_done, self.start_check = None, False, None
+        self._finished = self._outcome = self._evaluate_ticks = None
+        self.episodes += 1
 
     @property
     def _known_map(self) -> bool:
@@ -311,10 +347,13 @@ class World:
         torch.manual_seed(self.spec.seed)
         np.random.seed(self.spec.seed)
         self.control.reset(settling_seconds=self.settings["settling_seconds"])
-        if self.planner is not None:
+        if self.control.narration is not None:
+            self.control.narration.log.clear()  # This episode's step lines only.
+        if self.planner is not None and not self._services_ready:
             self.planner.start()
             grants, robot = self.spec.grants, self.robot
-            # Before the episode clock runs: the planner's first plan per gripper angle takes ~8 s.
+            # Before the episode clock runs: the planner's first plan per gripper angle takes ~8 s
+            # (poll warms other angles the same way, inside a tick).
             self.planner_warmup_seconds = self.planner.warm_up((robot.gripper.open,))
             kinematics = ArmKinematics.from_model(self.planner.model)
             self.control.manipulation.bind_kinematics(kinematics, self.control.pipeline.view("skills"))
@@ -331,6 +370,7 @@ class World:
                     pose_planner=lambda pose, held=None: self.planner.request(world_pose=pose, held=held),
                 )
             )
+        self._services_ready = True
         self.start_check = check_start(self.truth(), self.robot.fallen_height, self.settings["start_check"])
         if not self.start_check["passed"]:
             print("Start check failed: " + "; ".join(self.start_check["problems"]), flush=True)
@@ -346,7 +386,7 @@ class World:
         every physics tick of the run, including the end settle, to sample ground truth or move a
         body mid-episode."""
         if self.report is not None:
-            raise RuntimeError("This World ran its episode; build a new one.")
+            raise RuntimeError("This World ran its episode; call next_episode() for another.")
         if isinstance(agent, str):
             name, agent = load_agent(agent)
         name = name or getattr(agent, "__module__", "") + "." + getattr(agent, "__qualname__", repr(agent))
@@ -377,6 +417,7 @@ class World:
         )
         thread = threading.Thread(target=self._agent_main, args=(agent, session), name="agent", daemon=True)
         start, wall = runtime.time_seconds, time.perf_counter()
+        wall_limit = self.settings["agent_wall_seconds"]  # None: no limit.
         self._during = during
         ended_by = reason = None
         if self.start_check["passed"]:
@@ -397,6 +438,8 @@ class World:
                     ended_by, reason = self._outcome
                 elif runtime.time_seconds - start >= self.spec.sim_seconds:
                     ended_by, reason = "budget", f"{self.spec.sim_seconds} simulated seconds"
+                elif wall_limit is not None and time.perf_counter() - wall >= wall_limit:
+                    ended_by, reason = "agent_timeout", f"{wall_limit} wall seconds"
                 elif runtime.status != EpisodeStatus.RUNNING:
                     events = runtime.result()["events"]
                     ended_by, reason = f"runtime_{runtime.status.value}", events[-1]["detail"] if events else ""

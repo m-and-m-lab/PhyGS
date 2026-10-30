@@ -50,7 +50,7 @@ def test_overrides_replace_a_key_and_merge_one_level_into_a_mapping(tmp_path):
 
 def test_the_framework_settings_hold_every_key_a_benchmark_is_expected_to_set():
     settings = build.load_settings(SETTINGS)
-    for key in ("stop_all_timeout_seconds", "end_settle_seconds", "contact_record_n"):
+    for key in ("stop_all_timeout_seconds", "end_settle_seconds", "contact_record_n", "agent_wall_seconds"):
         assert key in settings, key
     assert "backend" in settings["skills"] and "backend" in settings["planner"]
 

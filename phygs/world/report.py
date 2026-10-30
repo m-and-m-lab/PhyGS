@@ -24,7 +24,8 @@ KEYS = (
     "clock",  # charged | realtime.
     "sim_seconds",  # Simulated time the episode used [s].
     "wall_seconds",  # Wall time [s].
-    "ended_by",  # finish, agent_returned/stopped/failed/error, budget, runtime_*, environment_error, setup_error.
+    # finish, agent_returned/stopped/failed/error, budget, agent_timeout, runtime_*, environment_error, setup_error.
+    "ended_by",
     "reason",  # The agent's finish reason, or what ended it.
     "agent_outcome",  # {outcome, detail} of the agent thread (not_started after a setup error).
     "start_check",  # The check before the agent started: passed, problems, measured, limits.

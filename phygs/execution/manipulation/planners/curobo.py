@@ -29,7 +29,7 @@ from phygs.execution.manipulation.planners.interface import (
     PlanRequest,
     PlanResult,
 )
-from phygs.execution.manipulation.planners.model import gripper_positions
+from phygs.execution.manipulation.planners.model import gripper_positions, planner_angle
 
 HELD_LINK, HELD_SPHERES = "held_object", 256  # Reserved wrist link and its sphere slots for a held object.
 SPHERE_FIT = dict(sphere_density=1.0, coverage_weight=1.0e5)  # MorphIt volume fit, ~260 spheres in all.
@@ -145,7 +145,7 @@ class Planner:
         other types makes Warp rebuild the collision kernels, and the voxel check of planners
         built before it then fails silently inside their CUDA graphs. Building takes about 15 s.
         """
-        angle = round(gripper, 2)
+        angle = planner_angle(gripper)
         grid = self.config["depth_map"]
         if angle not in self.planners:
             self.robot["robot_cfg"]["kinematics"]["lock_joints"].update(
@@ -189,7 +189,7 @@ class Planner:
             if set(locked) != set(self.locked):
                 raise ValueError(f"Locked joints {sorted(locked)} do not match the model's {sorted(self.locked)}.")
             self.locked = dict(locked)
-        angle = round(gripper, 2)
+        angle = planner_angle(gripper)
         moved = (abs(self.posed[angle][name] - value) for name, value in self.locked.items())
         if max(moved, default=0.0) <= POSTURE_TOLERANCE:  # A robot may lock nothing but the gripper.
             return
@@ -240,7 +240,7 @@ class Planner:
         planner = self.planner_for(gripper)
         self.repose(locked, gripper)
         state = self.state(start)
-        segmenter, attachments = self.segmenters[round(gripper, 2)]
+        segmenter, attachments = self.segmenters[planner_angle(gripper)]
         for manager in (planner.attachment_manager, attachments):
             manager.detach(HELD_LINK)
             if held is not None:  # Held object in the wrist frame; collision model only.

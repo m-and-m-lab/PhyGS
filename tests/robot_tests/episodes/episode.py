@@ -135,16 +135,16 @@ def clearance(world, boxes) -> float:
     return float(min(distances)) if distances else math.inf
 
 
-def agent_checks(check: Check, report: dict, levels: tuple[str, ...] = ("skills",)) -> None:
+def agent_checks(check: Check, report: dict, levels: tuple[str, ...] = ("skills",), prefix: str = "") -> None:
     """The plan returned and used only the session levels ``levels`` (``skills``, ``motion``,
-    ``joints``); arm contacts are recorded, not judged."""
+    ``joints``); arm contacts are recorded, not judged. ``prefix`` names a repeat's checks."""
     outcome = report["agent_outcome"]
     ok = outcome["outcome"] == "agent_returned"
-    check.measure("agent_returned", outcome["outcome"], ok, outcome["detail"][-800:])
+    check.measure(f"{prefix}agent_returned", outcome["outcome"], ok, outcome["detail"][-800:])
     used = report["usage"]["levels_used"]
-    check.measure("levels_used", used, set(used) <= set(levels), f"the plan used levels beyond {list(levels)}")
-    check.data["arm_contacts"] = report["contacts"]
-    check.data["grasp_contacts"] = report["grasp_contacts"]
+    check.measure(f"{prefix}levels_used", used, set(used) <= set(levels), f"the plan used levels beyond {list(levels)}")
+    check.data[f"{prefix}arm_contacts"] = report["contacts"]
+    check.data[f"{prefix}grasp_contacts"] = report["grasp_contacts"]
 
 
 # Arm diagnostics (test side): what the arm rungs measure besides the plan's outcome.

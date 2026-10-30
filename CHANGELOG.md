@@ -11,6 +11,36 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.8.0 (unreleased, develop)
+
+Repeats without a new start-up, and a wall-clock limit (ForageBench stage 4, 2026-10-30). Additive.
+
+Added:
+
+- `World.next_episode(output, seed=None)`: another episode of the same spec in a fresh folder,
+  without building the World again. The next `run` restores the start state through the runtime's
+  snapshot, clears Nav2's costmaps and goals, settles and runs the start check; the arm planner and
+  Nav2 stay up (started and warmed once). Each episode has its own report, audit, state log and video,
+  and its own narration (the log is cleared at each reset).
+- Setting `agent_wall_seconds` (default `null`): the episode ends as `agent_timeout` after that much
+  wall time, status `completed` (the agent's failure). A benchmark sets it; the charged clock makes
+  thinking free in simulated time, so this bounds a hung agent.
+- Robot test `retrieve_repeat` (rung 14): the grid drawer retrieve three times in one World
+  (`check_retrieve.py --repeats 3`).
+- `ArmPlanner.set_output(output)`: the next plans' records (`planner/requests.jsonl`, depth images,
+  obstacle voxels) go to that folder; `World.next_episode` gives each episode its own.
+- `phygs.execution.manipulation.planners.model.planner_angle`: the gripper angle a cuRobo planner is
+  built for (one per 0.01 rad).
+
+Fixed:
+
+- A plan with a gripper angle the cuRobo worker had no planner for (the jaws on a held object, the
+  gripper closed on nothing) built one during the episode, about 8 s charged as simulated time while
+  the robot stood still. `ArmPlanner.poll` now builds it inside one tick before sending the plan, as
+  the start-up warm-up does, so a build costs no simulated time. Before this, the first episode in a
+  process took 15-25 s more simulated time than the same episode after a repeat (2026-10-29, the dev
+  oracle with 5 repeats per process).
+
 ### 0.7.0 (unreleased, develop)
 
 Runs leave a state log and render afterwards (2026-10-29). Additive: the spec and report schemas are

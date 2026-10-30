@@ -92,6 +92,7 @@ def test_missing_limits_are_an_error():
         ("agent_returned", "completed"),
         ("agent_error", "completed"),  # The agent's crash is the agent's failure.
         ("budget", "completed"),
+        ("agent_timeout", "completed"),  # A hung agent is the agent's failure.
         ("runtime_interrupted", "completed"),  # A fall: an emergency stop the agent caused.
         ("setup_error", "setup_error"),
         ("runtime_failed", "error"),

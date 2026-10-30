@@ -43,7 +43,7 @@ class Robot:
     """Observation packets of a robot at x [m] with a hand camera looking along body +x."""
 
     def __init__(self):
-        self.x, self.knee, self.stamp = 0.0, 0.0, 0.0
+        self.x, self.knee, self.stamp, self.gripper = 0.0, 0.0, 0.0, -0.05
         self.depth = np.full((24, 32), 1.0)
 
     def observe(self):
@@ -60,7 +60,7 @@ class Robot:
             intrinsics=torch.tensor(K),
             extrinsics=SimpleNamespace(matrix=body_from_camera),
         )
-        positions = torch.tensor([0.0, -3.1, 3.1, 0.0, 0.0, 0.0, -0.05, self.knee])
+        positions = torch.tensor([0.0, -3.1, 3.1, 0.0, 0.0, 0.0, self.gripper, self.knee])
         return SimpleNamespace(
             cameras={"hand": camera},
             localization=SimpleNamespace(valid=True, pose=SimpleNamespace(matrix=pose)),
@@ -235,6 +235,46 @@ def test_warm_up_plans_once_per_gripper_angle_before_the_episode(host):
     requests = Worker.started[0].requests
     assert [request.gripper for request in requests] == pytest.approx([-0.05, -1.4])
     assert all(request.boxes == [] and request.images is None for request in requests)
+
+
+def test_a_new_gripper_angle_is_warmed_inside_the_tick_before_its_plan(host):
+    """The jaws on a held object give an angle with no planner yet: poll warms it (synchronously, so
+    the build costs no simulated time) and then sends the plan; an angle within 0.01 rad of a warmed
+    one is not warmed again. A build that breaks the process is the World's failure."""
+    make, robot, _ = host
+    planner = make(boxes=lambda exclude: {})
+    worker = Worker.started[0]
+    robot.gripper = -0.443
+    planner.request(goal=[0.1] * 6)
+    planner.poll()
+    warm, plan = worker.requests
+    assert warm.gripper == plan.gripper == pytest.approx(-0.443)
+    assert warm.boxes == [] and warm.images is None and plan.goal == [0.1] * 6
+    robot.gripper = -0.441  # The same planner (to 0.01 rad).
+    planner.request(goal=[0.2] * 6)
+    planner.poll()
+    assert len(worker.requests) == 3 and planner.failure is None
+    robot.gripper = -0.9
+    worker.result = TimeoutError("Planner response exceeded 180 wall seconds")
+    broken = planner.request(goal=[0.3] * 6)
+    planner.poll()
+    with pytest.raises(TimeoutError):
+        broken.result()
+    assert planner.failure.startswith("TimeoutError") and len(worker.requests) == 4  # The plan was not sent.
+
+
+def test_each_episode_writes_its_plan_records_to_its_own_folder(host, tmp_path):
+    make, _, _ = host
+    planner = make(boxes=lambda exclude: {})
+    planner.request(goal=[0.1] * 6)
+    planner.poll()
+    second = tmp_path / "repeat_1"
+    planner.set_output(second)
+    planner.request(goal=[0.1] * 6)
+    planner.poll()
+    for folder in (tmp_path, second):
+        assert len((folder / "planner" / "requests.jsonl").read_text().splitlines()) == 1
+    assert (second / "planner" / "depth").is_dir() and len(Worker.started) == 1
 
 
 def test_a_failed_plan_is_the_callers_but_a_broken_planner_process_is_recorded_for_the_world(host):
