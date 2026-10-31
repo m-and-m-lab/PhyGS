@@ -16,6 +16,8 @@ import torch
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.utils import configclass
 
+from phygs.sim.gpu import render_gpu
+
 if TYPE_CHECKING:
     from isaaclab.scene import InteractiveScene
 
@@ -95,7 +97,8 @@ class RenderCameras:
         ensure_rtx_hydra_engine_attached()
         self._scene = scene
         self._device = scene.device
-        annotator_device = "cuda" if torch.cuda.is_available() else "cpu"
+        # On the GPU the renderer uses (phygs.sim.gpu), so images never cross between GPUs.
+        annotator_device = f"cuda:{render_gpu() or 0}" if torch.cuda.is_available() else "cpu"
         self._annotator_device = annotator_device
         self._cameras, self._groups = {}, []
         xforms = UsdGeom.XformCache(Usd.TimeCode.Default())

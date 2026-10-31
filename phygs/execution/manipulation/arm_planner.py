@@ -43,6 +43,7 @@ from phygs.execution.manipulation.planners.model import (
 )
 from phygs.execution.manipulation.planning import JointTrajectory, PlannerProcess
 from phygs.recording.panels import PlannerView
+from phygs.sim.gpu import render_gpu
 
 
 class ArmPlanner:
@@ -120,6 +121,10 @@ class ArmPlanner:
             self._env["PYTHONPATH"] = settings["curobo_dependencies"] + os.pathsep + self._env["PYTHONPATH"]
         elif backend != "moveit":
             raise ValueError(f"Unknown planner backend {backend!r}; expected curobo or moveit.")
+        gpu = render_gpu()
+        if gpu is not None and "CUDA_VISIBLE_DEVICES" not in os.environ:
+            # The worker plans on the GPU the simulation renders on (phygs.sim.gpu), and sees only it.
+            self._env.update(CUDA_DEVICE_ORDER="PCI_BUS_ID", CUDA_VISIBLE_DEVICES=str(gpu))
         self._command = [
             "/usr/bin/python3" if backend == "moveit" else sys.executable,
             "-m",

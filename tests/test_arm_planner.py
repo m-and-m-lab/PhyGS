@@ -74,6 +74,7 @@ class Worker:
 
     def __init__(self, command, model, folder, env):
         self.command, self.model, self.requests, self.closed = command, dict(model), [], False
+        self.env = dict(env)
         self.result = dict(success=True, joint_names=list(JOINTS), times=[0.0, 1.0], positions=[[0.0] * 6, [0.1] * 6])
         Worker.started.append(self)
 
@@ -296,3 +297,21 @@ def test_a_failed_plan_is_the_callers_but_a_broken_planner_process_is_recorded_f
         broken.result()
     assert planner.failure == "RuntimeError: OutOfMemoryError: CUDA out of memory"
     planner.close()
+
+
+def test_the_worker_plans_on_the_gpu_the_simulation_renders_on(host, monkeypatch):
+    """With Kit rendering on GPU 1 (``--/renderer/activeGpu=1``) the worker sees only that GPU, so a
+    model server can have the other; a parent that already chose its GPUs is left alone."""
+    make, _, _ = host
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    monkeypatch.setattr(arm_planner, "render_gpu", lambda: 1)
+    make(boxes=lambda exclude: {})
+    env = Worker.started[-1].env
+    assert env["CUDA_VISIBLE_DEVICES"] == "1" and env["CUDA_DEVICE_ORDER"] == "PCI_BUS_ID"
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0,1")
+    make(boxes=lambda exclude: {})
+    assert Worker.started[-1].env["CUDA_VISIBLE_DEVICES"] == "0,1"
+    monkeypatch.setattr(arm_planner, "render_gpu", lambda: None)  # No Kit app: unchanged.
+    monkeypatch.delenv("CUDA_VISIBLE_DEVICES")
+    make(boxes=lambda exclude: {})
+    assert "CUDA_VISIBLE_DEVICES" not in Worker.started[-1].env
