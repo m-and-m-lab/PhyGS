@@ -766,7 +766,8 @@ class Nav2NavigationBackend:
         ):
             self._last_path_check_tick = self._runtime.tick
             path = self._records[self._current].path
-            if self._transport.path_blocked(path, (state.x, state.y)):
+            # Fine moves to an occupied goal close by have no Nav2 route to check (they keep to the map).
+            if len(path) >= 2 and self._transport.path_blocked(path, (state.x, state.y)):
                 self._replan_observed_blockage(state)
                 if self.feedback(self._current).status != "active":
                     return

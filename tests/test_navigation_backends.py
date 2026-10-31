@@ -659,3 +659,35 @@ def test_cancelling_or_the_budget_ends_the_whole_exploration():
     runtime.tick = 14
     nav.update()
     assert (nav.feedback(command).status, nav.feedback(command).reason) == ("failed", "explore_lite exited")
+
+
+def test_a_fine_approach_without_a_nav2_route_skips_the_camera_path_check():
+    """An occupied goal close by is finished by fine moves alone, with no Nav2 route. After a correction,
+    the periodic check of the route against the camera costmap ran on that empty route and raised ("A
+    valid path ... are required"), which ended an episode as an environment error (2026-10-31, a model
+    stepping in to an open drawer; a Nav2 route before it had set the map version)."""
+    camera = Nav2Config(sensor_cameras=("inspection",), sensor_period=0.1, sensor_replan_period=0.1)
+    nav, runtime, motion, transport, maps = make_backend(camera)
+
+    def path_blocked(path, position):
+        if len(path) < 2:
+            raise ValueError("A valid path and costmap resolution are required")
+        return False
+
+    transport.path_blocked = path_blocked
+    first = nav.navigate_to(1.0, 0.0, 0.0)  # A Nav2 route first.
+    nav.update()
+    runtime.x = 1.0
+    for tick in range(1, 80):
+        runtime.tick = tick
+        nav.update()
+        if not nav.active:
+            break
+    assert nav.feedback(first).status == "succeeded"
+    transport.error = Nav2PlanningError("Nav2 planner failed with code 206", unreachable=True, goal_occupied=True)
+    runtime.x = 0.7
+    command = nav.navigate_to(1.0, 0.0, 0.5)
+    for tick in range(runtime.tick + 1, runtime.tick + 120):
+        runtime.tick = tick
+        nav.update()
+    assert nav.feedback(command).reason.startswith(("Fine approach", "Settled pose stays outside"))
