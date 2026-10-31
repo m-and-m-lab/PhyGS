@@ -282,6 +282,39 @@ class RenderCameras:
             viewport.updates_enabled = False
 
 
+def aim_camera(path: str, eye, target, near: float | None = None) -> None:
+    """Point the USD camera at ``path`` from ``eye`` at ``target`` (world [m]); straight down, image
+    up is +y. ``near`` [m] moves the near clip (the far one goes to 200 m). The camera's pose becomes
+    one transform op (``xformOp:transform:aim``), replacing the ops it was spawned with, so a scene
+    camera such as the recording's ``third_person`` can follow the robot too."""
+    import numpy as np
+    import omni.usd
+    from pxr import Gf, UsdGeom
+
+    prim = omni.usd.get_context().get_stage().GetPrimAtPath(path)
+    if not prim.IsValid():
+        raise ValueError(f"No camera prim at {path}")
+    xform = UsdGeom.Xformable(prim)
+    ops = xform.GetOrderedXformOps()
+    if len(ops) == 1 and ops[0].GetOpName() == "xformOp:transform:aim":
+        transform = ops[0]
+    else:
+        xform.ClearXformOpOrder()
+        transform = xform.AddTransformOp(opSuffix="aim")
+    eye, target = np.asarray(eye, dtype=float), np.asarray(target, dtype=float)
+    forward = (target - eye) / np.linalg.norm(target - eye)
+    right = np.cross(forward, [0.0, 0.0, 1.0])
+    if np.linalg.norm(right) < 1e-6:  # Straight down or up.
+        right = np.array([1.0, 0.0, 0.0])
+    right /= np.linalg.norm(right)
+    up = np.cross(right, forward)
+    # USD cameras look along -Z with +Y up; Gf matrices hold the basis vectors as rows.
+    rows = (*right, 0.0), (*up, 0.0), (*(-forward), 0.0), (*eye, 1.0)
+    transform.Set(Gf.Matrix4d(*[float(value) for row in rows for value in row]))
+    if near is not None:
+        UsdGeom.Camera(prim).GetClippingRangeAttr().Set(Gf.Vec2f(float(near), 200.0))
+
+
 class ViewCamera:
     """A third-person camera for videos, added to a running scene (no scene config entry).
 
@@ -313,8 +346,8 @@ class ViewCamera:
         camera.CreateFocalLengthAttr(float(focal_length))
         camera.CreateHorizontalApertureAttr(20.955)
         camera.CreateVerticalApertureAttr(20.955 * height / width)
-        self._clipping = camera.CreateClippingRangeAttr((float(near), 200.0))
-        self._transform = UsdGeom.Xformable(camera).AddTransformOp()
+        camera.CreateClippingRangeAttr((float(near), 200.0))
+        self.path = path
         self._product = rep.create.render_product(path, (width, height))
         self._annotator = rep.AnnotatorRegistry.get_annotator("rgb", device="cpu")
         self._annotator.attach([self._product.path])
@@ -330,23 +363,8 @@ class ViewCamera:
         raise RuntimeError("The view camera delivered no image.")
 
     def place(self, eye, target, near: float | None = None) -> None:
-        """Put the camera at ``eye`` looking at ``target`` (world [m]); straight down, image up is +y.
-        ``near`` [m] moves the near clip."""
-        import numpy as np
-        from pxr import Gf
-
-        eye, target = np.asarray(eye, dtype=float), np.asarray(target, dtype=float)
-        forward = (target - eye) / np.linalg.norm(target - eye)
-        right = np.cross(forward, [0.0, 0.0, 1.0])
-        if np.linalg.norm(right) < 1e-6:  # Straight down or up.
-            right = np.array([1.0, 0.0, 0.0])
-        right /= np.linalg.norm(right)
-        up = np.cross(right, forward)
-        # USD cameras look along -Z with +Y up; Gf matrices hold the basis vectors as rows.
-        rows = (*right, 0.0), (*up, 0.0), (*(-forward), 0.0), (*eye, 1.0)
-        self._transform.Set(Gf.Matrix4d(*[float(value) for row in rows for value in row]))
-        if near is not None:
-            self._clipping.Set(Gf.Vec2f(float(near), 200.0))
+        """Put the camera at ``eye`` looking at ``target`` (world [m]) (:func:`aim_camera`)."""
+        aim_camera(self.path, eye, target, near)
 
     def image(self) -> np.ndarray | None:
         """The RGB image [height, width, 3] uint8 of the last render; None before the first one."""

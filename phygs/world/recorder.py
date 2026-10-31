@@ -16,6 +16,7 @@ import numpy as np
 from phygs.recording.panels import PanelSources
 from phygs.recording.state_log import StateLog
 from phygs.recording.video import Video
+from phygs.scene.plan import Plan
 
 
 def pinched_bodies(contacts: list[tuple[str, str, float]], jaw_links: tuple[str, ...]) -> set[str]:
@@ -27,7 +28,8 @@ def pinched_bodies(contacts: list[tuple[str, str, float]], jaw_links: tuple[str,
 
 
 class Recorder:
-    """Writes the report and, with ``video``, ``third_person.mp4`` with the overlay (recording.video).
+    """Writes the report and, with ``video``, ``third_person.mp4`` (recording.video: the outside view,
+    the panels and the overview strip, with the scene's floor ``plan``).
 
     Arm contacts are recorded apart as the grasp when, from the gripper's close command to its
     opening (one hold), a jaw link touches a body both jaws pinched at some tick of that hold: the
@@ -49,10 +51,11 @@ class Recorder:
         jaw_links: tuple[str, ...] = (),
         read_ticks: int = 1,
         state: StateLog | None = None,
+        plan: Plan | None = None,
     ) -> None:
         self.output = output
         self.state = state
-        self._video = Video(output / "third_person.mp4", fps=fps) if video else None
+        self._video = Video(output / "third_person.mp4", fps=fps, plan=plan) if video else None
         self._jaw_links = tuple(jaw_links)
         self._read_ticks = read_ticks
         self.contacts: dict[tuple[str, str, bool], dict] = {}
@@ -61,18 +64,17 @@ class Recorder:
 
     def frame(
         self,
-        rgb: np.ndarray,
+        outside: np.ndarray,
         *,
-        title: str,
+        sources: PanelSources | None,
+        trace: dict,
         sim_time: float,
-        lines: list[str],
-        spans: list,
-        panels: PanelSources | None = None,
+        duration: float | None = None,
     ) -> None:
-        """One video frame with the overlay: title, stats, narration lines, command timeline, and the
-        ``panels`` (cameras, costmap, arm plan) beside the image."""
+        """One video frame: the ``outside`` image with the panels (cameras, costmap, arm plan) from
+        ``sources`` beside it and the overview strip of ``trace`` under both (recording.video)."""
         if self._video is not None:
-            self._video.frame(rgb, title=title, sim_time=sim_time, lines=lines, spans=spans, panels=panels)
+            self._video.frame(outside, sources=sources, trace=trace, sim_time=sim_time, duration=duration)
 
     def contacts_tick(
         self, time_seconds: float, contacts: list[tuple[str, str, float]], step: str, *, gripper_closed: bool
@@ -100,23 +102,17 @@ class Recorder:
 
     def _end_hold(self) -> None:
         """Sort the hold's jaw contacts: the grasp if both jaws pinched their body in the hold."""
-        for (link, body), held in self._hold.items():
-            grasp = body in self._pinched
-            record = self.contacts.get((link, body, grasp))
-            if record is None:
-                self.contacts[(link, body, grasp)] = held
-            else:
-                record.update(last_s=held["last_s"], ticks=record["ticks"] + held["ticks"])
-                record["peak_n"] = max(record["peak_n"], held["peak_n"])
+        self.contacts = _sorted(self.contacts, self._hold, self._pinched)
         self._hold, self._pinched = {}, set()
 
     def contact_report(self) -> dict[str, list[dict]]:
         """The report's ``contacts`` (unintended) and ``grasp_contacts`` (the squeeze on a grasped body)."""
         self._end_hold()
-        records = {False: [], True: []}
-        for (_, _, grasp), record in self.contacts.items():
-            records[grasp].append(record)
-        return dict(contacts=records[False], grasp_contacts=records[True])
+        return _report(self.contacts)
+
+    def contacts_so_far(self) -> dict[str, list[dict]]:
+        """:meth:`contact_report` now, as if the current hold ended (copies; the hold goes on)."""
+        return _report(_sorted({key: dict(record) for key, record in self.contacts.items()}, self._hold, self._pinched))
 
     def write(self, report: dict, commands: Sequence[dict] = ()) -> Path:
         """Write ``report.json``, and the state log with the command timeline's spans ``commands``."""
@@ -130,6 +126,26 @@ class Recorder:
         if self._video is not None:
             self._video.close()
             self._video = None
+
+
+def _sorted(contacts: dict, hold: dict, pinched: set[str]) -> dict:
+    """``contacts`` with a hold's jaw contacts merged in: the grasp for a body both jaws pinched."""
+    for (link, body), held in hold.items():
+        grasp = body in pinched
+        record = contacts.get((link, body, grasp))
+        if record is None:
+            contacts[(link, body, grasp)] = dict(held)
+        else:
+            record.update(last_s=held["last_s"], ticks=record["ticks"] + held["ticks"])
+            record["peak_n"] = max(record["peak_n"], held["peak_n"])
+    return contacts
+
+
+def _report(contacts: dict) -> dict[str, list[dict]]:
+    records = {False: [], True: []}
+    for (_, _, grasp), record in contacts.items():
+        records[grasp].append(record)
+    return dict(contacts=records[False], grasp_contacts=records[True])
 
 
 def _record(link: str, body: str, time_seconds: float, step: str) -> dict:

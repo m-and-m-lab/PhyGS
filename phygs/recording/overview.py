@@ -3,13 +3,15 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The overview strip under a replay's video, drawn from a run's trace (:mod:`.trace`) alone.
+"""The overview strip under a run's video (:mod:`.video`), drawn from a trace (:mod:`.trace`) alone.
 
-A header line: the simulated time, what the gripper holds, the arm's strongest contact now [N] and
-the agent's step. Below it, on the left, the floor plan (:mod:`phygs.scene.plan`) framed on the run:
-Nav2's route (blue), the path walked so far (orange), the robot (a yellow arrow) and, when the
-agent read it, the target (a green ring); without a plan, the same on a 1 m grid. On the right,
-the trace's lanes with a playhead.
+Two header lines: the simulated time, what the gripper holds, the arm's strongest contact now [N]
+and the agent's step; then the run's title and the skills' latest narrated line. Below them, on the left, the floor plan
+(:mod:`phygs.scene.plan`) in a window :data:`WINDOW` wide that follows the robot: Nav2's route
+(blue), the path walked so far (orange), the robot (a yellow arrow) and, when the agent read it, the
+target (a green ring); without a plan, the same on a 1 m grid. On the right, the trace's lanes with
+a playhead. A recording draws it with the trace so far, a replay with the whole run's; both look the
+same.
 """
 
 from __future__ import annotations
@@ -18,9 +20,9 @@ import math
 
 import numpy as np
 
-from phygs.scene.plan import Floor, Plan
+from phygs.scene.plan import Plan
 
-BACKGROUND, BOX, OUTLINE = (10, 15, 21), (18, 24, 31), (60, 72, 88)
+BACKGROUND, BOX, OUTLINE, GRID = (10, 15, 21), (18, 24, 31), (60, 72, 88), (30, 38, 48)
 TEXT, MUTED, DIM = (255, 255, 255), (143, 160, 179), (102, 120, 140)
 ROUTE, WALKED, ROBOT, TARGET = (47, 107, 255), (255, 106, 26), (255, 203, 5), (70, 195, 131)
 HOLDING, CONTACT = (110, 231, 166), (255, 155, 126)
@@ -29,15 +31,17 @@ STATUS_COLORS = {
     "failed": (240, 106, 94),
     "aborted": (240, 106, 94),
     "rejected": (240, 106, 94),
+    "timed_out": (240, 106, 94),
     "cancelled": (90, 100, 112),
     "overridden": (90, 100, 112),
     "grip": (70, 195, 131),
     "touch": (255, 122, 89),
 }
 AGENT_NOW, AGENT_PAST = (255, 203, 5), (52, 60, 70)
-HEADER = 34  # [px]
+RUNNING = frozenset({"active", "open"})  # Items still going when the trace was composed: they last until now.
+HEADER = 52  # [px]: two lines.
 LABEL = 66  # [px] for the lane names.
-FRAME_MARGIN = 1.2  # [m] around the run on the plan.
+WINDOW = 12.0  # [m]: the plan window's width.
 
 
 def _font(size: int, bold: bool = False):
@@ -54,107 +58,109 @@ def _font(size: int, bold: bool = False):
 
 
 class Overview:
-    """Draws the strip at any time of the run: ``draw(t)`` is an RGB image [height, width, 3].
+    """Draws the strip, ``width`` x ``height`` [px]: ``draw(trace, t)`` is an RGB image [height, width, 3].
 
-    ``trace`` is :func:`phygs.recording.trace.build`'s dict; ``plan`` the scene's plan (None: a grid).
+    ``plan`` is the scene's plan (None: a grid); the floor shown is the one under the trace's start
+    height (``path.z``).
     """
 
-    def __init__(self, trace: dict, plan: Plan | None, *, width: int = 1280, height: int = 300) -> None:
-        from PIL import Image
-
-        self.trace, self.width, self.height = trace, width, height
-        self.duration = max(float(trace["duration"]), 1e-3)
-        path = trace["path"]
-        self._poses = np.asarray([pose[1:] for pose in path["poses"]], dtype=float).reshape(-1, 3)
-        self._times = np.asarray([pose[0] for pose in path["poses"]], dtype=float)
-        self._routes = path["routes"]
-        self._target = path.get("target")
+    def __init__(self, plan: Plan | None, *, width: int = 1280, height: int = 300) -> None:
+        self.plan, self.width, self.height = plan, width, height
         self._fonts = _font(13), _font(13, bold=True), _font(11)
         side = height - HEADER - 12
-        self.box = (16, HEADER, 16 + int(side * 16 / 7.6), HEADER + side)  # The plan.
+        self.box = (16, HEADER, 16 + int(side * 16 / 7.6), HEADER + side)  # The plan window.
         self.lanes_box = (self.box[2] + 24, HEADER, width - 16, height - 14)
-        self._floor, self._view = self._frame(plan)
-        bw, bh = self.box[2] - self.box[0], self.box[3] - self.box[1]
-        if plan is not None:
-            x0, y0, x1, y1 = self._view
-            image = Image.open(plan.image_path(self._floor)).convert("RGB")
-            self._plan = image.crop(tuple(round(v) for v in (x0, y0, x1, y1))).resize((bw, bh), Image.LANCZOS)
-        else:
-            self._plan = self._grid(bw, bh)
+        self.scale = (self.box[2] - self.box[0]) / WINDOW  # [px/m] in the window.
+        self._image = None  # The floor's plan at the window's scale, and its floor (_scaled).
+        self._trace, self._poses, self._times = None, np.zeros((0, 3)), np.zeros(0)
+        self._center = (0.0, 0.0)  # The window's centre [m] now.
 
     # Framing.
-    def _frame(self, plan: Plan | None) -> tuple[Floor, tuple[float, float, float, float]]:
-        """The floor and the plan's pixel box (x0, y0, x1, y1) around the run, at the box's aspect."""
-        points = [self._poses[:, :2]] if len(self._poses) else []
-        points += [np.asarray(route["path"], dtype=float).reshape(-1, 2) for route in self._routes if route["path"]]
-        if self._target is not None:
-            points.append(np.asarray([self._target], dtype=float))
-        xy = np.concatenate(points) if points else np.zeros((1, 2))
-        low, high = xy.min(axis=0) - FRAME_MARGIN, xy.max(axis=0) + FRAME_MARGIN
-        if plan is not None:
-            floor = plan.floor_at(float(self.trace["path"].get("z", 0.0)))  # The floor the robot started on.
-        else:
-            span = max(high[0] - low[0], high[1] - low[1]) + 2.0
-            floor = Floor("grid", "", 0.0, 0.0, 1000, 1000, tuple(((low + high) / 2).tolist()), 1000 / span)
-        (px0, px1), (py1, py0) = (np.asarray(v) for v in floor.pixel([low[0], high[0]], [low[1], high[1]]))
-        aspect = (self.box[2] - self.box[0]) / (self.box[3] - self.box[1])
-        w, h = px1 - px0, py1 - py0
-        if w / h < aspect:
-            px0, px1 = px0 - (h * aspect - w) / 2, px1 + (h * aspect - w) / 2
-        else:
-            py0, py1 = py0 - (w / aspect - h) / 2, py1 + (w / aspect - h) / 2
-        return floor, (float(px0), float(py0), float(px1), float(py1))
+    def _use(self, trace: dict) -> None:
+        """Read a new trace's path (a recording hands a new trace every so often)."""
+        if trace is self._trace:
+            return
+        self._trace = trace
+        poses = trace["path"]["poses"]
+        self._poses = np.asarray([pose[1:] for pose in poses], dtype=float).reshape(-1, 3)
+        self._times = np.asarray([pose[0] for pose in poses], dtype=float)
+        if self.plan is not None and self._image is None:
+            self._scaled(self.plan.floor_at(float(trace["path"].get("z", 0.0))))
 
-    def _grid(self, width: int, height: int):
-        """A dark box with a 1 m grid, for a run without a plan."""
-        from PIL import Image, ImageDraw
+    def _scaled(self, floor) -> None:
+        """The floor's image at the window's scale, with a window's margin of background around it."""
+        from PIL import Image
 
-        image = Image.new("RGB", (width, height), BOX)
-        draw = ImageDraw.Draw(image)
-        x0, y0, x1, y1 = self._view
-        low_x, high_y = self._floor.world(x0, y0)
-        high_x, low_y = self._floor.world(x1, y1)
-        for x in range(math.floor(low_x), math.ceil(high_x) + 1):
-            u = self._to_box(x, 0.0)[0] - self.box[0]
-            draw.line((u, 0, u, height), fill=(30, 38, 48))
-        for y in range(math.floor(low_y), math.ceil(high_y) + 1):
-            v = self._to_box(0.0, y)[1] - self.box[1]
-            draw.line((0, v, width, v), fill=(30, 38, 48))
-        return image
+        image = Image.open(self.plan.image_path(floor)).convert("RGB")
+        factor = self.scale / floor.ppm
+        size = (max(1, round(image.width * factor)), max(1, round(image.height * factor)))
+        margin = (self.box[2] - self.box[0], self.box[3] - self.box[1])
+        padded = Image.new("RGB", (size[0] + 2 * margin[0], size[1] + 2 * margin[1]), BOX)
+        padded.paste(image.resize(size, Image.LANCZOS), margin)
+        self._image, self._floor, self._factor, self._margin = padded, floor, factor, margin
 
-    def _to_box(self, x: float, y: float) -> tuple[float, float]:
-        px, py = self._floor.pixel(x, y)
-        x0, y0, x1, y1 = self._view
+    def _to_window(self, x: float, y: float) -> tuple[float, float]:
+        """The window's pixel of world (x, y) [m]: +x right, +y up, the window centred on :attr:`_center`."""
+        cx, cy = self._center
         return (
-            self.box[0] + (float(px) - x0) * (self.box[2] - self.box[0]) / (x1 - x0),
-            self.box[1] + (float(py) - y0) * (self.box[3] - self.box[1]) / (y1 - y0),
+            (self.box[2] - self.box[0]) / 2 + (x - cx) * self.scale,
+            (self.box[3] - self.box[1]) / 2 - (y - cy) * self.scale,
         )
 
-    def _x(self, t: float) -> float:
-        x0, x1 = self.lanes_box[0] + LABEL, self.lanes_box[2]
-        return x0 + (x1 - x0) * min(max(t / self.duration, 0.0), 1.0)
-
-    # Drawing.
-    def draw(self, t: float) -> np.ndarray:
+    def _window(self):
+        """The plan (or a 1 m grid) under the window, centred on :attr:`_center`, as an image."""
         from PIL import Image, ImageDraw
 
+        width, height = self.box[2] - self.box[0], self.box[3] - self.box[1]
+        if self._image is not None:
+            column, row = self._floor.pixel(*self._center)
+            left = round(float(column) * self._factor + self._margin[0] - width / 2)
+            top = round(float(row) * self._factor + self._margin[1] - height / 2)
+            return self._image.crop((left, top, left + width, top + height))
+        window = Image.new("RGB", (width, height), BOX)
+        draw = ImageDraw.Draw(window)
+        cx, cy = self._center
+        for x in range(math.floor(cx - WINDOW / 2), math.ceil(cx + WINDOW / 2) + 1):
+            u = self._to_window(x, cy)[0]
+            draw.line((u, 0, u, height), fill=GRID)
+        span = height / self.scale
+        for y in range(math.floor(cy - span / 2), math.ceil(cy + span / 2) + 1):
+            v = self._to_window(cx, y)[1]
+            draw.line((0, v, width, v), fill=GRID)
+        return window
+
+    def _x(self, t: float, duration: float) -> float:
+        x0, x1 = self.lanes_box[0] + LABEL, self.lanes_box[2]
+        return x0 + (x1 - x0) * min(max(t / duration, 0.0), 1.0)
+
+    # Drawing.
+    def draw(self, trace: dict, t: float, duration: float | None = None) -> np.ndarray:
+        """The strip at ``t`` [s] from ``trace``; ``duration`` [s] is the time axis (default: the
+        trace's duration)."""
+        from PIL import Image, ImageDraw
+
+        self._use(trace)
+        duration = max(float(trace["duration"] if duration is None else duration), 1e-3)
         image = Image.new("RGB", (self.width, self.height), BACKGROUND)
         draw = ImageDraw.Draw(image)
-        self._header(draw, t)
-        image.paste(self._plan, self.box[:2])
-        self._map(draw, t)
-        self._lanes(draw, t)
+        self._header(draw, trace, t)
+        k = max(0, int(np.searchsorted(self._times, t, side="right")) - 1) if len(self._poses) else None
+        if k is not None:
+            self._center = tuple(self._poses[k, :2])
+        image.paste(self._map(trace, t, k), self.box[:2])
+        draw.rectangle(self.box, outline=OUTLINE, width=1)
+        self._lanes(draw, trace, t, duration)
         return np.asarray(image)
 
-    def _header(self, draw, t: float) -> None:
-        mono, bold, _ = self._fonts
-        held = next((item["label"] for item in self.trace["holding"] if item["s"] <= t <= item["e"]), None)
+    def _header(self, draw, trace: dict, t: float) -> None:
+        mono, bold, small = self._fonts
+        held = next((item["label"] for item in trace["holding"] if _now(item, t) or t == item["e"]), None)
         force, what = 0.0, ""
-        for lane in self.trace["lanes"]:
+        for lane in trace["lanes"]:
             for item in lane["items"]:
                 if item.get("peak") and item["s"] <= t <= item["e"] and item["peak"] > force:
                     force, what = item["peak"], item.get("body", "")
-        step = " > ".join(item["label"] for item in self.trace.get("steps", ()) if item["s"] <= t < item["e"])
+        step = " > ".join(item["label"] for item in trace.get("steps", ()) if _now(item, t))
         x = 16
         for text, font, color in (
             (f"sim {t:6.1f} s", bold, TEXT),
@@ -165,26 +171,40 @@ class Overview:
             if not text:
                 continue
             text = _clip(draw, text, font, self.width - x - 16)
-            draw.text((x, 10), text, font=font, fill=color)
+            draw.text((x, 8), text, font=font, fill=color)
             x += draw.textlength(text, font=font) + 28
+        x = 16
+        title = trace.get("title", "")
+        if title:
+            title = _clip(draw, title, mono, (self.width - 32) / 2)
+            draw.text((x, 30), title, font=mono, fill=TEXT)
+            x += draw.textlength(title, font=mono) + 28
+        line = next((f"{kind}: {text}" for time, kind, text in reversed(trace.get("narration", ())) if time <= t), "")
+        if line:
+            draw.text((x, 30), _clip(draw, line, mono, self.width - x - 16), font=mono, fill=MUTED)
 
-    def _map(self, draw, t: float) -> None:
+    def _map(self, trace: dict, t: float, k: int | None):
+        """The window with the route, the target, the path walked and the robot at sample ``k``."""
+        from PIL import ImageDraw
+
+        window = self._window()
+        draw = ImageDraw.Draw(window)
+        path = trace["path"]
         route = None
-        for candidate in self._routes:
+        for candidate in path["routes"]:
             if candidate["t"] <= t:
                 route = candidate
         if route is not None and len(route["path"]) > 1:
-            draw.line([self._to_box(x, y) for x, y in route["path"]], fill=ROUTE, width=3)
-        if len(self._poses):
-            k = max(0, int(np.searchsorted(self._times, t, side="right")) - 1)
-            walked = [self._to_box(x, y) for x, y, _ in self._poses[: k + 1]]
+            draw.line([self._to_window(x, y) for x, y in route["path"]], fill=ROUTE, width=3)
+        if path.get("target") is not None:
+            gx, gy = self._to_window(*path["target"])
+            draw.ellipse((gx - 7, gy - 7, gx + 7, gy + 7), outline=TARGET, width=3)
+        if k is not None:
+            walked = [self._to_window(x, y) for x, y, _ in self._poses[: k + 1]]
             if len(walked) > 1:
                 draw.line(walked, fill=WALKED, width=4, joint="curve")
-            if self._target is not None:
-                gx, gy = self._to_box(*self._target)
-                draw.ellipse((gx - 7, gy - 7, gx + 7, gy + 7), outline=TARGET, width=3)
             x, y, yaw = self._poses[k]
-            rx, ry = self._to_box(x, y)
+            rx, ry = self._to_window(x, y)
             c, s = math.cos(-yaw), math.sin(-yaw)  # Image rows grow downward.
             arrow = [
                 (rx + 11 * c, ry + 11 * s),
@@ -192,12 +212,12 @@ class Overview:
                 (rx - 7 * c + 7 * s, ry - 7 * s - 7 * c),
             ]
             draw.polygon(arrow, fill=ROBOT, outline=(23, 20, 10))
-        draw.rectangle(self.box, outline=OUTLINE, width=1)
+        return window
 
-    def _lanes(self, draw, t: float) -> None:
+    def _lanes(self, draw, trace: dict, t: float, duration: float) -> None:
         _, _, small = self._fonts
         x0, y0, x1, y1 = self.lanes_box
-        lanes = self.trace["lanes"]
+        lanes = trace["lanes"]
         height = (y1 - y0) / len(lanes)
         for row, lane in enumerate(lanes):
             top = y0 + row * height
@@ -206,9 +226,10 @@ class Overview:
             draw.rectangle((x0 + LABEL, top + 3, x1, top + height - 3), fill=BOX)
             labels = []
             for item in lane["items"]:
-                a = self._x(item["s"])
-                b = max(self._x(item["e"]) - 1, a + 2)  # A pixel apart from the next item.
-                now = item["s"] <= t < item["e"]
+                end = max(item["e"], t) if item.get("status") in RUNNING else item["e"]
+                a = self._x(item["s"], duration)
+                b = max(self._x(end, duration) - 1, a + 2)  # A pixel apart from the next item.
+                now = _now(item, t)
                 color = STATUS_COLORS.get(item.get("status"), LANE_COLORS.get(lane["name"], (60, 70, 82)))
                 if agent:
                     color = AGENT_NOW if now else AGENT_PAST
@@ -223,14 +244,21 @@ class Overview:
                 )
                 ink = (23, 20, 10) if (not agent or now) else (233, 239, 246)
                 labels.append((a, b, _short(draw, item["label"], small, b - a - 8), ink))
+            drawn = -math.inf  # Where the last label drawn ends: overlapping items label only the first.
             for a, _, label, ink in labels:  # Over every item, so a later item does not cover a label.
-                if label:
+                if label and a + 4 >= drawn:
                     draw.text((a + 4, top + height / 2 - 7), label, font=small, fill=ink)
-        px = self._x(t)
+                    drawn = a + 8 + draw.textlength(label, font=small)
+        px = self._x(t, duration)
         draw.line((px, y0, px, y1), fill=TEXT, width=2)
-        step = _tick_step(self.duration)
-        for second in np.arange(0.0, self.duration + 1e-6, step):
-            draw.text((self._x(second) - 8, y1 + 1), f"{second:.0f} s", font=small, fill=DIM)
+        step = _tick_step(duration)
+        for second in np.arange(0.0, duration + 1e-6, step):
+            draw.text((self._x(second, duration) - 8, y1 + 1), f"{second:.0f} s", font=small, fill=DIM)
+
+
+def _now(item: dict, t: float) -> bool:
+    """Whether a trace item runs at ``t``: begun, and not ended (or still running in a live trace)."""
+    return item["s"] <= t and (t < item["e"] or item.get("status") in RUNNING)
 
 
 def _tick_step(duration: float) -> float:

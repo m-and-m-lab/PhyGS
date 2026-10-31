@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import faulthandler
 import json
+import math
 import signal
 import sys
 import traceback
@@ -187,25 +188,29 @@ class Check:
 
     def record(self, control, robot, *, eye=(-2.2, -2.2, 2.0), target=(0.6, 0.0, 0.5), period: float = 0.032) -> None:
         """With ``--record``, film ``robot`` (an articulation) every ``period`` [s sim] into
-        ``third_person.mp4`` (recording.video: title, RTF and frame rates, narration, command timeline),
-        with the panels (recording.panels) of what the control observes: the stitched front cameras and
-        the hand camera with their depth, Nav2's costmap and, with :meth:`show_planner`, the last arm plan.
-        A test without any of these (at its first frame) gets no panels.
+        ``third_person.mp4`` in the runs' one look (recording.video), with the panels (recording.panels)
+        of what the control observes: the stitched front cameras and the hand camera with their depth,
+        Nav2's costmap and, with :meth:`show_planner`, the last arm plan; and the overview strip with
+        the commands' timeline, the skills' latest line and the robot's path on a 1 m grid. A test
+        without any of these (at its first frame) gets no panels.
 
         A follow camera: ``eye`` and ``target`` are x, y offsets [m] from the robot's base (world
         axes, smoothed so the gait does not shake the view) and heights [m] above the ground."""
         if not self._record:
             return
+        from dataclasses import asdict
+
         import numpy as np
         import yaml
 
         from phygs.execution.navigation.footprint import transit_footprint
         from phygs.recording.panels import PanelFeed
-        from phygs.recording.video import Video
+        from phygs.recording.trace import compose
+        from phygs.recording.video import FOCAL_LENGTH, Video, live_axis
         from phygs.sim.base import BaseLink
         from phygs.sim.cameras import ViewCamera
 
-        camera, self._video = ViewCamera(), Video(self.output / "third_person.mp4", fps=1.0 / period)
+        camera = ViewCamera(focal_length=FOCAL_LENGTH)
         outline = None  # A robot in bring-up has no footprint profile yet (check_footprint measures it).
         if (path := control.robot.navigation.footprint_profile) is not None:
             x0, x1, y0, y1 = transit_footprint(yaml.safe_load(path.read_text())).bounds()
@@ -216,7 +221,7 @@ class Check:
         base_link = BaseLink(robot, control.robot.base_link)
         every, step = max(1, round(period / control.runtime.physics_dt)), control.step
         eye, target = np.asarray(eye, dtype=float), np.asarray(target, dtype=float)
-        follow = {}
+        follow, poses = {}, []  # poses: the robot's path (time, x, y, yaw) for the strip.
 
         def recorded() -> None:
             step()
@@ -229,13 +234,25 @@ class Check:
                 sources = self._panels.sources(control.observe()) if observes else None
                 if "panels" not in follow:  # A video keeps one frame size: panels only if the test has any.
                     follow["panels"] = observes and (sources.drawable() or self._panels.planner is not None)
+                    self._video = Video(self.output / "third_person.mp4", fps=1.0 / period, panels=follow["panels"])
+                now, pose = control.runtime.time_seconds, base_link.pose().cpu().numpy()
+                x, y, z, w = (float(v) for v in pose[3:])
+                poses.append(
+                    (now, float(pose[0]), float(pose[1]), math.atan2(2 * (x * y + w * z), 1 - 2 * (y * y + z * z)))
+                )
+                trace = compose(
+                    end=now,
+                    title=self.name,
+                    commands=[asdict(span) for span in control.timeline.spans],
+                    narration=list(control.narration.log),
+                    poses=list(poses),
+                )
                 self._video.frame(
                     camera.capture(follow["base"] + eye, follow["base"] + target),
-                    title=self.name,
-                    sim_time=control.runtime.time_seconds,
-                    lines=control.narration.lines(),
-                    spans=control.timeline.spans,
-                    panels=sources if follow["panels"] else None,
+                    sources=sources if follow["panels"] else None,
+                    trace=trace,
+                    sim_time=now,
+                    duration=live_axis(now),
                 )
 
         control.step = recorded

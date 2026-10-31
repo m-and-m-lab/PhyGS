@@ -243,6 +243,7 @@ class Audit:
         self.privileged: Counter[str] = Counter()
         self.levels: set[str] = set()
         self.commands: list[dict] = []
+        self.lines: list[dict] = []  # Every line written, for a recording's timeline (recording.trace).
 
     def record(self, call: str, *, level: str | None = None, privileged=(), **fields) -> None:
         """Record one call; ``fields`` (arguments, result, error, feedback) are stored as JSON."""
@@ -255,6 +256,7 @@ class Audit:
             line["privileged"] = list(privileged)
         if "feedback" in fields:
             self.commands.append(line)
+        self.lines.append(line)
         if self._file is not None:
             self._file.write(json.dumps(line) + "\n")
             self._file.flush()
@@ -262,6 +264,7 @@ class Audit:
     def mark(self, call: str, **fields) -> None:
         """Write one line that is not a call (a step marker): not counted in the totals."""
         line = dict(t=round(self._time(), 4), call=call, **{k: jsonable(v) for k, v in fields.items()})
+        self.lines.append(line)
         if self._file is not None and not self._file.closed:  # A step the agent leaves after the episode.
             self._file.write(json.dumps(line) + "\n")
             self._file.flush()

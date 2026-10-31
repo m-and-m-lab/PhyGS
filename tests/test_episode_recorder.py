@@ -69,3 +69,15 @@ def test_a_read_counts_as_the_ticks_between_reads(tmp_path):
     for time_seconds in (1.0, 1.02):
         rec.contacts_tick(time_seconds, [("arm_link_el1", "table", 2.0)], "move_to_pose", gripper_closed=False)
     assert summary(rec.contact_report()["contacts"]) == [("arm_link_el1", "table", 2.0, 10)]
+
+
+def test_contacts_so_far_sort_the_current_hold_without_ending_it(tmp_path):
+    rec = recorder(tmp_path)
+    rec.contacts_tick(1.0, [("arm_link_fngr", "box", 30.0)], "close_gripper", gripper_closed=True)
+    rec.contacts_tick(1.1, [("arm_link_wr1", "box", 40.0), ("arm_link_fngr", "box", 45.0)], "lift", gripper_closed=True)
+    so_far = rec.contacts_so_far()
+    assert summary(so_far["grasp_contacts"]) == [("arm_link_fngr", "box", 45.0, 2), ("arm_link_wr1", "box", 40.0, 1)]
+    rec.contacts_tick(1.2, [("arm_link_fngr", "box", 50.0)], "lift", gripper_closed=True)  # The hold goes on.
+    report = rec.contact_report()
+    assert summary(report["grasp_contacts"]) == [("arm_link_fngr", "box", 50.0, 3), ("arm_link_wr1", "box", 40.0, 1)]
+    assert so_far["grasp_contacts"][0]["peak_n"] in (45.0, 40.0)  # The earlier copy is unchanged.

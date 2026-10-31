@@ -11,6 +11,45 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.9.0 (unreleased, develop)
+
+The recording and the replay share one look and one code path (2026-10-30). Older state logs
+still replay.
+
+Added:
+
+- The state log also holds the base's commanded velocity (`command`), Nav2's global costmap when it
+  changes (read at most once per simulated second, `COSTMAP_PERIOD`) and each arm plan's display
+  (`PlannerView`); `States.costmap_at(t)` and `States.plan_at(t)` read them back.
+- `Replay.render(sample)` returns the outside image and the recording's `PanelSources`;
+  `Replay.views(sources, outside)` gives each view as an image.
+- `phygs.sim.cameras.aim_camera(path, eye, target, near)`: point any USD camera, as the recording's
+  `third_person` camera and `ViewCamera.place` do.
+- `Recorder.contacts_so_far()`, `Audit.lines`, `StateLog.states()`: what a recording's live trace
+  reads; `recording.trace.compose(...)` makes a trace from them, `build(run)` from a run's folder.
+
+Changed:
+
+- **Breaking:** the `--record` video (`third_person.mp4`) looks like the replay: the outside camera
+  follows the robot (`recording.video.Chase`, behind and to its right, cutting away walls in
+  between), the panels sit on its right, and the overview strip (`recording.overview`) replaces the
+  title, stats, narration and command-timeline strips. The timeline comes from the run's logs as it
+  goes (`recording.trace.compose`, redrawn every 0.5 s of simulated time) on an axis that grows in
+  30 s steps; the floor plan is the scene's (`world.replay.scene_plan`). `recording.video.Video` takes
+  `frame(outside, sources=, trace=, sim_time=, duration=)` and `Recorder.frame` the same; the old
+  `recording.video.compose`, `COMMAND_COLORS` and the overlay are removed. The robot tests'
+  component videos use it too.
+- `recording.overview.Overview(plan, width=, height=)` draws any trace: `draw(trace, t, duration)`;
+  its plan window is 12 m wide and follows the robot. The strip's second line has the run's title
+  and the skills' latest line.
+- `phygs replay` writes `replay.mp4`: the following camera with the recording's panels on its right
+  (front, hand, navigation, their depth, arm planner) and the overview strip under both
+  (`--no_panels`, `--no_overview` leave them out). The separate clips are now opt-in with `--views`
+  (`outside`, `front`, `front_depth`, `hand`, `hand_depth`, `navigation`, `arm_planner`); `outside.mp4`
+  no longer carries the strip. Pass `--views outside front front_depth hand hand_depth` for the clips
+  0.8.0 wrote. The outside view's size is the settings' `record` size unless `--size WIDTH HEIGHT`
+  (`--width`/`--height` are gone: they are Isaac Sim's window flags).
+
 ### 0.8.0 (unreleased, develop)
 
 Repeats without a new start-up, and a wall-clock limit (ForageBench stage 4, 2026-10-30). Additive.

@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import json
-import math
 
 import numpy as np
 import pytest
@@ -89,7 +88,7 @@ def test_the_trace_has_the_agents_steps_the_commands_and_the_contacts(tmp_path):
     assert [item["label"] for item in lanes["Gripper"]] == ["close_gripper"]
     assert lanes["Grip"] == [dict(label="grip cup", s=6.1, e=8.0, status="grip", body="cup", peak=20.0)]
     assert lanes["Bumps"][0]["peak"] == 40.0 and lanes["Bumps"][0]["body"] == "table"
-    assert built["holding"] == [dict(s=6.5, e=7.5, label="cup")]
+    assert built["holding"] == [dict(s=6.5, e=7.5, label="cup", status="succeeded")]
     path = built["path"]
     assert path["target"] == [4.0, 1.0] and path["z"] == 0.5 and built["duration"] == 8.0
     assert [route["t"] for route in path["routes"]] == [1.0, 5.0] and path["routes"][1]["path"] == []
@@ -115,18 +114,41 @@ def plan_of(tmp_path):
 
 
 @pytest.mark.parametrize("with_plan", [True, False])
-def test_the_overview_shows_the_robot_where_the_trace_puts_it(tmp_path, with_plan):
+def test_the_overview_follows_the_robot_where_the_trace_puts_it(tmp_path, with_plan):
     built = trace.build(write_run(tmp_path / "run"))
-    overview = Overview(built, plan_of(tmp_path) if with_plan else None, width=960, height=260)
+    overview = Overview(plan_of(tmp_path) if with_plan else None, width=960, height=260)
+    center = ((overview.box[0] + overview.box[2]) // 2, (overview.box[1] + overview.box[3]) // 2)
     for t in (0.0, 3.0, 8.0):
-        image = overview.draw(t)
+        image = overview.draw(built, t)
         assert image.shape == (260, 960, 3)
         x = 0.0 if t == 0.0 else min(t - 1.0, 4.0)
-        u, v = overview._to_box(x, 1.0)
-        patch = image[round(v) - 2 : round(v) + 3, round(u) - 2 : round(u) + 3].reshape(-1, 3)
-        assert any(tuple(pixel) == ROBOT for pixel in patch)  # The robot's arrow.
-    assert not np.array_equal(overview.draw(2.0), overview.draw(6.0))  # The playhead moved.
-    u0, _ = overview._to_box(0.0, 1.0)
-    u1, _ = overview._to_box(1.0, 1.0)
-    assert u1 > u0 and math.isclose(overview._to_box(0.0, 2.0)[0], u0)  # +x right, +y up.
-    assert overview._to_box(0.0, 2.0)[1] < overview._to_box(0.0, 1.0)[1]
+        assert overview._center == pytest.approx((x, 1.0))  # The window follows the robot.
+        patch = image[center[1] - 2 : center[1] + 3, center[0] - 2 : center[0] + 3].reshape(-1, 3)
+        assert any(tuple(pixel) == ROBOT for pixel in patch)  # The robot's arrow, in the middle.
+    assert not np.array_equal(overview.draw(built, 2.0), overview.draw(built, 6.0))  # The playhead moved.
+    u0, v0 = overview._to_window(0.0, 1.0)
+    u1, v1 = overview._to_window(1.0, 2.0)
+    assert u1 - u0 == pytest.approx(overview.scale) and v0 - v1 == pytest.approx(overview.scale)  # +x right, +y up.
+    assert overview.draw(built, 3.0, duration=60.0).shape == (260, 960, 3)  # A recording's growing axis.
+
+
+def test_a_recordings_trace_is_composed_from_what_the_run_logged_so_far():
+    commands = [dict(lane="base", name="navigate_to", start=1.0, end=None, status="active")]
+    live = trace.compose(
+        end=2.0,
+        title="dev | retrieve: the cup",
+        audit=AUDIT[:5],  # The walk has begun, not ended.
+        commands=commands,
+        contacts=dict(contacts=REPORT["contacts"][:0]),
+        narration=[(1.0, "navigation", "navigate_to: following")],
+        poses=[(0.0, 0.0, 1.0, 0.0), (1.5, 0.5, 1.0, 0.0)],
+    )
+    lanes = {lane["name"]: lane["items"] for lane in live["lanes"]}
+    assert [(item["label"], item["e"], item["status"]) for item in lanes["Agent"]] == [
+        ("stow", 1.0, "succeeded"),
+        ("go_to(table)", 2.0, "open"),
+    ]
+    assert lanes["Base"][0]["e"] == 2.0 and live["holding"] == [] and live["path"]["target"] == [4.0, 1.0]
+    assert live["path"]["poses"][-1] == [1.5, 0.5, 1.0, 0.0] and live["title"].startswith("dev")
+    image = Overview(None, width=960, height=260).draw(live, 2.0, duration=60.0)
+    assert image.shape == (260, 960, 3)

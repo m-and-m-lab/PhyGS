@@ -15,14 +15,17 @@ The trace has one lane per actor, each a list of items with a start ``s`` and en
 - ``Bumps``: every other arm contact, with its peak force [N] (the report's ``contacts``).
 
 ``holding`` lists the intervals the gripper held an object (from the state log), named by the
-body gripped then. The path holds the robot's poses at ``rate``, Nav2's routes and, when the agent
-read it through a hint, the target's position; ``z`` is the robot's height at the start [m], which
-picks the floor plan. :func:`build` returns both as one JSON-friendly dict.
+body gripped then; ``narration`` the skills' lines (time, kind, text); ``title`` names the run. The
+path holds the robot's poses at ``rate``, Nav2's routes and, when the agent read it through a hint,
+the target's position; ``z`` is the robot's height at the start [m], which picks the floor plan.
+:func:`compose` makes the trace from what a run logs, as it goes or after it; :func:`build` reads a
+finished run's folder. Either is one JSON-friendly dict.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 from phygs.recording.state_log import States
@@ -127,21 +130,22 @@ def contact_items(report: dict) -> tuple[list[dict], list[dict]]:
 
 def holding(states: States, grips: list[dict]) -> list[dict]:
     """Intervals [s] the gripper held an object, named by the body gripped at their start (or the
-    nearest grip before it); ``object`` when no grip contact names one."""
+    nearest grip before it); ``object`` when no grip contact names one. One still held at the last
+    sample has the status ``open``."""
     intervals, start = [], None
     for time, held in zip(states.time.tolist(), states.holding.tolist()):
         if held and start is None:
             start = time
         elif not held and start is not None:
-            intervals.append([start, time])
+            intervals.append([start, time, "succeeded"])
             start = None
     if start is not None:
-        intervals.append([start, float(states.time[-1])])
+        intervals.append([start, float(states.time[-1]), "open"])
     named = []
-    for s, e in intervals:
+    for s, e, status in intervals:
         before = [grip for grip in grips if grip["s"] <= e]
         body = min(before, key=lambda grip: abs(grip["s"] - s))["body"] if before else "object"
-        named.append(dict(s=round(s, 3), e=round(e, 3), label=body))
+        named.append(dict(s=round(s, 3), e=round(e, 3), label=body, status=status))
     return named
 
 
@@ -155,37 +159,72 @@ def target(audit: list[dict]) -> list[float] | None:
     return None
 
 
-def build(run: Path, *, rate: float = 10.0) -> dict:
-    """The trace and the path of the run in folder ``run`` (``report.json``, ``audit.jsonl``,
-    ``state.npz``): ``{duration, lanes, steps, holding, path: {rate, poses, routes, target}}``."""
-    run = Path(run)
-    report = json.loads((run / "report.json").read_text())
-    audit = read_audit(run / "audit.jsonl")
-    states = States.load(run)
-    end = float(states.time[-1]) if len(states) else float(report.get("sim_seconds", 0.0))
-    all_steps = steps(audit, end)
-    commands = command_items(states.commands, end)
-    grips, bumps = contact_items(report)
+def compose(
+    *,
+    end: float,
+    title: str = "",
+    audit: Sequence[dict] = (),
+    commands: Sequence[dict] = (),
+    contacts: dict | None = None,
+    states: States | None = None,
+    narration: Sequence[Sequence] = (),
+    poses: Sequence[Sequence[float]] = (),
+    rate: float = 10.0,
+) -> dict:
+    """A trace up to ``end`` [s] from what a run logs: the ``audit`` lines (steps, the target hint),
+    the command timeline's spans ``commands``, the report's ``contacts`` and ``grasp_contacts``
+    (``contacts``), the state log (``states``: holding, the robot's path at ``rate`` [1/s], the
+    routes) and the skills' ``narration`` (time, kind, text). Without a state log, ``poses`` (time,
+    x, y, yaw) is the path. ``title`` names the run (the episode and its task). A recording composes
+    it as the run goes, :func:`build` after it."""
+    all_steps = steps(list(audit), end)
+    lanes_by_name = command_items(list(commands), end)
+    grips, bumps = contact_items(contacts or {})
     lanes = [
         dict(name="Agent", items=[step for step in all_steps if step["depth"] == 0]),
-        *(dict(name=name, items=commands[name]) for name in ("Base", "Arm", "Gripper")),
+        *(dict(name=name, items=lanes_by_name[name]) for name in ("Base", "Arm", "Gripper")),
         dict(name="Grip", items=grips),
         dict(name="Bumps", items=bumps),
     ]
-    routes = [
-        dict(t=round(route.time, 3), path=[[round(float(x), 2), round(float(y), 2)] for x, y in route.points])
-        for route in states.routes
-    ]
+    routes = []
+    if states is not None:
+        routes = [
+            dict(t=round(route.time, 3), path=[[round(float(x), 2), round(float(y), 2)] for x, y in route.points])
+            for route in states.routes
+        ]
+        poses = states.base_path(rate)
     return dict(
+        title=title,
         duration=round(end, 3),
         lanes=lanes,
         steps=all_steps,
-        holding=holding(states, grips),
+        holding=holding(states, grips) if states is not None else [],
+        narration=[list(line) for line in narration],
         path=dict(
             rate=rate,
-            z=round(float(states.root[0, 2]), 3) if len(states) else 0.0,
-            poses=states.base_path(rate),
+            z=round(float(states.root[0, 2]), 3) if states is not None and len(states) else 0.0,
+            poses=[list(pose) for pose in poses],
             routes=routes,
             target=target(audit),
         ),
+    )
+
+
+def build(run: Path, *, rate: float = 10.0) -> dict:
+    """The trace and the path of the run in folder ``run`` (``report.json``, ``audit.jsonl``,
+    ``state.npz``): ``{title, duration, lanes, steps, holding, narration, path: {rate, z, poses,
+    routes, target}}``."""
+    run = Path(run)
+    report = json.loads((run / "report.json").read_text())
+    states = States.load(run)
+    task = report.get("task", {})
+    return compose(
+        end=float(states.time[-1]) if len(states) else float(report.get("sim_seconds", 0.0)),
+        title=f"{report.get('spec', {}).get('id', run.name)} | {task.get('goal', '')}: {task.get('description', '')}",
+        audit=read_audit(run / "audit.jsonl"),
+        commands=states.commands,
+        contacts=report,
+        states=states,
+        narration=report.get("narration", ()),
+        rate=rate,
     )

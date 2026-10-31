@@ -43,17 +43,19 @@ A run's output folder holds:
 | --- | --- |
 | `report.json` | The report (`world/report.py`). |
 | `audit.jsonl` | One line per agent call (time, call, arguments, result or error), and the agent's named steps: `with session.step("open the drawer"):` writes `session.step` lines where the step begins and ends (with the error that left it). Steps nest; they are not calls and are not counted in the report's `usage`. |
-| `state.npz` | The state log (`recording/state_log.py`), on every run: every camera period, the robot's root pose and joints, whether the gripper holds something, and the pose of each scene body that moved since its last logged pose; Nav2's route when it changes; the command timeline's spans. Arrays only, nothing rendered, so it costs the run no speed. |
-| `third_person.mp4` | With `--record` only: the video with its panels, rendered while the run goes (it slows the run). |
+| `state.npz` | The state log (`recording/state_log.py`), on every run: every camera period, the robot's root pose and joints, whether the gripper holds something, the base's commanded velocity, and the pose of each scene body that moved since its last logged pose; Nav2's route and global costmap when they change (the costmap read at most once per simulated second); each arm plan's display (the recording's arm planner panel); the command timeline's spans. Arrays only, nothing rendered, so it costs the run no speed. |
+| `third_person.mp4` | With `--record` only: the video, rendered while the run goes (it slows the run), in the same look as `phygs replay` (`recording/video.py`): a camera following the robot, the panels on its right, the overview strip under both with the timeline so far. |
 | `nav2/`, `planner/` | The Nav2 servers' and the arm planner's logs. |
 
 `phygs replay <run>` (`examples/replay_run.py`) renders the run afterwards from these files: it builds
 the scene and robot again without control, Nav2 or the planner, poses them sample by sample without
-stepping physics, and writes into `<run>/replay`, frame for frame: `outside.mp4` (a camera following
-the robot, with the overview strip under it: clock, what the gripper holds, contact force, the agent's
-step, the floor plan with the path walked and Nav2's route, and the timeline of steps, commands, grips
-and bumps), the robot's views (`front`, `front_depth`, `hand`, `hand_depth`), and `trace.json` (the
-timeline and path the strip is drawn from, `recording/trace.py`). The floor plan is the scene
+stepping physics, and writes into `<run>/replay`: `replay.mp4`, laid out like the `--record` video (a
+camera following the robot, with the recording's panels on its right: front and hand cameras, their
+depth, navigation with Nav2's costmap and route, and the arm planner), with the overview strip under it
+(clock, what the gripper holds, contact force, the agent's step, the floor plan with the path walked and
+Nav2's route, and the timeline of steps, commands, grips and bumps); `trace.json` (the timeline and path
+the strip is drawn from, `recording/trace.py`); and with `--views`, each view as its own clip, frame for
+frame (`outside`, `front`, `front_depth`, `hand`, `hand_depth`, `navigation`, `arm_planner`). The floor plan is the scene
 release's (`plan/` beside the scene file, [scenes.md](scenes.md#floor-plans)); without one, replay
 renders the floor once and keeps it in `~/.cache/phygs/plans/<scene sha256>`.
 

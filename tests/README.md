@@ -60,12 +60,13 @@ runs automatic and headless by default (`--viz kit` to watch, `--manual` for key
 where a test has it), writes `DIR/check.json` (`test`, `status`, `error`, `checks` and the test's
 data), prints `<test>: <status>; <DIR>` and exits 0 only when it passed. A hang leaves every
 thread's stack in `DIR/stacks.txt` (`kill -USR1 <pid>`). `--record` writes `DIR/third_person.mp4`
-(agent tests: the scene's record view; component tests: a camera following the robot; the world
-lifecycle test has no video). Its overlay shows the test, the simulated time, the real-time factor
-(RTF) and the frame rates (simulated and per wall second), the latest skill step of each kind, and a
-timeline of every command on a BASE and an ARM lane (blue running, green succeeded, red failed,
-grey cancelled) with a playhead. Beside the scene view, a grid of panels (`helpers/panels.py`;
-"no data" when the run has none):
+in the runs' one look (`phygs/recording/video.py`, the same as `phygs replay`; agent tests: a camera
+behind the robot; component tests: a camera following the robot; the world lifecycle test has no
+video). Under the scene view, the overview strip shows the simulated time, what the gripper holds,
+the arm's contact force, the agent's step, the test's name and the latest skill line, the floor plan
+(a grid in a component test) and the timeline of steps, commands, grips and bumps with a playhead.
+Beside the scene view, a grid of panels (`phygs/recording/panels.py`; "no data" when the run has
+none):
 
 | Panel | Shows |
 | --- | --- |

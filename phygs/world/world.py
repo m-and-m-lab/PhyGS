@@ -40,6 +40,8 @@ from phygs.execution.navigation.known_map import BoxGeometry
 from phygs.recording.panels import PanelFeed
 from phygs.recording.state_log import FILE as STATE_FILE
 from phygs.recording.state_log import StateLog
+from phygs.recording.trace import compose as compose_trace
+from phygs.recording.video import Chase, live_axis
 from phygs.robots.control import RobotControl
 from phygs.robots.description import RobotDescription, load_robot
 from phygs.robots.scene import make_scene_cfg, robot_cameras, simulation_cfg
@@ -49,11 +51,13 @@ from phygs.scene.reader import UsdScene
 from phygs.session.hints import PrivilegedHints
 from phygs.session.session import AgentFailed, AgentSession, Audit, EpisodeEnded, MainThread, ObjectTarget, PublicTask
 from phygs.sim.base import BaseLink
+from phygs.sim.cameras import aim_camera
 from phygs.world import build, report
 from phygs.world.build import PROJECT, SETTINGS
 from phygs.world.navigation import nav2_navigation
 from phygs.world.provenance import code_version, file_sha256, usd_sha256
 from phygs.world.recorder import Recorder
+from phygs.world.replay import scene_plan
 from phygs.world.spec import SCHEMA, EpisodeSpec, load_agent
 from phygs.world.start import check as check_start
 from phygs.world.task import EpisodeEnd, NoTask, Task
@@ -62,6 +66,8 @@ from phygs.world.truth import Truth
 from phygs.world.viewer import EpisodeView, Viewer
 
 ROBOT_PATH = "/World/envs/env_0/Robot"
+THIRD_PERSON_PATH = "/World/envs/env_0/ThirdPerson"  # The recording's outside camera (build.third_person_camera).
+LIVE_TRACE_SECONDS = 0.5  # [s sim]: a recording redraws its timeline from the logs this often.
 CLOCKS = ("charged", "realtime")
 
 
@@ -204,6 +210,12 @@ class World:
         if record:
             self._panels = PanelFeed(self.control, footprint=build.transit_outline(robot), planner=self.planner)
         self.provenance.update(task.provenance())
+        # The recording's floor plan and outside camera (recording.video; the same look as phygs replay).
+        self._plan = self._chase = None
+        if record:
+            self._plan = scene_plan(self.scene_def, self.provenance["scene_usd"]["sha256"])
+            self._chase = Chase(period)
+        self._trace, self._trace_time, self._audit = None, -math.inf, None  # The recording's live trace.
         self.recorder = self._open_recorder(output, view)
         self.report: dict | None = None
         self._during: Callable[[World], None] | None = None  # The robot test's per-tick call (run).
@@ -250,6 +262,7 @@ class World:
             jaw_links=robot.gripper.jaw_links,
             read_ticks=settings["contact_read_ticks"],
             state=state,
+            plan=self._plan,
         )
 
     def next_episode(self, output: Path, *, seed: int | None = None) -> None:
@@ -394,7 +407,7 @@ class World:
             self.reset()
         runtime = self.control.runtime
         main = MainThread()
-        audit = Audit(self.output / "audit.jsonl", lambda: runtime.time_seconds)
+        audit = self._audit = Audit(self.output / "audit.jsonl", lambda: runtime.time_seconds)
         clients = dict(
             navigation=self.control.navigation if "navigation" in self.spec.actions else None,
             manipulation=self.control.manipulation if "manipulation" in self.spec.actions else None,
@@ -428,6 +441,10 @@ class World:
             ended_by, reason = "setup_error", "; ".join(self.start_check["problems"])
             self._outcome = ("not_started", "the start check failed")
         self._log_state()  # The scene as the agent finds it.
+        if self._chase is not None:  # The recording's camera starts at the robot.
+            self._trace, self._trace_time = None, -math.inf
+            self._chase.reset()
+            aim_camera(THIRD_PERSON_PATH, *self._chase.aim(self.base.pose().cpu().numpy()))
         broken = None  # An error in the World itself: reported, then raised.
         try:
             while ended_by is None:
@@ -603,32 +620,57 @@ class World:
         if self.viewer is not None and runtime.tick % self.render_ticks == 0:
             self.viewer.update(self._view())
         if self._record and runtime.tick % self.render_ticks == 0:
-            packet = control.pipeline.view("recorder").observe()
+            packet, now = control.pipeline.view("recorder").observe(), runtime.time_seconds
             self.recorder.frame(
                 packet.cameras["third_person"].rgb.cpu().numpy(),
-                title=f"{self.spec.id} | {self.task.goal}: {self.task.description}",
-                sim_time=runtime.time_seconds,
-                lines=control.narration.lines(),
-                spans=control.timeline.spans,
-                panels=self._panels.sources(packet),
+                sources=self._panels.sources(packet),
+                trace=self._live_trace(now),
+                sim_time=now,
+                duration=live_axis(now),
             )
+            aim_camera(THIRD_PERSON_PATH, *self._chase.aim(self.base.pose().cpu().numpy()))  # The next frame's.
+
+    def _live_trace(self, now: float) -> dict:
+        """The recording's trace so far (recording.trace), composed again every LIVE_TRACE_SECONDS."""
+        if self._trace is None or now - self._trace_time >= LIVE_TRACE_SECONDS or now < self._trace_time:
+            self._trace_time = now
+            self._trace = compose_trace(
+                end=now,
+                title=f"{self.spec.id} | {self.task.goal}: {self.task.description}",
+                audit=list(self._audit.lines) if self._audit is not None else (),
+                commands=[asdict(span) for span in self.control.timeline.spans],
+                contacts=self.recorder.contacts_so_far(),
+                states=self.recorder.state.states(),
+                narration=list(self.control.narration.log),
+            )
+        return self._trace
 
     def _log_state(self) -> None:
         """One state log sample (recording.state_log): the robot, the scene's bodies, whether the
-        gripper holds something; and Nav2's route when it changed. Arrays only, nothing rendered."""
+        gripper holds something, the base's commanded velocity; Nav2's route and global costmap when
+        they changed, and the arm planner's latest plan display. Arrays only, nothing rendered."""
         control, runtime, data = self.control, self.control.runtime, self._robot_asset.data
-        self.recorder.state.sample(
-            runtime.time_seconds,
+        state, now = self.recorder.state, runtime.time_seconds
+        controller = getattr(control.locomotion, "controller", None)
+        state.sample(
+            now,
             data.root_link_pose_w.torch[0].cpu().numpy(),
             data.joint_pos.torch[0].cpu().numpy(),
             self._bodies.poses().cpu().numpy(),
             holding=control.manipulation is not None and control.manipulation.holding,
+            command=getattr(controller, "applied_command", None),
         )
         backend = getattr(control.navigation, "backend", None)
         if hasattr(backend, "route"):
             route = backend.route()
             goal, points = (None, ()) if route is None else ((route[0].x, route[0].y, route[0].heading), route[1])
-            self.recorder.state.route(runtime.time_seconds, goal, points)
+            state.route(now, goal, points)
+        if hasattr(backend, "costmap") and state.wants_costmap(now):
+            costmap = backend.costmap()  # Nav2's newest published one, already received.
+            if costmap is not None:
+                state.costmap(now, *costmap)
+        if self.planner is not None and self.planner.last_view is not None:
+            state.plan(now, self.planner.last_view)
 
     def _view_idle(self) -> None:
         """Keep the viewer updated, once per camera period of wall time, while time stands still."""

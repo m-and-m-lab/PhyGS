@@ -247,8 +247,8 @@ view`), `navigation` (goal, route, replans, turning to the heading, each status 
 `locomotion` (each new velocity command, `stop`). The current manipulation step is also
 `SkillFeedback.step`. `RobotControl.create` attaches a collector (`control.narration`,
 `phygs.recording.narration.Narration`) that prints each line with the episode
-time, keeps the latest line per kind for video overlays (`lines()`), and keeps them all
-(`log`). Checks may add their own lines on `phygs.skills.check`.
+time, keeps the latest line per kind (`lines()`), and keeps them all (`log`, which the videos'
+overview strip shows). Checks may add their own lines on `phygs.skills.check`.
 
 ## Held objects in collision checking
 

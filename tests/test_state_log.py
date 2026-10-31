@@ -3,7 +3,8 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The state log: samples written once and read back, only moved bodies logged, routes on change (no Isaac Sim)."""
+"""The state log: samples written once and read back, only moved bodies logged, routes and costmaps
+on change, arm plans as the panels show them (no Isaac Sim)."""
 
 from __future__ import annotations
 
@@ -13,7 +14,8 @@ import math
 import numpy as np
 import pytest
 
-from phygs.recording.state_log import POSITION_STEP, ROTATION_STEP, SCHEMA, StateLog, States
+from phygs.recording.panels import PlannerView
+from phygs.recording.state_log import COSTMAP_PERIOD, POSITION_STEP, ROTATION_STEP, SCHEMA, StateLog, States
 
 JOINTS = ("hip", "knee", "arm")
 BODIES = ("/World/table", "/World/drawer", "/World/cup")
@@ -84,6 +86,56 @@ def test_routes_are_logged_when_they_change(tmp_path):
     assert states.routes[1].goal == (1.0, 1.0, None) and states.routes[1].points.tolist() == [list(p) for p in path]
     assert len(states.routes[2].points) == 2 and states.routes[3].goal is None
     assert states.route_at(0.9).time == 0.5 and states.route_at(-1.0) is None
+
+
+def test_the_panels_data_reads_back_as_it_was_at_any_time(tmp_path):
+    log = make_log(tmp_path)
+    free, blocked = np.zeros((4, 6), np.uint8), np.zeros((4, 6), np.uint8)
+    blocked[1, 2] = 254
+    arm = np.array([[0.0, 0.0, 0.5], [0.3, 0.0, 0.6], [0.6, 0.0, 0.5]])
+    first = PlannerView(
+        label="12.0 s planned",
+        voxels=np.ones((5, 3)),
+        boxes=(((1.0, 0.0, 0.4), (0.5, 0.5, 0.8)),),
+        arm_start=arm,
+        arm_path=(arm, arm + 0.1),
+        arm_end=arm + 0.2,
+        end_spheres=np.ones((2, 4)),
+        tool_path=arm[:2],
+        floor=-0.5,
+    )
+    second = PlannerView(label="display failed: no plan")
+    for k in range(6):
+        t = 0.5 * k
+        log.sample(t, identity(), np.zeros(3), scene(), holding=False, command=None if k == 0 else (0.5, 0.0, 0.1))
+        if log.wants_costmap(t):  # At 0, 1 and 2 s.
+            log.costmap(t, blocked if t >= 2.0 else free, (-1.0, -2.0), 0.05)
+        log.plan(t, first if t < 2.0 else second)  # Logged when it is another object.
+    log.write()
+    states = States.load(tmp_path)
+    assert np.isnan(states.command[0]).all() and states.command[1].tolist() == pytest.approx([0.5, 0.0, 0.1])
+    assert states.costmap_times.tolist() == [0.0, 2.0]  # The read at 1 s found the same costmap.
+    assert states.costmap_at(-0.1) is None and states.costmap_at(1.9)[0].max() == 0
+    costs, origin, cell = states.costmap_at(2.4)
+    assert costs[1, 2] == 254 and origin == (-1.0, -2.0) and cell == 0.05
+    assert states.plan_times.tolist() == [0.0, 2.0] and states.plan_at(-1.0) is None
+    view = states.plan_at(1.0)
+    assert view.label == "12.0 s planned" and view.floor == -0.5 and view.voxel_size == first.voxel_size
+    assert np.allclose(np.ravel(view.boxes), np.ravel(first.boxes)) and len(view.arm_path) == 2  # float32
+    assert np.allclose(view.arm_path[1], arm + 0.1) and np.allclose(view.end_spheres, 1.0)
+    assert states.plan_at(2.5).label == "display failed: no plan" and states.plan_at(2.5).floor is None
+    assert log.wants_costmap(0.0) and not log.wants_costmap(COSTMAP_PERIOD / 2)  # Time went back: a new episode.
+
+
+def test_a_log_without_the_panels_data_reads_back_without_it(tmp_path):
+    log = make_log(tmp_path)
+    log.sample(0.0, identity(), np.zeros(3), scene(), holding=False)
+    log.write()
+    with np.load(tmp_path / "state.npz") as arrays:  # As PhyGS 0.7 and 0.8 wrote it.
+        old = {key: arrays[key] for key in arrays.files if not key.startswith(("command", "costmap", "plan"))}
+    states = States(old)
+    assert np.isnan(states.command).all() and states.command.shape == (1, 3)
+    assert states.costmap_at(5.0) is None and states.plan_at(5.0) is None
 
 
 def test_the_base_path_is_resampled_with_its_heading(tmp_path):

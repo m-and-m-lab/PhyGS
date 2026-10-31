@@ -9,17 +9,22 @@ The World samples the state every camera period [s sim] while the agent runs, re
 the simulated time, the robot's root link pose and joint positions, whether the gripper holds
 something, and the pose of every scene body that moved since its last logged pose (more than
 :data:`POSITION_STEP` or :data:`ROTATION_STEP`). The first sample logs every body, so the scene at
-a sample is each body's last logged pose. Nav2's route is logged when it changes, and the command
-timeline's spans when the log is written. ``phygs replay`` renders the run from this file
-(:mod:`phygs.world.replay`); :mod:`.trace` reads the timeline and the robot's path from it.
+a sample is each body's last logged pose. Each sample also holds the base's commanded velocity.
+Nav2's route and global costmap are logged when they change, every new arm plan's display (the
+recording's arm planner panel, :class:`~phygs.recording.panels.PlannerView`) when it finishes, and
+the command timeline's spans when the log is written. ``phygs replay`` renders the run from this
+file, with the recording's panels (:mod:`phygs.world.replay`); :mod:`.trace` reads the timeline and
+the robot's path from it.
 
-Arrays of ``state.npz`` (S samples, J joints, B bodies, R logged body poses, K routes, P route points):
+Arrays of ``state.npz`` (S samples, J joints, B bodies, R logged body poses, K routes, P route points,
+C costmaps, N plans):
 
 ==================  ============  ===================================================================
 ``time``            [S]           simulated time [s]
 ``root``            [S, 7]        robot root link pose [m, quaternion xyzw]
 ``joints``          [S, J]        joint positions [m or rad, depending on joint type]
 ``holding``         [S]           whether the gripper holds an object
+``command``         [S, 3]        the base's commanded body velocity [m/s, m/s, rad/s] (NaN: none)
 ``body_sample``     [R]           the sample each logged body pose belongs to
 ``body_index``      [R]           the body, an index into ``body_names``
 ``body_pose``       [R, 7]        the body's world link pose [m, quaternion xyzw]
@@ -27,11 +32,24 @@ Arrays of ``state.npz`` (S samples, J joints, B bodies, R logged body poses, K r
 ``route_goal``      [K, 3]        the goal x, y [m] and heading [rad] (NaN: none); all NaN: no route
 ``route_start``     [K + 1]       each route's first point in ``route_points``
 ``route_points``    [P, 2]        route points x, y [m]
+``costmap_time``    [C]           when Nav2's global costmap changed [s]
+``costmap_origin``  [C, 2]        its origin x, y [m]
+``costmap_cell``    [C]           its cell size [m]
+``costmap<c>``      [rows, cols]  costmap ``c`` (Nav2 costs 0-255; row 0 at the lowest y)
+``plan_time``       [N]           when an arm plan finished [s]
+``plan_label``      [N]           its one-line label
+``plan_voxel_size`` [N]           its obstacle voxels' size [m]
+``plan_floor``      [N]           the floor height in the body frame [m] (NaN: unknown)
+``plan<n>_<field>`` [., 3 or 4]   plan ``n``'s ``voxels``, ``boxes`` (centre, size), ``arm_start``,
+                                  ``arm_path`` (its frames joined; ``arm_path_sizes``: their lengths),
+                                  ``arm_end``, ``end_spheres`` and ``tool_path``, body frame [m]
 ``joint_names``     [J]           the robot's joint names
 ``body_names``      [B]           the scene bodies' USD paths
 ``meta``            []            JSON: :data:`SCHEMA`, the sample period, the scene, robot and light
                                   the replay needs, and the command spans (``commands``)
 ==================  ============  ===================================================================
+
+Logs written before PhyGS 0.9.0 have no ``command``, costmaps or plans; they read back without them.
 """
 
 from __future__ import annotations
@@ -44,10 +62,14 @@ from pathlib import Path
 
 import numpy as np
 
+from phygs.recording.panels import PlannerView
+
 SCHEMA = 1
 POSITION_STEP = 0.001  # [m]; a body moved this far since its last logged pose is logged again.
 ROTATION_STEP = math.radians(0.25)  # [rad]; likewise for its rotation.
 FILE = "state.npz"
+COSTMAP_PERIOD = 1.0  # [s sim]; Nav2's costmap is read at most this often (as the recording's panel).
+PLAN_ARRAYS = ("voxels", "arm_start", "arm_end", "end_spheres", "tool_path")  # PlannerView's array fields.
 
 
 @dataclass(frozen=True)
@@ -75,21 +97,33 @@ class StateLog:
         self._root: list[np.ndarray] = []
         self._joints: list[np.ndarray] = []
         self._holding: list[bool] = []
+        self._command: list[np.ndarray] = []
         self._body_rows: list[tuple[int, np.ndarray, np.ndarray]] = []  # (sample, indices, poses)
         self._logged: np.ndarray | None = None  # Each body's last logged pose [B, 7].
         self._routes: list[tuple[float, tuple, np.ndarray]] = []
         self._route_key: tuple | None = None  # The last logged route, as bytes (NaN goals compare equal).
         self._route_given: tuple | None = None  # The last (goal, points) objects given.
+        self._costmaps: list[tuple[float, np.ndarray, tuple[float, float], float]] = []
+        self._costmap_read = -math.inf  # Simulated time [s] of the last costmap read (wants_costmap).
+        self._plans: list[tuple[float, PlannerView]] = []
         self.written = False
 
     def __len__(self) -> int:
         return len(self._time)
 
     def sample(
-        self, time_seconds: float, root: np.ndarray, joints: np.ndarray, bodies: np.ndarray, *, holding: bool
+        self,
+        time_seconds: float,
+        root: np.ndarray,
+        joints: np.ndarray,
+        bodies: np.ndarray,
+        *,
+        holding: bool,
+        command: Sequence[float] | None = None,
     ) -> None:
-        """Log the state now: the root pose [7], joint positions [J] and every body's pose [B, 7]
-        (copied: the caller may hand views of buffers the simulation overwrites)."""
+        """Log the state now: the root pose [7], joint positions [J], every body's pose [B, 7] and the
+        base's commanded velocity [m/s, m/s, rad/s] (copied: the caller may hand views of buffers the
+        simulation overwrites)."""
         root = np.array(root, dtype=np.float32).reshape(7)
         joints = np.array(joints, dtype=np.float32).reshape(len(self.joint_names))
         bodies = np.asarray(bodies, dtype=np.float32).reshape(len(self.body_names), 7)
@@ -107,6 +141,7 @@ class StateLog:
         self._root.append(root)
         self._joints.append(joints)
         self._holding.append(bool(holding))
+        self._command.append(np.full(3, np.nan, np.float32) if command is None else np.array(command, np.float32))
 
     def route(self, time_seconds: float, goal: tuple | None, points: Sequence[Sequence[float]]) -> None:
         """Log Nav2's route when it differs from the last one logged (no goal and no points: none)."""
@@ -121,36 +156,109 @@ class StateLog:
         self._route_key = key
         self._routes.append((float(time_seconds), goal, points))
 
+    def wants_costmap(self, time_seconds: float) -> bool:
+        """Whether to read Nav2's costmap now: :data:`COSTMAP_PERIOD` after the last read (or time
+        went back: a new episode)."""
+        if time_seconds - self._costmap_read >= COSTMAP_PERIOD or time_seconds < self._costmap_read:
+            self._costmap_read = time_seconds
+            return True
+        return False
+
+    def costmap(self, time_seconds: float, costs: np.ndarray, origin: Sequence[float], cell: float) -> None:
+        """Log Nav2's global costmap (costs 0-255 [rows, cols], origin [m], cell size [m]) when it
+        differs from the last one logged."""
+        costs = np.asarray(costs, dtype=np.uint8)
+        origin = (float(origin[0]), float(origin[1]))
+        if self._costmaps:
+            _, last, last_origin, last_cell = self._costmaps[-1]
+            if last_origin == origin and last_cell == float(cell) and np.array_equal(last, costs):
+                return
+        self._costmaps.append((float(time_seconds), costs.copy(), origin, float(cell)))
+
+    def plan(self, time_seconds: float, view: PlannerView) -> None:
+        """Log an arm plan's display when it is a new one (the planner makes one per finished plan)."""
+        if self._plans and self._plans[-1][1] is view:
+            return
+        self._plans.append((float(time_seconds), view))
+
     def write(self, commands: Sequence[dict] = ()) -> Path:
         """Write ``state.npz`` with the command ``commands`` (lane, name, start, end, status) in ``meta``."""
         rows = self._body_rows
         count = sum(len(indices) for _, indices, _ in rows)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            self.path,
+            **self._costmap_arrays(),
+            **self._plan_arrays(),
+            **self._sample_arrays(commands),
+            body_sample=np.concatenate([np.full(len(i), s, np.int32) for s, i, _ in rows] or [np.zeros(0, np.int32)]),
+            body_index=np.concatenate([i for _, i, _ in rows] or [np.zeros(0, np.int32)]),
+            body_pose=np.concatenate([p for _, _, p in rows] or [np.zeros((0, 7), np.float32)]).reshape(count, 7),
+            body_names=np.asarray(self.body_names, dtype=str),
+        )
+        self.written = True
+        return self.path
+
+    def states(self) -> States:
+        """The samples and routes so far, read back without the scene's bodies, costmaps and plans:
+        what a recording's trace needs while the run goes (:mod:`.trace`)."""
+        return States(
+            dict(
+                self._sample_arrays(()),
+                body_sample=np.zeros(0, np.int32),
+                body_index=np.zeros(0, np.int32),
+                body_pose=np.zeros((0, 7), np.float32),
+                body_names=np.zeros(0, dtype=str),
+            )
+        )
+
+    def _sample_arrays(self, commands: Sequence[dict]) -> dict[str, np.ndarray]:
+        """The samples, the routes, the joint names and ``meta`` (with ``commands``)."""
         goals = np.full((len(self._routes), 3), np.nan, dtype=np.float32)
         for row, (_, goal, _) in enumerate(self._routes):
             if goal is not None:
                 goals[row, : len(goal)] = goal
         starts = np.cumsum([0] + [len(points) for _, _, points in self._routes]).astype(np.int64)
-        meta = dict(self.meta, schema=SCHEMA, commands=list(commands))
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(
-            self.path,
+        return dict(
             time=np.asarray(self._time, dtype=np.float64),
             root=np.asarray(self._root, dtype=np.float32).reshape(-1, 7),
             joints=np.asarray(self._joints, dtype=np.float32).reshape(-1, len(self.joint_names)),
             holding=np.asarray(self._holding, dtype=bool),
-            body_sample=np.concatenate([np.full(len(i), s, np.int32) for s, i, _ in rows] or [np.zeros(0, np.int32)]),
-            body_index=np.concatenate([i for _, i, _ in rows] or [np.zeros(0, np.int32)]),
-            body_pose=np.concatenate([p for _, _, p in rows] or [np.zeros((0, 7), np.float32)]).reshape(count, 7),
+            command=np.asarray(self._command, dtype=np.float32).reshape(-1, 3),
             route_time=np.asarray([t for t, _, _ in self._routes], dtype=np.float64),
             route_goal=goals,
             route_start=starts,
             route_points=np.concatenate([p for _, _, p in self._routes] or [np.zeros((0, 2), np.float32)]),
             joint_names=np.asarray(self.joint_names, dtype=str),
-            body_names=np.asarray(self.body_names, dtype=str),
-            meta=np.asarray(json.dumps(meta)),
+            meta=np.asarray(json.dumps(dict(self.meta, schema=SCHEMA, commands=list(commands)))),
         )
-        self.written = True
-        return self.path
+
+    def _costmap_arrays(self) -> dict[str, np.ndarray]:
+        arrays = dict(
+            costmap_time=np.asarray([time for time, *_ in self._costmaps], dtype=np.float64),
+            costmap_origin=np.asarray([origin for _, _, origin, _ in self._costmaps], dtype=np.float64).reshape(-1, 2),
+            costmap_cell=np.asarray([cell for *_, cell in self._costmaps], dtype=np.float64),
+        )
+        arrays.update({f"costmap{index}": costs for index, (_, costs, _, _) in enumerate(self._costmaps)})
+        return arrays
+
+    def _plan_arrays(self) -> dict[str, np.ndarray]:
+        arrays = dict(
+            plan_time=np.asarray([time for time, _ in self._plans], dtype=np.float64),
+            plan_label=np.asarray([view.label for _, view in self._plans], dtype=str).reshape(-1),
+            plan_voxel_size=np.asarray([view.voxel_size for _, view in self._plans], dtype=np.float64),
+            plan_floor=np.asarray([np.nan if view.floor is None else view.floor for _, view in self._plans]),
+        )
+        for index, (_, view) in enumerate(self._plans):
+            for field in PLAN_ARRAYS:
+                arrays[f"plan{index}_{field}"] = np.asarray(getattr(view, field), dtype=np.float32)
+            arrays[f"plan{index}_boxes"] = np.asarray(
+                [(*center, *size) for center, size in view.boxes], dtype=np.float32
+            ).reshape(-1, 6)
+            frames = [np.asarray(frame, dtype=np.float32).reshape(-1, 3) for frame in view.arm_path]
+            arrays[f"plan{index}_arm_path"] = np.concatenate(frames) if frames else np.zeros((0, 3), np.float32)
+            arrays[f"plan{index}_arm_path_sizes"] = np.asarray([len(frame) for frame in frames], dtype=np.int64)
+        return arrays
 
 
 def _moved(logged: np.ndarray, poses: np.ndarray) -> np.ndarray:
@@ -171,6 +279,11 @@ class States:
         self.meta = meta
         self.time = arrays["time"]
         self.root, self.joints, self.holding = arrays["root"], arrays["joints"], arrays["holding"]
+        self.command = arrays.get("command", np.full((len(self.time), 3), np.nan, dtype=np.float32))
+        self._arrays = arrays
+        self.costmap_times = arrays.get("costmap_time", np.zeros(0))
+        self.plan_times = arrays.get("plan_time", np.zeros(0))
+        self._plan_views: dict[int, PlannerView] = {}
         self.joint_names = tuple(str(name) for name in arrays["joint_names"])
         self.body_names = tuple(str(name) for name in arrays["body_names"])
         self._body_sample, self._body_index = arrays["body_sample"], arrays["body_index"]
@@ -238,17 +351,48 @@ class States:
             found = route
         return found
 
+    def costmap_at(self, time_seconds: float) -> tuple[np.ndarray, tuple[float, float], float] | None:
+        """Nav2's global costmap logged last at or before ``time_seconds`` (costs, origin [m], cell
+        size [m]); None before any."""
+        index = int(np.searchsorted(self.costmap_times, time_seconds, side="right")) - 1
+        if index < 0:
+            return None
+        origin = self._arrays["costmap_origin"][index]
+        return (
+            self._arrays[f"costmap{index}"],
+            (float(origin[0]), float(origin[1])),
+            float(self._arrays["costmap_cell"][index]),
+        )
+
+    def plan_at(self, time_seconds: float) -> PlannerView | None:
+        """The arm plan's display logged last at or before ``time_seconds``; None before any."""
+        index = int(np.searchsorted(self.plan_times, time_seconds, side="right")) - 1
+        if index < 0:
+            return None
+        if index not in self._plan_views:
+            arrays, key = self._arrays, f"plan{index}_"
+            path, sizes = arrays[key + "arm_path"], arrays[key + "arm_path_sizes"]
+            ends = np.cumsum(sizes)
+            self._plan_views[index] = PlannerView(
+                label=str(arrays["plan_label"][index]),
+                voxel_size=float(arrays["plan_voxel_size"][index]),
+                floor=_number(float(arrays["plan_floor"][index])),
+                boxes=tuple((tuple(box[:3].tolist()), tuple(box[3:].tolist())) for box in arrays[key + "boxes"]),
+                arm_path=tuple(path[end - size : end] for size, end in zip(sizes, ends)),
+                **{field: arrays[key + field] for field in PLAN_ARRAYS},
+            )
+        return self._plan_views[index]
+
     def base_path(self, rate: float = 10.0) -> list[tuple[float, float, float, float]]:
         """The robot's (time [s], x, y [m], yaw [rad]) at ``rate`` [1/s]."""
         if not len(self):
             return []
         times = np.arange(self.time[0], self.time[-1] + 1e-9, 1.0 / rate)
-        path = []
-        for time in times:
-            x, y, _, qx, qy, qz, qw = (float(v) for v in self.root[self.index(time)])
-            yaw = math.atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
-            path.append((round(float(time), 3), round(x, 3), round(y, 3), round(yaw, 3)))
-        return path
+        rows = self.root[np.maximum(0, np.searchsorted(self.time, times, side="right") - 1)].astype(float)
+        qx, qy, qz, qw = rows[:, 3], rows[:, 4], rows[:, 5], rows[:, 6]
+        yaw = np.arctan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
+        path = np.round(np.column_stack([times, rows[:, 0], rows[:, 1], yaw]), 3)
+        return [tuple(row) for row in path.tolist()]
 
 
 def _number(value: float) -> float | None:
