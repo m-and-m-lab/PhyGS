@@ -105,8 +105,8 @@ All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container
 ./isaaclab.sh -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 5
 
 # 4. Fetch a released scene (the dataset is private for now; authenticate once with `hf auth login`).
-./isaaclab.sh -p -m phygs.scene.fetch list
-./isaaclab.sh -p -m phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
+./isaaclab.sh -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench
+./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
 ```
 
 `--task_loader` names the function that turns a spec's task block into a task object (its brief, its privileged target, its evaluation). PhyGS knows no task; the robot tests ship a retrieve task for their own use, and a benchmark ships its own. A spec with `task: {goal: none}` needs no loader.
@@ -147,7 +147,7 @@ Adding a robot is one folder with a `robot.yaml` ([docs/adding_a_robot.md](docs/
 
 ## 🏠 Scenes
 
-- **Fixtures** in `tests/robot_tests/scenes/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course, as files.
+- **Built-in** in `phygs/scene/builtin/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course, as files.
 - **Released scenes** (the scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): a catalog of immutable releases, one scene id at one version each. `phygs.scene.fetch` downloads, verifies (SHA-256, every dependency inside the archive) and installs a release under `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`) with a record the scene registry reads; a spec pins it with `scene: {id: bear_loop_house, version: 1.1.0}`. The release format is in [docs/scenes.md](docs/scenes.md).
 - **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says `scene: {id: <folder>, ground: true|false}`; no spec holds a file path.
 - **The scene contract** the framework reads from a USD: rigid bodies by name, prismatic joints as drawers, colliders for the known map, the robot's start on the floor. The reader is `phygs/scene/reader.py`.
@@ -171,7 +171,7 @@ Every robot test spawns a scene and has the robot do one thing, measures it agai
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest $PHYGS/tests -q -p no:cacheprovider   # Unit tests, no simulator.
 ```
 
-Rungs that use the house need its release fetched once: `./isaaclab.sh -p -m phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0`.
+Rungs that use the house need its release fetched once: `./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0`.
 
 ## 📚 Documentation
 

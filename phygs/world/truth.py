@@ -41,9 +41,13 @@ class Truth:
         return self._scene.part(name)
 
     def held(self, name: str, *, lift_m: float, reach_m: float) -> bool:
-        """Whether an object is in the hand: lifted at least ``lift_m`` [m] above where it started
-        and its centre within ``reach_m`` [m] of the wrist link (grasped objects are never attached,
-        so an object off its support next to the wrist is held). The thresholds are the evaluator's."""
+        """Deprecated name of :meth:`lifted_near_wrist`; whether that means held is the evaluator's call."""
+        return self.lifted_near_wrist(name, lift_m=lift_m, reach_m=reach_m)
+
+    def lifted_near_wrist(self, name: str, *, lift_m: float, reach_m: float) -> bool:
+        """Whether an object is lifted at least ``lift_m`` [m] above where it started with its centre
+        within ``reach_m`` [m] of the wrist link. Evidence for holding (grasped objects are never
+        attached), not its definition; the thresholds are the evaluator's."""
         center = self._scene.object_box(name)[0]
         start = self._scene.initial_box(name)[0]
         wrist_link = self._robot.body_names.index(self._description.arm.wrist_link)

@@ -22,8 +22,6 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 
-REPO = "mandmlabresearch/ForageBench"
-
 
 def digest(path: Path) -> str:
     with path.open("rb") as stream:
@@ -198,9 +196,9 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     fetch_parser = commands.add_parser("fetch")
     list_parser = commands.add_parser("list")
-    list_parser.add_argument("--repo_id", default=REPO)
+    list_parser.add_argument("--repo_id", required=True, help="The scene dataset on Hugging Face")
     list_parser.add_argument("--revision", default="main")
-    fetch_parser.add_argument("--repo_id", default=REPO)
+    fetch_parser.add_argument("--repo_id", required=True, help="The scene dataset on Hugging Face")
     selection = fetch_parser.add_mutually_exclusive_group()
     selection.add_argument("--scene_id", nargs="+")
     selection.add_argument("--all", action="store_true")

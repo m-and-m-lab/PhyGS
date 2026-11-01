@@ -3,4 +3,4 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Internal skill execution. Public agent APIs live in scripts/skills."""
+"""The machinery behind the clients (``phygs.skills``): base controllers, Nav2, the arm planner and controller."""

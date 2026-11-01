@@ -11,8 +11,9 @@
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
 
 ``--task_loader`` names the ``module:function`` that turns the spec's task block into the task
-object (its brief, its privileged target, its evaluation); PhyGS itself knows no task. A spec with
-``task: {goal: none}`` needs none.
+object (its brief and its evaluation); PhyGS itself knows no task. A spec with ``task: {goal: none}``
+needs none. ``--target`` names the scene object the privileged channels treat as the target (hints,
+known map, arm planner); by default the task's own ``target``, if it has one.
 The robot is the spec's (``robot.model``); ``--robot`` runs the same episode with another one: a robot
 name (``phygs/robots/<name>``) or the path of a ``robot.yaml`` (docs/adding_a_robot.md).
 
@@ -50,14 +51,16 @@ parser.add_argument(
     default=None,
     help="module:function that builds the task object from the spec's task block (None: the spec must have goal none)",
 )
+parser.add_argument("--target", default=None, help="The privileged target's scene name (default: the task's target)")
 AppLauncher.add_app_launcher_args(parser)
 parser.set_defaults(device="cpu", enable_cameras=True)
 args = parser.parse_args()
 spec = EpisodeSpec.load(args.spec)  # Validated before Isaac Sim starts.
 task = load_task(spec.task, args.task_loader)
+target = args.target or getattr(task, "target", None)
 if args.seed is not None:
     spec = spec.with_seed(args.seed)
-agent_name, agent = load_agent(args.agent)
+agent_name, agent = load_agent(args.agent, agents_dir=PROJECT / "examples" / "agents")
 if (args.output / "report.json").exists():
     parser.error(f"{args.output} holds a finished episode; choose a fresh output folder")
 app = AppLauncher(args).app
@@ -71,7 +74,14 @@ robot.validate_urdf()
 
 def main() -> int:
     with World(
-        spec, args.output, clock=args.clock, record=args.record, device=args.device, robot=robot, task=task
+        spec,
+        args.output,
+        clock=args.clock,
+        record=args.record,
+        device=args.device,
+        robot=robot,
+        task=task,
+        target=target,
     ) as world:
         report = world.run(agent, name=agent_name)
     print(

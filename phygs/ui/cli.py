@@ -48,7 +48,7 @@ parser.add_argument(
     "--spec",
     type=Path,
     default=PROJECT / "phygs/configs/ui/grid_drawer.yaml",
-    help="Episode spec (docs/episode_harness)",
+    help="Episode spec (docs/world.md)",
 )
 parser.add_argument("--host", default="127.0.0.1", help="Address to serve on; keep it local and tunnel for remote use")
 parser.add_argument("--port", type=int, default=8765)
@@ -57,9 +57,11 @@ parser.add_argument("--demo", choices=("none", "tour"), default="none", help="Dr
 parser.add_argument("--robot", default=None, help="Override the spec's robot: a robot name or a robot.yaml path")
 parser.add_argument(
     "--task_loader",
-    default="phygs_robot_tests.tasks:load_task",
-    help="module:function that builds the task object from the spec's task block (None: the spec must have goal none)",
+    default=None,
+    help="module:function that builds the task object from the spec's task block (None: the spec must have goal"
+    " none; `phygs ui` passes the robot tests' loader)",
 )
+parser.add_argument("--target", default=None, help="The privileged target's scene name (default: the task's target)")
 parser.add_argument("--autostart", action="store_true", help="Start the episode without waiting for the page")
 parser.add_argument("--max_wall_seconds", type=float, default=None, help="End after this long (for scripted checks)")
 parser.add_argument(
@@ -176,8 +178,17 @@ def main() -> int:
         telemetry_path=args.output / "telemetry.jsonl",
         demo=tour if args.demo == "tour" else None,
     )
+    target = args.target or getattr(task, "target", None)
     world = World(
-        spec, args.output, clock="realtime", device=args.device, viewer=ui, hold_clock=True, robot=robot, task=task
+        spec,
+        args.output,
+        clock="realtime",
+        device=args.device,
+        viewer=ui,
+        hold_clock=True,
+        robot=robot,
+        task=task,
+        target=target,
     )
     recorder = Recorder(args.output / "recording")
     server = None
@@ -253,9 +264,7 @@ def main() -> int:
                 drawer_openings_m={
                     name: float(world.scene_def.part(name).opening) for name in world.scene_def.part_names
                 },
-                target_position_m=None
-                if task.target is None
-                else world.scene_def.object_pose(task.target)[:3, 3].tolist(),
+                target_position_m=None if target is None else world.scene_def.object_pose(target)[:3, 3].tolist(),
             ),
         )
         (args.output / "timing.json").write_text(json.dumps(timing, indent=1))

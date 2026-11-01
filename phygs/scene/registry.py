@@ -6,8 +6,9 @@
 """Scenes by id: a spec names a scene (``scene: {id: grid_storage}``); this finds its USD file.
 
 A scene id is a folder name. The folders are looked up, in order, under ``$PHYGS_SCENES``, under
-``~/.cache/phygs/scenes`` (where the scene fetcher installs releases) and under the robot tests'
-fixture scenes (``tests/robot_tests/scenes``). A folder holds ``scene.usda``,
+``~/.cache/phygs/scenes`` (where the scene fetcher installs releases) and under the built-in scenes
+that ship with PhyGS (``phygs/scene/builtin``: grid storage and the two navigation courses, the
+robot tests' fixtures). A folder holds ``scene.usda``,
 ``scene.usdc`` or ``scene.usd``; a fetched release may instead be a record ``<id>.json`` whose
 ``usd_path`` points at the installed file. A spec may pin a release's ``version``; it is checked
 against the record (a plain folder is unversioned and accepts any pin). No spec ever holds a file path.
@@ -22,7 +23,7 @@ from pathlib import Path
 
 SCENES_ENV = "PHYGS_SCENES"
 USER_CACHE = Path("~/.cache/phygs/scenes")
-FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "robot_tests" / "scenes"  # The authored test scenes.
+BUILTIN = Path(__file__).resolve().parent / "builtin"  # The scenes that ship with PhyGS.
 FILES = ("scene.usda", "scene.usdc", "scene.usd")
 ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 
@@ -37,7 +38,7 @@ def scene_roots() -> list[Path]:
     roots = []
     if os.environ.get(SCENES_ENV):
         roots.append(Path(os.environ[SCENES_ENV]).expanduser())
-    roots += [USER_CACHE.expanduser(), FIXTURES]
+    roots += [USER_CACHE.expanduser(), BUILTIN]
     return roots
 
 

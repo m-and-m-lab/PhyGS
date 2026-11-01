@@ -28,7 +28,7 @@ class FakeTruth:
         pose[2, 3] = self._height
         return pose
 
-    def held(self, name, *, lift_m, reach_m):
+    def lifted_near_wrist(self, name, *, lift_m, reach_m):
         self.asked = (name, lift_m, reach_m)
         return self._held
 

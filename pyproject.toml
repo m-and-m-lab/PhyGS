@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phygs"
-version = "0.8.0"
+version = "0.9.0"
 description = "PhyGS: physically grounded simulation framework for mobile manipulation in Isaac Lab (robot, world, runtime, skills, measurement)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -64,9 +64,9 @@ packages = [
 "phygs.robots.ridgeback_franka" = ["robot.yaml", "*.urdf", "navigation/*.json"]
 "phygs.robots._template" = ["robot.yaml"]
 "phygs.ui" = ["web/*.html", "web/*.js", "web/*.css"]
-"phygs.skills" = ["manipulation/config/*.yaml"]
+"phygs.scene" = ["builtin/*/scene.usda"]
 "phygs.execution.navigation.launch" = ["*.py"]
-"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "routines/*.yaml", "tasks/*.yaml", "scenes/**/*", "*.npz"]
+"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "routines/*.yaml", "tasks/*.yaml", "*.npz"]
 
 [tool.ruff]
 line-length = 120

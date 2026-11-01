@@ -15,10 +15,10 @@ phygs/
 ├── recording/     The video, its panels, the command timeline, the skills' narration, the state log, the
 │                  trace read from a run's logs and the replay's overview strip
 ├── scene/         Scenes by id (registry), the fetcher, the USD reader (ground truth), drawers, storage units, floor
-│                  plans, plain types
+│                  plans, plain types, the built-in scenes (builtin/)
 ├── runtime/       Clock, ownership, command expiry, reset, emergency stop
 ├── observations/  Measurement types, localization, the front view, the reference colour detectors
-├── configs/       environment.yaml (every setting, the benchmark-owned ones named), navigation/, ui/, robots/, scenes/
+├── configs/       environment.yaml (every setting, the benchmark-owned ones named), navigation/, ui/
 └── __main__.py    The phygs command
 examples/          run_world.py (phygs run), replay_run.py (phygs replay) and agents/ (template, depth_example)
 tests/             Unit tests; robot_tests/ is the robot-test ladder (package phygs_robot_tests)

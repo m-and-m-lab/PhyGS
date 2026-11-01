@@ -6,7 +6,7 @@
 """Obstacle avoidance on the camera map, as an agent meets it: the plan walks to a goal while the
 test moves a box into the route, then turns to face open floor, where the test puts the box in view
 and takes it away. Nav2 maps the navigation cameras' point clouds as in every episode without
-``known_map`` (spec ``nav_dynamic``, course ``tests/robot_tests/scenes/dynamic_course``).
+``known_map`` (spec ``nav_dynamic``, course ``phygs/scene/builtin/dynamic_course``).
 
 The test side checks that the box reached Nav2's costmap, the route was replanned, the footprint
 never touched the box, the walk ended blocked or at the goal with the robot stopped, and that the box

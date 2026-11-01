@@ -1,11 +1,47 @@
 # Architecture
 
-This document describes how Interactive Search is built: the shared runtime, the
-public skill APIs agents call, their execution backends, observations, tasks and
-tests. The older Spot SDK / AO-Grasp / CuRobo stack was removed on 2026-10-08 (see
-[the last section](#removed-spot-sdk-facade-ao-grasp-and-curobo-runner)).
+PhyGS runs physically simulated episodes of a mobile manipulator in a scene. An agent acts only
+through a session; a task evaluator reads ground truth; the run is reproducible and versioned.
+This document says where the boundaries are and how the parts fit. Usage and measurements are in
+the topic guides ([docs index](docs/README.md)).
 
-Topic guides with usage and measurements are listed in the [docs index](docs/README.md).
+## Boundaries
+
+**Robot capability ends where agent strategy begins.** PhyGS provides what the robot can do:
+observations, motion, navigation, arm skills, feedback, cancellation, timing. Deciding what to look
+for, where to go and which object answers an instruction is the agent's. Judging whether a task was
+done is the benchmark's.
+
+**Two entry points.**
+
+| Entry point | For | It owns |
+| --- | --- | --- |
+| `phygs.session` (`AgentSession`) | Agents, and anyone composing behaviour over them | Observations and robot facts (`session.robot`), the action clients the spec allows, command feedback, cancellation and timing, granted privileged hints, finishing the episode |
+| `phygs.world` (`World`) | Benchmarks and robot tests | Building the scene and the robot, the initial state and reset, stepping, the services (Nav2, the arm planner), ground truth for evaluators (`Truth`), recording, the end of the episode |
+
+Each has an exported name list (`phygs.session.__all__`, `phygs.world.__all__`), copied in
+`tests/test_public_surface.py`; changing either list means editing that test and bumping the version.
+`phygs.robots` (robot descriptions) and `phygs.scene` (scenes by id) are public too. Everything else
+is internal and may move between releases.
+
+**Dependencies and information flow one way.**
+
+- *Packages.* The framework is the provider. The robot-test ladder (`tests/robot_tests`), the robot UI
+  and the examples consume it; no module of `phygs` reads `tests/` or `examples/`. Only the `phygs`
+  command (`phygs/__main__.py`) knows a source checkout's layout, to run its scripts.
+- *Runtime information.* The task's answer belongs to its evaluator. The World never reads it: the
+  caller passes `World(target=...)`, the object the privileged channels (hints, known map, arm
+  planner) treat as the target, and the spec's grants decide what the agent learns.
+- *Evidence and judgement.* `Truth` measures (poses, openings, contacts with their forces and the
+  jaws' contact, how far an object was lifted near the wrist); the evaluator decides what counts.
+  The evaluator receives every recorded contact, the unintended ones and the grasp's squeeze, each
+  labelled; which ones a benchmark penalizes is its rule.
+
+**Control levels stay open.** An agent may command velocities, navigation goals, arm trajectories or
+the arm skills, or compose them in its own code. Command ownership, cancellation and feedback are
+the same at every level; composed behaviour issues the same commands and waits for their feedback,
+with no scheduler of its own. Adding composed behaviour needs no change to the host; a new control
+capability is a client and a backend.
 
 ## At a glance
 
@@ -103,7 +139,7 @@ clients, and the World (`world/world.py`) binds those to the scene and the agent
 | `observations/types.py` | Permitted products, capture stamps, calibrated snapshots, and exact-time transform queries. |
 | `observations/localization.py` | Localization provider contract and explicitly privileged ground-truth mode. |
 | `observations/front_view.py`, `observations/color_detection.py` | The two front cameras joined into one view; reference colour detectors for diagnostic targets. |
-| `scene/registry.py` | Scenes by id: `scene_file(id, version)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes` (fetched releases, version checked), then `tests/robot_tests/scenes`; no spec holds a file path. |
+| `scene/registry.py` | Scenes by id: `scene_file(id, version)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes` (fetched releases, version checked), then the built-in scenes (`phygs/scene/builtin`); no spec holds a file path. |
 | `scene/fetch.py` | Scene releases from the dataset: download, verify, install with a record (`phygs scenes`). |
 | `scene/reader.py` | `UsdScene`: loads any scene USD from its config; objects, drawers, colliders and where an object starts are found in the file by name. |
 | `scene/parts.py`, `scene/storage_units.py`, `scene/assets.py`, `scene/types.py` | Drawers from prismatic joints; the house's storage units; USD rigid-body registration for reset; `ArticulatedPart`. |
@@ -120,10 +156,10 @@ clients, and the World (`world/world.py`) binds those to the scene and the agent
 | `robots/spot/`, `robots/ridgeback_franka/` | One folder per robot: `robot.yaml` and the robot's own code (Spot: `SpotLegActuator`, the walking policy wrapper) and data (policy, calibrations, transit footprint). |
 | `robots/posture.py` | Diagnostic arm interpolation used by `ArmClient`. |
 | `session/session.py`, `session/hints.py` | `AgentSession` (action-filtered clients on the main thread, time requests, audit) and grant-checked privileged hints; `phygs.session` re-exports what agents use. |
-| `world/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); agents by name (`load_agent`); no Isaac imports. |
-| `world/task.py` | The task seam: the `Task` protocol the World takes (public goal and description, privileged target, `brief()`, `reset()`, `update()`, `result(truth, end)`, `provenance()`), `EpisodeEnd` and `NoTask`. The framework never imports a task. |
+| `world/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); agents by `file.py:function`, or by name in a folder the caller gives (`load_agent`); no Isaac imports. |
+| `world/task.py` | The task seam: the `Task` protocol the World takes (public goal and description, `brief()`, `reset()`, `update()`, `result(truth, end)`, `provenance()`), `EpisodeEnd` (with every recorded contact, labelled) and `NoTask`. The framework never imports a task and never reads its answer. |
 | `world/world.py`, `world/build.py` | `World`: builds an episode (the pure steps in `build.py`: settings and overrides, refused combinations, cameras, observation access), owns the main-thread loop, runs an agent, stops, evaluates, writes the report. |
-| `world/truth.py` | `Truth`: ground truth for the evaluator and robot tests. |
+| `world/truth.py` | `Truth`: ground-truth measurements for the evaluator and robot tests (poses, openings, contacts, `lifted_near_wrist`, `pinched`); what they mean for a task is the evaluator's. |
 | `world/navigation.py` | Nav2 for the World: the live footprint check, the map source (known boxes or cameras), the servers. |
 | `world/report.py`, `world/recorder.py`, `world/provenance.py` | The report schema and its keys; the episode folder (`report.json`, arm `contacts` apart from the grasp's `grasp_contacts`, the video); robot and scene USD hashes over their layers, policy hashes, git commit. |
 | `tests/robot_tests/tasks/` | The robot tests' tasks, outside the framework: `load_task(block)` builds the task object from a spec's task block; `RetrieveTask` (brief and evaluator: held, stowed, upright, in time; conduct: unintended contact, drawers left open; thresholds in `retrieve.yaml`, hashed into provenance), point navigation and object search evaluators. A benchmark brings its own. |
@@ -455,7 +491,7 @@ records under `CACHE/records/COMMIT/SCENE-VERSION.json`.
 | Source | Usage |
 | --- | --- |
 | `phygs/robots/spot/assets/` | Spot robot, cameras, URDF/USD, cuRobo config; `spot_description` (submodule) for the meshes. |
-| `tests/robot_tests/scenes/` | The robot tests' fixture scenes (grid storage, navigation course, dynamic course), as files. |
+| `phygs/scene/builtin/` | The scenes that ship with PhyGS, the robot tests' fixtures (grid storage, navigation course, dynamic course), as files. |
 | `~/.cache/phygs/scenes` (`$PHYGS_SCENES`) | Fetched scene releases (`phygs.scene.fetch`) and any local scene folder; specs name scenes by id. |
 
 Benchmark launchers should reference assets explicitly through YAML config when possible.
@@ -505,7 +541,7 @@ integration and runtime assumptions. Exact commands are in [tests/README.md](tes
 
 ## Failure model
 
-The benchmark should fail clearly for:
+PhyGS fails clearly for:
 
 - Missing robot, scene, policy, or planner config files.
 - Missing camera sources or missing depth frames.
@@ -515,7 +551,7 @@ The benchmark should fail clearly for:
 - Forbidden observation inputs or privileged sources (checked before simulation).
 - Planner failure, manipulation timeout or terminal failure feedback.
 
-The benchmark should not silently patch over these failures.
+It does not silently patch over these failures.
 
 ## Extension points
 
@@ -533,21 +569,11 @@ To add a new skill:
    (`tests/robot_tests/episodes/`, a spec and a plan through the session) when agents call it, a
    component test (`components/`) for machinery under the session.
 
-To add a new benchmark task:
+To write an agent: a `run(session)` function that imports only `phygs.session`
+([the agent contract](README.md#-the-agent-contract); `examples/agents/template.py`). Composed
+behaviour (pick, open a drawer) is agent-side code over the same session.
 
-1. Add a task YAML with robot, scene, target, and timeout sections.
-2. Reference concrete USD assets and target prim paths.
-3. Add a task evaluator under `tests/robot_tests/tasks/` (or a benchmark) that reads physical state.
-4. Save result artifacts.
-5. Add documentation and a check command.
-
-## Removed: Spot SDK facade, AO-Grasp and CuRobo runner
-
-The stack that predated the shared runtime was removed on 2026-10-08: the Spot-SDK-shaped
-facade (`phygs/skills/spot`, `core.py`, `base.py`), the AO-Grasp client, sidecar
-services and viewers, the CuRobo runner (`manipulation_skill.py`, `curobo_interfaces.py`),
-the camera/point-cloud helpers, `scripts/phygs.py`, their configs and tests,
-and the fixed-base drawer smoke tests. The last version is in git history before that
-date. Grasping, placing and drawers now run through `robot.manipulation` skills with
-MoveIt or cuRobo V2 planning (see [manipulation skills](docs/manipulation_skills.md));
-drawers are checked by `tests/robot_tests/episodes/check_drawer_stroke.py` and the other episode tests.
+To add a task (a benchmark's): a task loader that builds a `Task` from the spec's task block. Its
+evaluator reads `Truth`'s measurements in `reset`, `update` and `result` and decides what they mean;
+the caller passes the task and the target to the World ([docs/world.md](docs/world.md)). The robot
+tests' tasks (`tests/robot_tests/tasks/`) are examples, not part of the framework.

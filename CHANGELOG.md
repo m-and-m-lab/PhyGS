@@ -11,10 +11,59 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
-### 0.9.0 (unreleased, develop)
+### 0.9.0 (2026-11-01)
 
 The recording and the replay share one look and one code path (2026-10-30). Older state logs
-still replay.
+still replay. The framework's boundaries are written down and kept (2026-10-31): two public
+surfaces, the package independent of its checkout, the task's answer out of the host, evidence
+for the evaluator instead of judgements (ARCHITECTURE.md, Boundaries).
+
+Added (2026-10-31):
+
+- `World(target=...)`: the scene object the privileged channels treat as the target (the hints, the
+  known map, the arm planner). The caller passes it; `phygs run` and the robot UI take `--target`
+  and default to the task's own `target`.
+- `phygs.world` exports `load_settings`, `code_version`, `file_sha256` and `summary`;
+  `tests/test_public_surface.py` lists the names of `phygs.session` and `phygs.world` and checks
+  that no module of the package imports the robot tests or names the checkout's folders.
+- `EpisodeEnd.grasp_contacts`: the evaluator gets the grasp's squeeze too, beside the contacts the
+  recorder labels unintended.
+- `Truth.lifted_near_wrist(name, lift_m=, reach_m=)`: the measurement `held` made; `held` stays as a
+  deprecated name for it.
+- `provenance.settings_sha256` in every report: the hash of the effective settings (the file with
+  the caller's overrides), so two runs with the same hash ran with the same physics rate, end rules,
+  backends and limits.
+- `phygs.sim.gpu.render_gpu()`: the camera readers and the arm planner's worker use the GPU Kit
+  renders on, so `--kit_args="--/renderer/activeGpu=1 --/physics/cudaDevice=1
+  --/renderer/multiGpu/enabled=false"` leaves GPU 0 to a model server.
+
+Changed (2026-10-31):
+
+- **Breaking:** the World no longer reads `Task.target`; the `Task` protocol has no `target` and
+  `NoTask` none. Pass the target: `World(spec, out, task=task, target=task.target)`.
+- **Breaking:** `load_agent(reference, agents_dir=None)` finds an agent by name only in the folder
+  it is given; `phygs run` gives `examples/agents`, so `--agent template` works as before. In code:
+  `load_agent("examples/agents/template.py:run")` or `load_agent("template", agents_dir=...)`.
+- **Breaking:** `phygs.scene.fetch` names no dataset: pass `--repo_id` (the scene dataset is
+  `mandmlabresearch/ForageBench`).
+- The built-in scenes (grid storage, the navigation course, the dynamic course) moved from
+  `tests/robot_tests/scenes` to `phygs/scene/builtin` and ship with the package; specs name them by
+  id as before.
+- The robot UI's `--task_loader` has no default; `phygs ui` passes the robot tests' loader.
+- `ARCHITECTURE.md` starts with the boundaries; `PLANS.md` lists what is next. The earlier plans,
+  decision log and the removed-stack section left the repository.
+
+Removed (2026-10-31):
+
+- `phygs/configs/robots/spot_arm_collision.yaml` (read by nothing; collision spheres come from the
+  robot's USD) and `phygs/configs/scenes/bear_loop_house.yaml` (an unused dataset pin; the benchmark
+  selects its scene releases).
+
+Fixed (2026-10-31):
+
+- A fine move to an occupied goal with fewer than two route points made Nav2's periodic camera path
+  check raise "A valid path and costmap resolution are required", which ended a run as an
+  environment error; the check now runs only on a real route.
 
 Added:
 

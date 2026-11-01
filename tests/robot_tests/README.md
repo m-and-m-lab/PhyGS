@@ -62,7 +62,7 @@ Rung 13 stays a component test until the episode harness has a search goal: spec
 
 ```bash
 source /opt/explore_ws/install/setup.bash  # ROS 2 Jazzy plus explore_lite, for rungs 6, 7, 11-15.
-# The house rungs need its release fetched once: phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
+# The house rungs need its release fetched once: phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
 
 # The ladder up to a rung, with videos; open <folder>/index.html for results and videos.
 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record

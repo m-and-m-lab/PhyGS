@@ -9,8 +9,8 @@ given, an agent it runs, the report it writes. ``docs/world.md`` is the page for
     from phygs.world import EpisodeSpec, World     # World after the Isaac Sim app has started.
 
     spec = EpisodeSpec.load("episode.yaml")
-    with World(spec, output, task=my_task, overrides={"end_settle_seconds": 1.0}) as world:
-        report = world.run("template")             # report["evaluation"] is the task's result.
+    with World(spec, output, task=my_task, target="box", overrides={"end_settle_seconds": 1.0}) as world:
+        report = world.run(my_agent)               # report["evaluation"] is the task's result.
 
 Modules: :mod:`.world` (the World; needs Isaac Sim), :mod:`.spec`, :mod:`.task`, :mod:`.report`,
 :mod:`.provenance`, :mod:`.build` (pure); :mod:`.truth`, :mod:`.recorder`, :mod:`.navigation`,
@@ -27,6 +27,9 @@ EXPORTS = {
     "World": "phygs.world.world",
     "run_episode": "phygs.world.world",
     "SETTINGS": "phygs.world.build",
+    "load_settings": "phygs.world.build",
+    "code_version": "phygs.world.provenance",
+    "file_sha256": "phygs.world.provenance",
     "Truth": "phygs.world.truth",
     "EpisodeSpec": "phygs.world.spec",
     "load_agent": "phygs.world.spec",
@@ -35,6 +38,7 @@ EXPORTS = {
     "EpisodeEnd": "phygs.world.task",
     "NoTask": "phygs.world.task",
     "load_task": "phygs.world.task",
+    "summary": "phygs.world.task",
     "REPORT_SCHEMA": "phygs.world.report",
     "Viewer": "phygs.world.viewer",
     "EpisodeView": "phygs.world.viewer",
@@ -51,16 +55,21 @@ __all__ = [
     "Truth",
     "Viewer",
     "World",
+    "code_version",
+    "file_sha256",
     "load_agent",
+    "load_settings",
     "load_task",
     "run_episode",
+    "summary",
 ]
 
 if TYPE_CHECKING:
-    from phygs.world.build import SETTINGS
+    from phygs.world.build import SETTINGS, load_settings
+    from phygs.world.provenance import code_version, file_sha256
     from phygs.world.report import REPORT_SCHEMA
     from phygs.world.spec import SCHEMA, EpisodeSpec, load_agent
-    from phygs.world.task import EpisodeEnd, NoTask, Task, load_task
+    from phygs.world.task import EpisodeEnd, NoTask, Task, load_task, summary
     from phygs.world.truth import Truth
     from phygs.world.viewer import EpisodeView, Viewer
     from phygs.world.world import World, run_episode

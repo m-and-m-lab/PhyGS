@@ -11,7 +11,7 @@ scene:
 ```
 
 `phygs.scene.registry.scene_file(id, version)` looks, in order, under `$PHYGS_SCENES`, under
-`~/.cache/phygs/scenes` and under the robot tests' fixtures (`tests/robot_tests/scenes`). In each
+`~/.cache/phygs/scenes` and under the built-in scenes (`phygs/scene/builtin`). In each
 root it accepts a folder `<id>/scene.usda|usdc|usd` or a record `<id>.json` written by the fetcher
 (`usd_path`, `scene_version`, `sha256`, the dataset commit). The USD file is resolved when first
 used, so a spec validates without the scene, and the report's provenance holds the file's hash.
@@ -37,9 +37,9 @@ result names the exact scene it ran in.
 
 ```bash
 ./isaaclab.sh -p -m huggingface_hub.cli.hf auth login                      # once; the dataset is private
-./isaaclab.sh -p -m phygs.scene.fetch list                                 # ids, versions, sizes, the commit
-./isaaclab.sh -p -m phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.1.0
-./isaaclab.sh -p -m phygs.scene.fetch fetch --all                          # every catalogued release
+./isaaclab.sh -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench     # ids, versions, sizes, the commit
+./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
+./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --all  # every catalogued release
 ```
 
 The fetcher resolves the dataset's `main` to a commit (or takes `--revision`), downloads the
@@ -71,5 +71,5 @@ that draw a run on the plan read it; a scene without one gets a plan rendered on
 ## Fixture scenes
 
 The three small scenes the robot tests use (grid storage, the navigation course, the dynamic
-course) are committed as files, `tests/robot_tests/scenes/<id>/scene.usda`; their builders live with the
+course) ship with PhyGS as files, `phygs/scene/builtin/<id>/scene.usda`; their builders live with the
 other scene-building code, outside PhyGS.

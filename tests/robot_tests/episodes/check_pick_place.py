@@ -182,7 +182,9 @@ def main() -> None:
             check.measure("place_height_error_m", round(height, 4), abs(height) <= tolerance["height_m"])
             check.measure("place_tilt_deg", round(tilt, 2), tilt <= tolerance["tilt_deg"])
             held_thresholds = world.task.thresholds  # One definition of "held": the task's evaluator's.
-            held = truth.held(target, lift_m=held_thresholds["held_lift_m"], reach_m=held_thresholds["held_reach_m"])
+            held = truth.lifted_near_wrist(
+                target, lift_m=held_thresholds["held_lift_m"], reach_m=held_thresholds["held_reach_m"]
+            )
             check.measure("released", not held, not held, "still in the hand")
             error = truth.stow_error_rad()
             check.measure("stow_error_rad", round(error, 4), error <= SETTINGS["stow_tolerance_rad"], "not stowed")

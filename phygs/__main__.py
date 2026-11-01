@@ -15,6 +15,8 @@
 
 Each subcommand runs the script it names with the remaining arguments, so ``phygs run --help`` is
 ``examples/run_world.py --help``. ``python -m phygs`` is the same command without the console script.
+This module is the only part of the package that knows a source checkout's layout (``examples/``,
+``tests/robot_tests/``); ``phygs ui`` gives the robot UI the robot tests' task loader by default.
 """
 
 from __future__ import annotations
@@ -47,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if command == "ui" and rest[:1] == ["replay"]:
         command, rest = "ui-replay", rest[1:]
+    elif command == "ui" and "--task_loader" not in rest and (ROOT / "tests" / "robot_tests").is_dir():
+        rest = [*rest, "--task_loader", "phygs_robot_tests.tasks:load_task"]  # The default episode's task.
     if command in SCRIPTS:
         script = SCRIPTS[command]
         sys.argv = [str(script), *rest]

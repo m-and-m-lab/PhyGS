@@ -143,7 +143,7 @@ def test_task_action_permissions_reject_commands_before_backend_access():
 
 
 def test_the_navigation_course_refuses_its_goals_for_the_stated_reason():
-    """The navigation rung's course (tests/robot_tests/scenes/nav_course): the invalid goal lies inside the wall and
+    """The navigation rung's course (phygs/scene/builtin/nav_course): the invalid goal lies inside the wall and
     the unreachable goal inside the closed pen, clear of its walls (a free cell no route reaches)."""
     from pathlib import Path
 

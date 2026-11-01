@@ -17,6 +17,8 @@ evaluation and the report, :mod:`.report`), then :meth:`World.close`.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import threading
 import time
@@ -91,10 +93,15 @@ class World:
     under a key merges one level, e.g. ``{"planner": {"backend": "moveit"}}``), so a benchmark
     can pin its end-of-episode and backend settings without writing a copy of the file.
 
-    ``task`` is the task object built from the spec's task block
-    (:func:`phygs_robot_tests.tasks.load_task`): the agent's brief, the privileged target and the
-    evaluation. The World never reads the block itself; without a task object a spec whose block is
-    not ``{goal: none}`` is refused.
+    ``task`` is the task object built from the spec's task block by the caller's task loader: the
+    agent's brief and the evaluation. The World never reads the block itself; without a task object
+    a spec whose block is not ``{goal: none}`` is refused.
+
+    ``target`` is the scene object the privileged channels treat as the episode's target: the
+    hints (``object_targets``), the known map (it is left out of the obstacles) and the arm planner
+    (it is left out while the robot holds an unnamed object). The caller passes it, as its
+    information policy decides; the World never reads it from the task, whose answer belongs to the
+    evaluator. The grants decide what the agent learns. None: no target (exploration).
     """
 
     def __init__(
@@ -110,15 +117,16 @@ class World:
         hold_clock: bool = False,
         robot: RobotDescription | str | Path | None = None,
         task: Task | None = None,
+        target: str | None = None,
         overrides: dict | None = None,
     ) -> None:
         if clock not in CLOCKS:
             raise ValueError(f"Unknown clock {clock!r}; expected one of {CLOCKS}.")
         if task is None:
             if spec.task != {"goal": "none"}:
-                raise ValueError("The spec has a task block; pass its task object (phygs_robot_tests.tasks.load_task).")
+                raise ValueError("The spec has a task block; pass its task object (built by a task loader).")
             task = NoTask()
-        self.task = task
+        self.task, self.target = task, target
         output = Path(output)
         if (output / "report.json").exists():
             raise FileExistsError(f"{output} holds a finished episode; choose a fresh output folder.")
@@ -183,6 +191,9 @@ class World:
             robot_usd=usd_sha256(robot.usd),
             scene_usd=usd_sha256(spec.scene.usd),
             code=code_version(PROJECT),
+            # The effective settings (the file with the caller's overrides): two runs with the same hash
+            # ran with the same physics rate, end rules, backends and limits.
+            settings_sha256=hashlib.sha256(json.dumps(settings, sort_keys=True, default=str).encode()).hexdigest(),
         )
         self._nav2: Nav2Stack | None = None  # Nav2's servers, when navigation runs on Nav2.
         self.control = self._create_control(spec, settings, record)
@@ -201,7 +212,7 @@ class World:
                 # Without known_map the arm plans on the robot's own depth cameras.
                 cameras=() if self._known_map else robot.cameras_for("planning"),
                 boxes=self._obstacles if self._known_map else None,
-                target=task.target,
+                target=target,
                 stow=self.skill_config.planner_stow(STOW_TOLERANCE_RAD),
                 episode_id=lambda: self.control.runtime.episode_id,
                 time_seconds=lambda: self.control.runtime.time_seconds,
@@ -333,7 +344,7 @@ class World:
         if self._known_map:
             boxes = tuple(
                 BoxGeometry(tuple(map(float, size)), tuple(map(float, center)))
-                for center, size in self.scene_def.map_boxes(exclude=(self.task.target,) if self.task.target else ())
+                for center, size in self.scene_def.map_boxes(exclude=(self.target,) if self.target else ())
             )
         navigation = nav2_navigation(
             stage=self.sim.stage,
@@ -419,7 +430,7 @@ class World:
             robot=self.robot.info(),
             grants=self.spec.grants,
             clients=clients,
-            hints=PrivilegedHints(self.scene_def, self.task.target, self.spec.grants, boxes=self._obstacles),
+            hints=PrivilegedHints(self.scene_def, self.target, self.spec.grants, boxes=self._obstacles),
             observe=self.control.observe,
             time_seconds=lambda: runtime.time_seconds,
             finish=self._finish,
@@ -488,7 +499,12 @@ class World:
         self._evaluate_ticks = None
         audit.close()
         contacts = self.recorder.contact_report()
-        end = EpisodeEnd(ended_by, round(runtime.time_seconds - start, 3), tuple(contacts["contacts"]))
+        end = EpisodeEnd(
+            ended_by,
+            round(runtime.time_seconds - start, 3),
+            tuple(contacts["contacts"]),
+            tuple(contacts["grasp_contacts"]),
+        )
         evaluation = (
             self.task.result(self.truth(), end)
             if broken is None and runtime.status != EpisodeStatus.FAILED and ended_by != "setup_error"
@@ -720,7 +736,8 @@ class World:
 
 
 def run_episode(spec: EpisodeSpec | str | Path, agent: Callable | str, output: Path, **options) -> dict:
-    """Build the world, run the agent, write and return the report (``task`` among the options)."""
+    """Build the world, run the agent, write and return the report (``task`` and ``target`` among the
+    options)."""
     if not isinstance(spec, EpisodeSpec):
         spec = EpisodeSpec.load(spec)
     with World(spec, output, **options) as world:

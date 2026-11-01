@@ -6,8 +6,8 @@
 """Episode specs and agent references; no Isaac Sim imports.
 
 An episode is one self-contained file: the scene (by id, :mod:`phygs.scene.registry`), where the robot starts and
-where objects start, the task block (opaque to the framework; a task object is built from it,
-:func:`phygs_robot_tests.tasks.load_task`), which actions the agent may use, what it observes,
+where objects start, the task block (opaque to the framework; the caller's task loader builds a task
+object from it), which actions the agent may use, what it observes,
 which privileged channels it is granted, a simulated-time budget and a seed. The robot tests'
 episodes are ``tests/robot_tests/configs/episodes/*.yaml``.
 """
@@ -37,7 +37,6 @@ ACTION_SETS = {
 UNSUPPORTED_ACTION_SETS = {"whole_body": "leg joint targets need a runtime without the walking policy"}
 ACTIONS = ("navigation", "manipulation", "motion", "arm")
 GRANTS = ("gt_localization", "known_map", "object_targets", "scene_hints")
-EXAMPLE_AGENTS = Path(__file__).resolve().parents[2] / "examples" / "agents"  # Agents by name (template).
 
 
 @dataclass(frozen=True)
@@ -122,7 +121,7 @@ class EpisodeSpec:
     objects: dict
     # The third-person video camera {eye, target} [m] (--record), or None.
     record_view: dict | None
-    # The task block as written; the framework does not read it (phygs_robot_tests.tasks.load_task does).
+    # The task block as written; the framework does not read it (the caller's task loader does).
     task: dict
     actions: tuple[str, ...]
     observations: ObservationSpec
@@ -200,7 +199,7 @@ class EpisodeSpec:
             raise ValueError("The budget has one field, sim_seconds.")
         scene = data["scene"]
         if "usd" in scene:
-            raise ValueError("Scenes are named by id, not by file: scene: {id: <folder>}; see episodes/scenes.py.")
+            raise ValueError("Scenes are named by id, not by file: scene: {id: <folder>}; see phygs/scene/registry.py.")
         if not {"id", "ground"} <= set(scene) or set(scene) - {"id", "name", "ground", "version"}:
             raise ValueError("The scene is {id, ground} and an optional name and version.")
         robot = data["robot"]
@@ -261,20 +260,22 @@ class EpisodeSpec:
         )
 
 
-def load_agent(reference: str) -> tuple[str, Callable]:
+def load_agent(reference: str, agents_dir: Path | None = None) -> tuple[str, Callable]:
     """Resolve an agent reference to (name, run function).
 
-    ``reference`` is the name of an example agent (``template`` is ``examples/agents/template.py``)
-    or ``path/to/file.py:function``. The function takes one argument, the session.
+    ``reference`` is ``path/to/file.py:function``, or the name of a file's ``run`` in ``agents_dir``
+    (``phygs run`` passes ``examples/agents``, so ``template`` is ``examples/agents/template.py``).
+    The function takes one argument, the session.
     """
     if ":" in reference:
         path, function = reference.rsplit(":", 1)
         path = Path(path).resolve(strict=True)
     else:
-        path, function = EXAMPLE_AGENTS / f"{reference}.py", "run"
-        if not re.fullmatch(r"\w+", reference) or not path.is_file():
-            names = sorted(p.stem for p in EXAMPLE_AGENTS.glob("*.py"))
-            raise ValueError(f"No agent {reference!r} in examples/agents ({names}); give one or path.py:function.")
+        path, function = (Path(agents_dir) if agents_dir else Path()) / f"{reference}.py", "run"
+        if agents_dir is None or not re.fullmatch(r"\w+", reference) or not path.is_file():
+            names = sorted(p.stem for p in Path(agents_dir).glob("*.py")) if agents_dir else []
+            where = f"in {agents_dir} ({names})" if agents_dir else "by name without an agents folder"
+            raise ValueError(f"No agent {reference!r} {where}; give one or path.py:function.")
     module_spec = importlib.util.spec_from_file_location(f"agent_{path.stem}", path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)

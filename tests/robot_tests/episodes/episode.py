@@ -55,6 +55,7 @@ def world(args, spec, planner: str | None = None):
 
     from phygs.world import World
 
+    task = load_task(spec.task)
     return World(
         spec,
         args.output,
@@ -63,7 +64,8 @@ def world(args, spec, planner: str | None = None):
         device=args.device,
         overrides=None if planner is None else {"planner": {"backend": planner}},
         robot=args.robot,
-        task=load_task(spec.task),
+        task=task,
+        target=getattr(task, "target", None),  # The robot tests' tasks name it; the hints and planner use it.
     )
 
 

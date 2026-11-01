@@ -184,9 +184,12 @@ def test_task_blocks_are_validated_by_the_task_package_not_the_spec(block, messa
         load_task(block)  # ... the task package refuses a bad one.
 
 
-def test_agents_resolve_by_name_or_by_file(tmp_path):
-    name, run = load_agent("template")
+def test_agents_resolve_by_name_in_a_given_folder_or_by_file(tmp_path):
+    examples = Path(__file__).resolve().parents[1] / "examples" / "agents"
+    name, run = load_agent("template", agents_dir=examples)
     assert name == "template" and run.__module__ == "agent_template"
+    with pytest.raises(ValueError, match="without an agents folder"):
+        load_agent("template")  # The package itself knows no example folder.
     script = tmp_path / "mine.py"
     script.write_text("def go(session):\n    return 'went'\n")
     assert load_agent(f"{script}:go")[1](None) == "went"

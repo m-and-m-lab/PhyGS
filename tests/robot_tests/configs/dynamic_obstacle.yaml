@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 # episodes/check_dynamic_obstacle.py (spec nav_dynamic). From the component check's mapping.yaml
-# (2026-10-26; removed 2026-10-28); the course is tests/robot_tests/scenes/dynamic_course (the box starts parked at (1.5, 3.3)).
+# (2026-10-26; removed 2026-10-28); the course is phygs/scene/builtin/dynamic_course (the box starts parked at (1.5, 3.3)).
 goal: [3.0, 0.0, 0.0]  # x, y [m], heading [rad]: straight ahead, past where the box will be.
 budget_s: 60.0  # The walk must end within this [s simulated].
 blocked_position: [1.8, 0.0, 0.6]  # The box moves here the moment the walk starts [m].

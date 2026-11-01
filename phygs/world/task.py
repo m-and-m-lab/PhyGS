@@ -5,11 +5,12 @@
 
 """The seam between the framework and a task: what the World needs from one.
 
-The World never reads a spec's ``task`` block itself; it takes a task object built from it
-(:func:`phygs_robot_tests.tasks.load_task`, or any object with this interface). Of the task it
-uses only what is here: the public brief for the agent and the page, the one scene object the task
-is about (privileged: hints, the arm planner's target, the known map leaves it out), the evaluation,
-and what the report's provenance records.
+The World never reads a spec's ``task`` block itself; it takes a task object built from it by
+the caller's task loader (any object with this interface). Of the task it uses only what is here:
+the public brief for the agent and the page, the evaluation, and what the report's provenance
+records. The task's answer (which object, where) belongs to the evaluator: the World does not read
+it. The scene object the privileged channels treat as the target is the World's own ``target``
+argument, which the caller passes as its information policy decides.
 
 The evaluation has the usual shape of a measure: :meth:`Task.reset` once the start check has passed,
 before the agent starts; :meth:`Task.update` every ``evaluation_period_seconds`` of simulated time
@@ -28,23 +29,25 @@ from typing import Any, Protocol, runtime_checkable
 @dataclass(frozen=True)
 class EpisodeEnd:
     """How an episode ended, for :meth:`Task.result`: ``ended_by`` (the report's end reason, e.g.
-    ``finish`` or ``budget``), the simulated time it used [s], and the unintended arm contacts the
-    recorder kept (link, body, first and last time [s], ``peak_n`` [N], the command running; the
-    squeeze on a grasped body is not among them)."""
+    ``finish`` or ``budget``), the simulated time it used [s], and the arm contacts the recorder kept
+    (link, body, first and last time [s], ``peak_n`` [N], the command running): ``contacts``, the
+    ones the recorder labels unintended, and ``grasp_contacts``, the squeeze on a body both jaws
+    pressed on. Which of them a benchmark penalizes is its own rule."""
 
     ended_by: str
     sim_seconds: float
     contacts: tuple[dict, ...]
+    grasp_contacts: tuple[dict, ...] = ()
 
 
 @runtime_checkable
 class Task(Protocol):
     """A task as the World sees it. ``goal`` and ``description`` are public (the agent's
-    ``session.task``); ``target`` is the scene name of the object the task is about, or None."""
+    ``session.task``). A task may keep its answer (e.g. a ``target`` name) for its own evaluation;
+    the World does not read it."""
 
     goal: str
     description: str
-    target: str | None
 
     def brief(self) -> str:
         """One sentence telling a person (the robot UI's Start card) what to do."""
@@ -73,7 +76,6 @@ class NoTask:
 
     goal = "none"
     description = ""
-    target = None
 
     def brief(self) -> str:
         return "Explore."
@@ -98,12 +100,10 @@ def summary(task: Task) -> dict:
 
 def load_task(block: dict, loader: str | None) -> Task:
     """The task object for a spec's task block through ``loader`` (``module:function``, taking the
-    block), e.g. ``phygs_robot_tests.tasks:load_task``; without a loader only ``{goal: none}`` runs."""
+    block), e.g. the robot tests' or a benchmark's; without a loader only ``{goal: none}`` runs."""
     if loader is None:
         if block != {"goal": "none"}:
-            raise ValueError(
-                "The spec has a task block; give its loader, e.g. --task_loader phygs_robot_tests.tasks:load_task."
-            )
+            raise ValueError("The spec has a task block; give its loader (--task_loader module:function).")
         return NoTask()
     module_name, _, function = loader.partition(":")
     if not module_name or not function:
