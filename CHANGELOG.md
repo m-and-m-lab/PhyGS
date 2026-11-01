@@ -11,7 +11,7 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
-### 0.10.0 (not tagged yet)
+### 0.10.0 (2026-11-01)
 
 The composite skills are part of the framework (2026-11-01): the skills that walk and then move
 the arm, given explicit affordances, over the agent session only. They replace the robot tests'
