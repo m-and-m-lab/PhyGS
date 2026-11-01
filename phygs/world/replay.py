@@ -38,13 +38,13 @@ from phygs.recording.panels import (
 from phygs.recording.state_log import States
 from phygs.recording.video import FOCAL_LENGTH, Chase
 from phygs.robots.description import RobotDescription, load_robot
-from phygs.robots.scene import make_scene_cfg, robot_cameras, simulation_cfg
 from phygs.scene import plan as plans
 from phygs.scene.assets import SceneBodies
 from phygs.scene.reader import UsdScene
 from phygs.scene.registry import scene_file
 from phygs.sim.base import BaseLink
 from phygs.sim.cameras import RenderCameras, ViewCamera
+from phygs.sim.robot_scene import make_scene_cfg, robot_cameras, simulation_cfg
 from phygs.world import build
 
 ROBOT_PATH = "/World/envs/env_0/Robot"

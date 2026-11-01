@@ -21,7 +21,7 @@ from typing import Any
 ACTIVE = frozenset({"active", "stopping"})
 # Commands per lane and client attribute of RobotControl.
 COMMANDS = {
-    "base": {"navigation": ("navigate_to",), "locomotion": ("command_velocity", "stop")},
+    "base": {"navigation": ("navigate_to",), "locomotion": ("command_velocity",)},
     "arm": {
         "manipulation": (
             "move_joints",
@@ -32,7 +32,6 @@ COMMANDS = {
             "stow",
             "look_at",
         ),
-        "arm": ("command_joint_positions",),
     },
 }
 

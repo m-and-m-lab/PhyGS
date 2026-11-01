@@ -26,7 +26,6 @@ LAYERS = (
     ("session",),
     ("robots",),
     ("skills",),
-    ("execution",),
     ("sim", "recording"),
     ("scene", "runtime"),
     ("observations",),

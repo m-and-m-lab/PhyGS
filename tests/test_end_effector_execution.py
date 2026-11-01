@@ -12,8 +12,8 @@ import pytest
 import torch
 from fakes import SPOT, FakeWorld, advance, manipulation_stack
 
-from phygs.execution.manipulation.planning import EndEffectorTrajectory, JointTrajectory
 from phygs.skills.manipulation.api import TrajectoryRefused
+from phygs.skills.manipulation.execution.planning import EndEffectorTrajectory, JointTrajectory
 
 JOINTS, GRIPPER, TOOLS = SPOT.arm.joints, SPOT.gripper.primary, SPOT.gripper.tools
 START = {"arm_sh0": 0.3, "arm_sh1": 0.0, "arm_el0": 0.4}  # The fake wrist at (0.3, 0, 0.4) m.

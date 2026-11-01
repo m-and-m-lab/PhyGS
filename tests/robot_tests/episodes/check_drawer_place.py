@@ -27,20 +27,14 @@ def plan(session, name: str, seen: dict) -> None:
     place spot [m]."""
     skills = CompositeSkills(session)
     target = session.hints.target()
-    skills.stow()
     skills.open_drawer(session.hints.part(name))
-    skills.stow()
-    skills.go_to_reach(target.center)
     skills.pick(target.center, target.size, name=target.name)
-    skills.stow()
     part = session.hints.part(name)
     spot = seen["spot"] = tuple(skills.place_spot(part, target.size).tolist())
-    skills.go_to_reach(spot, part=part)
-    skills.place_upright(spot)
+    skills.place_upright(spot, part=part)
     session.sleep(1.0)  # The released target settles.
-    skills.stow()
     skills.close_drawer(session.hints.part(name))
-    skills.stow()
+    episode.stow(session)
 
 
 def main() -> None:

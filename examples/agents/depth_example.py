@@ -46,7 +46,7 @@ def run(session):
     print("navigate_to:", feedback.status, feedback.reason)
 
     # Look at the handle. The arm planner plans around obstacles in the robot's own depth images.
-    command = session.manipulation.look_at(PointTarget(tuple(drawer.handle_center)), distance_m=0.6, elevation_deg=60.0)
+    command = session.manipulation.look_at(PointTarget(tuple(drawer.handle_center)), views=[(0.6, 60.0)])
     frames = 0
     for packet in session.stream(until=lambda packet: session.manipulation.feedback(command).status != "active"):
         frames += 1  # One packet per camera period (31 Hz), each with the newest RGB-D of every camera.

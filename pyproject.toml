@@ -24,14 +24,6 @@ Repository = "https://github.com/m-and-m-lab/PhyGS"
 packages = [
     "phygs",
     "phygs.composite",
-    "phygs.execution",
-    "phygs.execution.locomotion",
-    "phygs.execution.manipulation",
-    "phygs.execution.manipulation.planners",
-    "phygs.execution.manipulation.skills",
-    "phygs.execution.navigation",
-    "phygs.execution.navigation.backends",
-    "phygs.execution.navigation.launch",
     "phygs.observations",
     "phygs.recording",
     "phygs.robots",
@@ -44,8 +36,14 @@ packages = [
     "phygs.sim",
     "phygs.skills",
     "phygs.skills.locomotion",
+    "phygs.skills.locomotion.execution",
     "phygs.skills.manipulation",
+    "phygs.skills.manipulation.execution",
+    "phygs.skills.manipulation.execution.planners",
     "phygs.skills.navigation",
+    "phygs.skills.navigation.execution",
+    "phygs.skills.navigation.execution.backends",
+    "phygs.skills.navigation.execution.launch",
     "phygs.ui",
     "phygs.world",
     "phygs_robot_tests",
@@ -59,13 +57,13 @@ packages = [
 "phygs_robot_tests" = "tests/robot_tests"
 
 [tool.setuptools.package-data]
-"phygs" = ["configs/*.yaml", "configs/**/*.yaml", "configs/**/*.rviz"]
+"phygs.world" = ["environment.yaml"]
 "phygs.robots.spot" = ["robot.yaml", "locomotion/*.yaml", "locomotion/*.pt", "navigation/*.json", "assets/*.usd", "assets/*.urdf", "assets/configuration/**/*"]
 "phygs.robots.ridgeback_franka" = ["robot.yaml", "*.urdf", "navigation/*.json"]
 "phygs.robots._template" = ["robot.yaml"]
-"phygs.ui" = ["web/*.html", "web/*.js", "web/*.css"]
+"phygs.ui" = ["web/*.html", "web/*.js", "web/*.css", "configs/*.yaml"]
 "phygs.scene" = ["builtin/*/scene.usda"]
-"phygs.execution.navigation.launch" = ["*.py"]
+"phygs.skills.navigation.execution.launch" = ["*.py", "*.yaml", "*.rviz"]
 "phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "tasks/*.yaml", "*.npz"]
 
 [tool.ruff]

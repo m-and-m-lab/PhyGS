@@ -17,7 +17,7 @@ After constructing and initializing the scene:
 
 ```python
 from phygs.observations.types import CameraPermission, ObservationConfig
-from phygs.robots.control import RobotControl
+from phygs.world.robot import RobotControl
 from phygs.runtime.episode import RunMode
 
 robot = RobotControl.create(

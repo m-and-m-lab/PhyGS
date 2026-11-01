@@ -12,7 +12,7 @@ from this list; the session checks requests against it.
 
 from __future__ import annotations
 
-from phygs.execution.navigation.types import NavigationGoal
+from phygs.skills.navigation.execution.types import NavigationGoal
 
 # The tolerance defaults are the public API's (NavigationClient.navigate_to takes them from NavigationGoal).
 NAVIGATE_TO = dict(
@@ -46,7 +46,7 @@ DRIVE = dict(
 STOP = dict(
     name="stop",
     tile="Stop",
-    call="locomotion.stop()",
+    call="locomotion.command_velocity(0, 0, 0)",
     channel="base",
     picker=None,
     doc="Controlled stop of direct motion.",
@@ -113,7 +113,7 @@ CLOSE_GRIPPER = dict(
 LOOK_AT = dict(
     name="look_at",
     tile="Look at",
-    call="manipulation.look_at(PointTarget(point), distance_m, elevation_deg)",
+    call="manipulation.look_at(PointTarget(point), views=[(distance_m, elevation_deg)])",
     channel="arm",
     picker="camera",
     doc="Aim the hand camera at a point you click in a camera view, from a distance and height you set.",

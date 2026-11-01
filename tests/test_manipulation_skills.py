@@ -15,8 +15,9 @@ import torch
 from fakes import SPOT, TRANSIT, advance, setup
 from scipy.spatial.transform import Rotation
 
-from phygs.execution.manipulation.skills import backends
-from phygs.execution.manipulation.skills.types import (
+from phygs.observations.types import Stamp
+from phygs.skills.manipulation.execution import backends
+from phygs.skills.manipulation.execution.types import (
     HeldObject,
     ObjectTarget,
     PixelTarget,
@@ -25,7 +26,6 @@ from phygs.execution.manipulation.skills.types import (
     SkillError,
     SkillFailure,
 )
-from phygs.observations.types import Stamp
 
 CONFIG = replace(SkillConfig.from_robot(SPOT, "collision_avoidance_planner"), move_seconds=1.0)
 JOINTS = CONFIG.joints
@@ -41,7 +41,7 @@ class StubSkills:
         self.client, self.failure, self.attempts, self.issued = client, failure, 0, []
         self.step = ""
 
-    def look_at(self, target, distance_m=0.5, elevation_deg=45.0, held=None):
+    def look_at(self, target, views=None, held=None):
         self.attempts = 1
         self.step = "look_at: moving"
         self.issued.append("move")
@@ -160,6 +160,9 @@ class FakeArm:
 
     def minimum_move_duration(self, target):
         return 0.1
+
+    def tool_pose(self, tool):
+        return (0.3, 0.0, 0.5, 0.0, 0.0, 0.0, 1.0)
 
 
 class FakeObservations:
@@ -314,10 +317,11 @@ def test_client_starts_stow_and_look_at_as_skills_with_the_held_object():
     recorder = Recorder()
     client.bind_skills(recorder)
     held = HeldObject((0.04, 0.04, 0.12), np.eye(4), "target")
-    for command in (client.stow(held=held), client.look_at(POINT), client.unstow()):
+    for command in (client.stow(held=held), client.look_at(POINT, views=[(0.6, 30)]), client.unstow()):
         assert client.feedback(command).status == "succeeded"
     assert [call[0] for call in recorder.calls] == ["stow", "look_at", "unstow"]
     assert recorder.calls[0][1] is held and recorder.calls[1][-1] is None  # Held as the agent says.
+    assert recorder.calls[1][2] == ((0.6, 30.0),)  # The views, as floats.
     assert client.episode_id == runtime.episode_id
 
 
@@ -344,6 +348,20 @@ def test_stow_folds_the_arm_and_closes_an_empty_gripper(kinematics):
     assert holding.calls == [("execute", "plan 1"), ("move", CONFIG.stow_posture)] and holding.holding
 
 
+def test_a_stow_without_a_plan_from_where_the_arm_is_lifts_the_hand_and_stows_again(kinematics):
+    """A hand by a surface the depth map holds had no stow plan (2026-10-30): up 0.10 m, then again."""
+    arm, joint_planner = FakeArm(grasps=(False,)), FakeMotionPlanner("no_plan")
+    backend = skills(arm, joint_planner=joint_planner)
+    assert drive(backend.stow(), arm=arm) is None
+    assert [call[0] for call in arm.calls] == ["close", "execute", "execute", "execute", "move"]
+    lift = arm.calls[2][1]
+    assert lift.tool == "wrist" and np.allclose(lift.poses[1] - lift.poses[0], [0, 0, backends.UNSTICK_M, 0, 0, 0, 0])
+    assert len(joint_planner.requests) == 2 and backend.attempts == 2
+    stuck = FakeArm(grasps=(False,))  # Refused again after the lift: the stow fails.
+    error = drive(skills(stuck, joint_planner=FakeMotionPlanner("no_plan", "no_plan")).stow(), arm=stuck)
+    assert error.failure == SkillFailure.PLANNING_FAILED
+
+
 def test_stow_posture_is_the_posture_the_transit_footprint_was_measured_in():
     """Navigation's transit posture is the robot's stow (one source); the footprint was measured in it."""
     import json
@@ -354,15 +372,16 @@ def test_stow_posture_is_the_posture_the_transit_footprint_was_measured_in():
 
 def test_look_at_moves_the_camera_to_the_requested_view_of_the_target(kinematics):
     direct = FakeArm()
-    assert drive(skills(direct, backend="direct", ik=position_ik).look_at(PointTarget((1.0, 0.0, 0.0)))) is None
-    # Arm base and camera at the origin: by default 0.5 m from the target, 45 deg above it.
+    view = skills(direct, backend="direct", ik=position_ik).look_at(PointTarget((1.0, 0.0, 0.0)), ((0.5, 45.0),))
+    assert drive(view) is None
+    # Arm base and camera at the origin: 0.5 m from the target, 45 deg above it.
     side = 0.5 * np.sqrt(0.5)
     ((name, joints),) = direct.calls
     assert name == "move" and joints == pytest.approx((1.0 - side, 0.0, side, 0.0, 0.0, 0.0))
     arm, pose_planner = FakeArm(), FakeMotionPlanner()
     target = PointTarget((0.6, 0.3, -0.4))
     backend = skills(arm, ik=position_ik, pose_planner=pose_planner)
-    assert drive(backend.look_at(target, 0.7, 60.0), arm=arm) is None
+    assert drive(backend.look_at(target, ((0.7, 60.0),)), arm=arm) is None
     assert backend.attempts == 1 and arm.calls == [("execute", "plan 1")]
     (pose,) = pose_planner.requests
     rotation = Rotation.from_quat(pose[3:])
@@ -372,34 +391,38 @@ def test_look_at_moves_the_camera_to_the_requested_view_of_the_target(kinematics
     assert np.degrees(np.arcsin(-offset[2] / np.linalg.norm(offset))) == pytest.approx(60.0)
     assert rotation.apply([0.0, 1.0, 0.0])[2] < 1e-9  # Image "down" never points up: upright.
     with pytest.raises(ValueError):
-        drive(backend.look_at(target, 0.5, 95.0))
+        drive(backend.look_at(target, ((0.5, 95.0),)))
     kinematics.unreachable = True
     unreachable = FakeArm()
-    error = drive(skills(unreachable, ik=position_ik).look_at(PointTarget((1.0, 0.0, 0.0))))
+    backend = skills(unreachable, ik=position_ik)
+    error = drive(backend.look_at(PointTarget((1.0, 0.0, 0.0))))
     assert error.failure == SkillFailure.OUT_OF_REACH and unreachable.calls == []
+    assert "No view" in error.message and backend.attempts == len(CONFIG.look_views)  # Every view tried.
 
 
-def test_look_at_reports_a_refused_or_rejected_view_without_trying_another(kinematics):
-    """Choosing another view is the agent's decision."""
+def test_look_at_tries_the_next_view_while_one_is_refused(kinematics):
+    """Refused before moving (no plan) or stopped as the scene changed: the next view; a stall ends it."""
     arm, refusing = FakeArm(), FakeMotionPlanner("no_plan")
-    error = drive(
-        skills(arm, ik=position_ik, pose_planner=refusing).look_at(PointTarget((1.0, 0.0, 0.0))),
-        arm=arm,
-    )
-    assert error.failure == SkillFailure.PLANNING_FAILED and len(refusing.requests) == 1
+    backend = skills(arm, ik=position_ik, pose_planner=refusing)
+    assert drive(backend.look_at(PointTarget((1.0, 0.0, 0.0))), arm=arm) is None
+    assert len(refusing.requests) == 2 and backend.attempts == 2 and backend.step.startswith("look_at: at the view")
 
     class GuardedArm(FakeArm):
+        def __init__(self, reason):
+            super().__init__()
+            self.reason = reason
+
         def execute_trajectory(self, trajectory):
             command = super().execute_trajectory(trajectory)
-            self.failures[command] = "Trajectory intersects the known obstacle"
+            self.failures[command] = self.reason
             return command
 
-    arm, planner = GuardedArm(), FakeMotionPlanner()
-    error = drive(
-        skills(arm, ik=position_ik, pose_planner=planner).look_at(PointTarget((1.0, 0.0, 0.0))),
-        arm=arm,
-    )
-    assert error.failure == SkillFailure.OBSTACLE_CHANGED and len(planner.requests) == 1
+    arm, planner = GuardedArm("Trajectory intersects the known obstacle"), FakeMotionPlanner()
+    error = drive(skills(arm, ik=position_ik, pose_planner=planner).look_at(PointTarget((1.0, 0.0, 0.0))), arm=arm)
+    assert error.failure == SkillFailure.OUT_OF_REACH and len(planner.requests) == len(CONFIG.look_views)
+    arm, planner = GuardedArm("Joint tracking error"), FakeMotionPlanner()
+    error = drive(skills(arm, ik=position_ik, pose_planner=planner).look_at(PointTarget((1.0, 0.0, 0.0))), arm=arm)
+    assert error.failure == SkillFailure.EXECUTION_STALLED and len(planner.requests) == 1
 
 
 def test_planned_skills_leave_the_stow_through_the_prestow_posture(kinematics):
@@ -436,11 +459,11 @@ def test_skills_announce_their_steps_in_feedback_and_the_log(kinematics, caplog)
 
     direct = StepArm()
     backend = skills(direct, backend="direct", ik=position_ik)
-    assert drive(backend.look_at(PointTarget((1.0, 0.0, 0.0)), 0.5, 45.0)) is None
+    assert drive(backend.look_at(PointTarget((1.0, 0.0, 0.0)), ((0.5, 45.0),))) is None
     assert [call[-1] for call in direct.calls] == ["look_at: moving straight to the view"]
-    assert backend.step == "look_at: at the view; the arm has settled"
+    assert backend.step == "look_at: at the view 0.50 m, 45 deg up; the arm has settled"
     assert [r.getMessage() for r in caplog.records] == [
         "look_at: point (world) (1.00, 0.00, 0.00) m; view 0.50 m, 45 deg up",
         "look_at: moving straight to the view",
-        "look_at: at the view; the arm has settled",
+        "look_at: at the view 0.50 m, 45 deg up; the arm has settled",
     ]

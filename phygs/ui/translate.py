@@ -18,7 +18,7 @@ import math
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from phygs.execution.manipulation.skills.types import PointTarget
+from phygs.skills.manipulation.execution.types import PointTarget
 
 UP = np.array([0.0, 0.0, 1.0])
 # Directions for Move along, relative to the robot's heading.

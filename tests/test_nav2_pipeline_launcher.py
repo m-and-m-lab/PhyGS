@@ -52,7 +52,7 @@ def test_invalid_arguments_fail_before_launch(arguments):
 def _launch_module():
     project = Path(__file__).parents[1]
     spec = importlib.util.spec_from_file_location(
-        "nav2_parameters", project / "phygs" / "execution" / "navigation" / "launch" / "nav2.launch.py"
+        "nav2_parameters", project / "phygs" / "skills" / "navigation" / "execution" / "launch" / "nav2.launch.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -102,7 +102,7 @@ def missing(requirements: tuple[str, ...]) -> list[str]:
         ):
             lacking.append("explore_lite overlay (/opt/explore_ws) sourced")
         elif requirement == "curobo":
-            settings = yaml.safe_load((PROJECT / "phygs" / "configs" / "environment.yaml").read_text())
+            settings = yaml.safe_load((PROJECT / "phygs" / "world" / "environment.yaml").read_text())
             if not Path(settings["planner"]["curobo_dependencies"]).is_dir():
                 lacking.append(f"cuRobo dependencies in {settings['planner']['curobo_dependencies']}")
     return lacking

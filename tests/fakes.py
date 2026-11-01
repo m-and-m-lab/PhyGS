@@ -20,14 +20,14 @@ import numpy as np
 import torch
 import yaml
 
-from phygs.execution.locomotion.base import DeadBand
-from phygs.execution.manipulation.controller import ManipulationController, MotionConfig
-from phygs.execution.navigation.fine_approach import FineApproach
-from phygs.execution.navigation.map import GridMap
 from phygs.robots.description import load_robot
 from phygs.runtime.episode import EpisodeRuntime, EpisodeStatus, JointTargets, RunMode
 from phygs.sim.observations import IsaacLabObservations, pose_matrix
+from phygs.skills.locomotion.execution.base import DeadBand
 from phygs.skills.manipulation.api import ManipulationClient
+from phygs.skills.manipulation.execution.controller import ManipulationController, MotionConfig
+from phygs.skills.navigation.execution.fine_approach import FineApproach
+from phygs.skills.navigation.execution.map import GridMap
 
 # Spot, the robot the fakes stand in for: its description, the transit posture navigation checks, and
 # its base's command dead band and lowest-speed moves (navigation's fine approach).
@@ -508,8 +508,8 @@ def nav2_transport(config=None, **attributes):
     """
     from unittest.mock import Mock
 
-    from phygs.execution.navigation.backends.nav2 import Nav2Config
-    from phygs.execution.navigation.backends.ros2 import RclpyNav2Transport
+    from phygs.skills.navigation.execution.backends.nav2 import Nav2Config
+    from phygs.skills.navigation.execution.backends.ros2 import RclpyNav2Transport
 
     config = Nav2Config() if config is None else config
     epoch = 1_000_000_000

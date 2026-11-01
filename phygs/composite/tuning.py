@@ -23,11 +23,7 @@ class Tuning:
     # A narrow band keeps the open stance useful (with 0.08 m the base stopped where a drawer opened
     # only 0.20 m, 2026-10-16); 0.03 m took up to 8 fine-approach moves at a stance (2026-10-27).
     goal_tolerance: tuple[float, float] = (0.04, 0.05)
-    # Each navigate_to attempt's own time limit [s]; a timed-out walk is issued again, up to walk_tries
-    # attempts (the follower can stand still just outside the tolerance; stances take 5-15 s).
-    walk_timeout_s: float = 60.0
-    walk_tries: int = 2
-    settle_seconds: float = 1.0  # Standing still after a walk, so the legs settle before the arm moves [s].
+    settle_seconds: float = 1.0  # Standing still after a drawer stroke, so the drawer comes to rest [s].
     # The handle of a drawer the gripper holds stays within this range ahead of the base centre [m].
     # Opening stands with the handle at the far end less the walk's position tolerance (1.09 m; the
     # base stops within 1.05-1.13 m) and pulls until the handle is at the near end, measured from
@@ -45,6 +41,10 @@ class Tuning:
     # occupied_goal_reach, 0.35 m) makes the last bit.
     reach_ahead_m: float = 0.95
     reach_in_clear_m: float = 0.80
+    # A point within this of the base's heading [deg] is reached keeping the heading: square to the
+    # open drawer the robot stands at. Along the line of sight, 16 deg off square, a pick in the house's
+    # bottom drawer closed on nothing twice (pointing oracle, 2026-11-01).
+    keep_heading_deg: float = 45.0
     # When navigate_to refuses the reach stance as unreachable (the robot does not fit there: facing a
     # table's corner from the drawer, drawer_place 2026-11-01), the stance turns about the point by
     # the next of these [deg]. Square to a drawer it does not turn.
@@ -87,15 +87,12 @@ class Tuning:
     place_front_margin_m: float = 0.08
     line_speed_m_s: float = 0.1  # Straight end-effector lines [m/s].
     stow_tolerance_rad: float = 0.2  # Within this of the stow (every arm joint), the arm counts as stowed [rad].
-    # When no stow plan starts from where the arm is (a hand that ended by a surface the depth map
-    # holds, 2026-10-30), lift the hand straight up this far [m] and stow once more.
-    unstick_m: float = 0.10
-    # look_at views (distance [m], elevation [deg]), tried in order. Low handles and boxes (the house's
-    # bottom drawer) need the later, shallower views; place looks at a spot, e.g. an open drawer's floor.
+    # look_at views (distance [m], elevation [deg]), tried in order: a drawer's handle (low handles,
+    # the house's bottom drawer, need the later, shallower views) and a place spot, e.g. an open
+    # drawer's floor. An object is looked at from look_at's own views.
     look_views: dict[str, tuple[tuple[float, float], ...]] = field(
         default_factory=lambda: {
             "handle": ((0.6, 60.0), (0.5, 45.0), (0.45, 45.0), (0.6, 30.0)),
-            "target": ((0.5, 60.0), (0.5, 45.0), (0.6, 60.0), (0.6, 75.0), (0.6, 30.0)),
             "place": ((0.6, 75.0), (0.7, 60.0), (0.6, 60.0), (0.7, 45.0)),
         }
     )

@@ -45,21 +45,12 @@ from phygs_robot_tests.tasks.object_search import ObjectSearchEvaluator, ObjectS
 from phygs_robot_tests.tasks.object_search_api import ObjectSearchClient  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from phygs.execution.navigation.backends.nav2 import Nav2BackendFactory, Nav2Config  # noqa: E402
-from phygs.execution.navigation.floor import DeclaredFloorMap  # noqa: E402
-from phygs.execution.navigation.footprint import (  # noqa: E402
-    load_footprint,
-    transit_footprint,
-    validate_transit,
-)
 from phygs.observations.color_detection import magenta_pixel  # noqa: E402
 from phygs.observations.types import (  # noqa: E402
     CameraPermission,
     ObservationAccess,
     ObservationConfig,
 )
-from phygs.robots.control import RobotControl, base_controller_class  # noqa: E402
-from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.pipeline import PipelineConfig  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
@@ -68,8 +59,17 @@ from phygs.scene.assets import (  # noqa: E402
     register_scene_bodies,
     validate_spawn_disk,
 )
+from phygs.sim.robot_scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.sim.state import IsaacLabWorld  # noqa: E402
 from phygs.skills.navigation.api import NavigationConfig  # noqa: E402
+from phygs.skills.navigation.execution.backends.nav2 import Nav2BackendFactory, Nav2Config  # noqa: E402
+from phygs.skills.navigation.execution.floor import DeclaredFloorMap  # noqa: E402
+from phygs.skills.navigation.execution.footprint import (  # noqa: E402
+    load_footprint,
+    transit_footprint,
+    validate_transit,
+)
+from phygs.world.robot import RobotControl, base_controller_class  # noqa: E402
 
 require = common.require
 
@@ -317,7 +317,7 @@ def run(report: dict) -> None:
         inspect_frame()
         control.locomotion.command_velocity(0, 0, settings["scan_yaw_radps"], duration=settings["scan_seconds"])
         step(settings["scan_seconds"])
-        control.locomotion.stop()
+        control.locomotion.command_velocity(0.0, 0.0, 0.0)
         step(1.0)
         records = []
         report["current_navigation"] = records
@@ -357,7 +357,7 @@ def run(report: dict) -> None:
             )
             while not found and control.locomotion.feedback(turn).status in {"active", "stopping"}:
                 step(capture.camera_period)
-            control.locomotion.stop()
+            control.locomotion.command_velocity(0.0, 0.0, 0.0)
             step(1.0)
             if found:
                 report["found_in"] = f"coverage, turning at viewpoint {len(report['viewpoints'])}"

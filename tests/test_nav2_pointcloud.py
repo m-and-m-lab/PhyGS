@@ -8,10 +8,10 @@
 import numpy as np
 import pytest
 
-from phygs.execution.navigation.backends.nav2 import Nav2BackendFactory, Nav2Config
-from phygs.execution.navigation.floor import DeclaredFloorMap
-from phygs.execution.navigation.map import RectangleFootprint
 from phygs.observations.types import CameraPermission, ObservationAccess
+from phygs.skills.navigation.execution.backends.nav2 import Nav2BackendFactory, Nav2Config
+from phygs.skills.navigation.execution.floor import DeclaredFloorMap
+from phygs.skills.navigation.execution.map import RectangleFootprint
 
 
 def test_floor_prior_contains_no_obstacle_geometry():

@@ -147,7 +147,7 @@ Two places take code. Everything else is data.
 
 | Point | `robot.yaml` | Contract |
 | --- | --- | --- |
-| Base controller | `base.kind` | `legged_policy` (a walking policy; `base.policy` names its wrapper, `base.config` its settings: Spot), `planar_joints` (velocity-driven x, y, yaw joints: Ridgeback), or your class as `module:Class` / `file.py:Class`. A class implements `BaseController` (`execution/locomotion/base.py`) and builds itself with `from_robot(robot, articulation, *, physics_dt, source)`; `files(robot)` names the files its motion depends on (they are hashed into the footprint profile and the report). |
+| Base controller | `base.kind` | `legged_policy` (a walking policy; `base.policy` names its wrapper, `base.config` its settings: Spot), `planar_joints` (velocity-driven x, y, yaw joints: Ridgeback), or your class as `module:Class` / `file.py:Class`. A class implements `BaseController` (`skills/locomotion/execution/base.py`) and builds itself with `from_robot(robot, articulation, *, physics_dt, source)`; `files(robot)` names the files its motion depends on (they are hashed into the footprint profile and the report). |
 | Actuator models | `actuators` | A function `(physics_dt) -> {name: Isaac Lab actuator config}`, as `file.py:function` in the folder or `package.module:function`. |
 
 A `file.py:attribute` reference loads that file of the robot's folder, so a robot outside the

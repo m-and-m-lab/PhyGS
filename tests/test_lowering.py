@@ -9,13 +9,13 @@ import numpy as np
 import pytest
 from fakes import SPOT
 
-from phygs.execution.manipulation.lowering import (
+from phygs.skills.manipulation.execution.lowering import (
     STEP_M,
     TrajectoryRefused,
     lower,
     pose_error,
 )
-from phygs.execution.manipulation.planning import EndEffectorTrajectory
+from phygs.skills.manipulation.execution.planning import EndEffectorTrajectory
 
 NAMES = ("j0", "j1", "j2", "j3", "j4", "j5")
 HAND = SPOT.tool("hand")  # Spot's hand (between the jaws) in the wrist frame (4x4) [m].

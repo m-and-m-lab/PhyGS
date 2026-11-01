@@ -64,7 +64,7 @@ and `declaration` and returns a backend implementing the navigation lifecycle.
 
 ```python
 from dataclasses import replace
-from phygs.execution.navigation.backends.nav2 import Nav2BackendFactory, Nav2Config
+from phygs.skills.navigation.execution.backends.nav2 import Nav2BackendFactory, Nav2Config
 from phygs.observations.types import ObservationAccess
 from phygs.runtime.pipeline import PipelineConfig
 
@@ -235,7 +235,7 @@ when the cube is seen. This is a bounded diagnostic, not a
 claim of reliable whole-house search. Camera frequency uses simulation time.
 
 Nav2 (MPPI) follows the route; within `fine_approach_radius` (0.10 m) the backend stops Nav2 and
-finishes with single-axis moves (`execution/navigation/fine_approach.py`). With the deployed policy, the PhysX-drive stand and 8 solver iterations the
+finishes with single-axis moves (`skills/navigation/execution/fine_approach.py`). With the deployed policy, the PhysX-drive stand and 8 solver iterations the
 house navigation check passes at 0.04 m / 0.04 rad (2026-10-22,
 `output_check/20261022-1738_solver8_all`).
 Do not treat the reference search helper as a guarantee of complete whole-house

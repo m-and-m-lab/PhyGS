@@ -32,21 +32,12 @@ import numpy as np
 import torch
 from isaaclab.scene import InteractiveScene
 
-from phygs.execution.manipulation.arm_planner import ArmPlanner
-from phygs.execution.manipulation.kinematics import ArmKinematics
-from phygs.execution.manipulation.planners.model import collider_spheres, usd_only_boxes
-from phygs.execution.manipulation.skills.backends import STOW_TOLERANCE_RAD, create_skills
-from phygs.execution.manipulation.skills.types import SkillConfig
-from phygs.execution.navigation.backends.nav2_stack import Nav2Stack
-from phygs.execution.navigation.known_map import BoxGeometry
 from phygs.recording.panels import PanelFeed
 from phygs.recording.state_log import FILE as STATE_FILE
 from phygs.recording.state_log import StateLog
 from phygs.recording.trace import compose as compose_trace
 from phygs.recording.video import Chase, live_axis
-from phygs.robots.control import RobotControl
 from phygs.robots.description import RobotDescription, load_robot
-from phygs.robots.scene import make_scene_cfg, robot_cameras, simulation_cfg
 from phygs.runtime.episode import EpisodeStatus, RunMode
 from phygs.scene.assets import SceneBodies
 from phygs.scene.reader import UsdScene
@@ -54,12 +45,21 @@ from phygs.session.hints import PrivilegedHints
 from phygs.session.session import AgentFailed, AgentSession, Audit, EpisodeEnded, MainThread, ObjectTarget, PublicTask
 from phygs.sim.base import BaseLink
 from phygs.sim.cameras import aim_camera
+from phygs.sim.robot_scene import make_scene_cfg, robot_cameras, simulation_cfg
+from phygs.skills.manipulation.execution.arm_planner import ArmPlanner
+from phygs.skills.manipulation.execution.backends import STOW_TOLERANCE_RAD, create_skills
+from phygs.skills.manipulation.execution.kinematics import ArmKinematics
+from phygs.skills.manipulation.execution.planners.model import collider_spheres, usd_only_boxes
+from phygs.skills.manipulation.execution.types import SkillConfig
+from phygs.skills.navigation.execution.backends.nav2_stack import Nav2Stack
+from phygs.skills.navigation.execution.known_map import BoxGeometry
 from phygs.world import build, report
 from phygs.world.build import PROJECT, SETTINGS
 from phygs.world.navigation import nav2_navigation
 from phygs.world.provenance import code_version, file_sha256, usd_sha256
 from phygs.world.recorder import Recorder
 from phygs.world.replay import scene_plan
+from phygs.world.robot import RobotControl
 from phygs.world.spec import SCHEMA, EpisodeSpec, load_agent
 from phygs.world.start import check as check_start
 from phygs.world.task import EpisodeEnd, NoTask, Task
@@ -423,7 +423,6 @@ class World:
             navigation=self.control.navigation if "navigation" in self.spec.actions else None,
             manipulation=self.control.manipulation if "manipulation" in self.spec.actions else None,
             locomotion=self.control.locomotion if "motion" in self.spec.actions else None,
-            arm=self.control.arm if "arm" in self.spec.actions else None,
         )
         session = AgentSession(
             task=PublicTask(self.task.goal, self.task.description),
@@ -575,7 +574,7 @@ class World:
             manipulation.cancel(manipulation.active_command)
             stopped.append("manipulation")
         if locomotion is not None and runtime.controller_state(locomotion.name) == "active" and not stopped:
-            locomotion.stop()  # Walking under direct control; under navigation the cancel above stops it.
+            locomotion._stop()  # Walking under direct control; under navigation the cancel above stops it.
             stopped.append("locomotion")
         names = [client.name for client in (manipulation, locomotion) if client is not None]
         start = runtime.time_seconds

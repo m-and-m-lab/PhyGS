@@ -9,7 +9,7 @@ import math
 
 import pytest
 
-from phygs.execution.navigation.backends.ros2 import dense_route
+from phygs.skills.navigation.execution.backends.ros2 import dense_route
 
 
 def test_routes_are_resampled_at_the_costmap_resolution():

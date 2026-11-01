@@ -1,17 +1,17 @@
 # Skills Package
 
-Agents use the public APIs in this package. Each `<name>/api.py` is a thin client;
-execution lives under `phygs/execution`, and `RobotControl`
-(`phygs/robots/control.py`) binds the clients to the runtime.
+Agents use the public APIs in this package. One folder per client: `<name>/api.py` is the thin
+client, `<name>/execution/` the machinery behind it, and `RobotControl` (`phygs/world/robot.py`)
+binds the clients to the runtime.
 Layers, the runtime tick and data flow are in [ARCHITECTURE.md](../../ARCHITECTURE.md).
 
 ## Package Layout
 
 | Path | Responsibility | Status |
 | --- | --- | --- |
-| `locomotion/api.py` | Public velocity, stopping and feedback interface. | Live |
-| `navigation/api.py` | Public navigation, cancellation and feedback interface. | Live |
-| `manipulation/api.py` | Public joint, pose (`move_to_pose`), joint and end-effector trajectory, gripper and cancel commands; `stow` and `look_at` skills. | Live |
+| `locomotion/api.py` | Body velocity (all zeros stops) and feedback; `execution/`: the base controllers. | Live |
+| `navigation/api.py` | `navigate_to`, `explore`, cancellation and feedback; `execution/`: Nav2, the maps, the footprint, `launch/` (Nav2's launch file and parameters). | Live |
+| `manipulation/api.py` | Joint, pose (`move_to_pose`), plan, joint and end-effector trajectory, gripper and cancel commands; the `stow`, `unstow` and `look_at` skills; `execution/`: the arm controller, the skill backends, the planners. | Live |
 
 ## API Boundary
 

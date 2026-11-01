@@ -42,17 +42,17 @@ command, on a map prior with unexplored space ([nav2](nav2.md#frontier-explorati
 
 ## Components and boundaries
 
-- `execution/navigation/map.py`: immutable grid snapshots and segment checks (fine moves, the
+- `skills/navigation/execution/map.py`: immutable grid snapshots and segment checks (fine moves, the
   known map and the mapping diagnostics).
 - `phygs/skills/navigation/api.py`: stable agent API and backend selection.
-- `execution/navigation/interfaces.py`: complete navigation backend contract.
-- `execution/navigation/fine_approach.py`: single-axis moves that finish a goal (internal to `navigate_to`, not a skill).
-- `execution/navigation/backends/nav2.py` and `ros2.py`: the Nav2 adapter and its isolated ROS transport;
+- `skills/navigation/execution/interfaces.py`: complete navigation backend contract.
+- `skills/navigation/execution/fine_approach.py`: single-axis moves that finish a goal (internal to `navigate_to`, not a skill).
+- `skills/navigation/execution/backends/nav2.py` and `ros2.py`: the Nav2 adapter and its isolated ROS transport;
   `nav2_stack.py` runs the servers.
 - `world/navigation.py`: Nav2 for a simulated Spot (footprint check, map source, servers).
-- `execution/navigation/footprint.py` and `sim/footprint.py`: sampled collision envelopes.
-- `execution/navigation/metrics.py`: independent motion measurements and report comparison.
-- `execution/navigation/known_map.py`: the privileged known map from declared boxes. Registered
+- `skills/navigation/execution/footprint.py` and `sim/footprint.py`: sampled collision envelopes.
+- `skills/navigation/execution/metrics.py`: independent motion measurements and report comparison.
+- `skills/navigation/execution/known_map.py`: the privileged known map from declared boxes. Registered
   movable boxes use their actual physics poses; changed occupancy increments the
   map version and triggers replanning. Fixed boxes use their declared geometry.
 - `tasks/point_navigation.py`: task configuration and evaluation from physical

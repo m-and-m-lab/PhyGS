@@ -11,9 +11,9 @@ import numpy as np
 import pytest
 from fakes import FakeScene, advance, isaaclab_world, setup
 
-from phygs.execution.manipulation.controller import ManipulationController, MotionConfig
-from phygs.execution.manipulation.planning import JointTrajectory
 from phygs.runtime.episode import EpisodeRuntime, RunMode
+from phygs.skills.manipulation.execution.controller import ManipulationController, MotionConfig
+from phygs.skills.manipulation.execution.planning import JointTrajectory
 
 
 def test_joint_success_requires_motion_and_settling():

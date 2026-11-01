@@ -17,7 +17,7 @@ task:
   goal: none
 actions: [navigation, motion]  # Motion: the turn to face the box.
 observations:
-  cameras: []  # Nav2's cameras are captured for it (phygs/configs/environment.yaml navigation.point_cloud).
+  cameras: []  # Nav2's cameras are captured for it (phygs/world/environment.yaml navigation.point_cloud).
   joint_state: true
   imu: false
 grants: [gt_localization]  # No known_map: Nav2 builds its map from the cameras.

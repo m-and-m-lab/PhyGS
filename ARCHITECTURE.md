@@ -17,7 +17,7 @@ done is the benchmark's.
 | Entry point | For | It owns |
 | --- | --- | --- |
 | `phygs.session` (`AgentSession`) | Agents, and anyone composing behaviour over them | Observations and robot facts (`session.robot`), the action clients the spec allows, command feedback, cancellation and timing, granted privileged hints, finishing the episode |
-| `phygs.composite` (`CompositeSkills`) | Agents that ask for whole steps | Agent-side code over the session only: walking to stances computed from an affordance and the grip range, pick, place, opening and closing drawers, given explicit affordances (a box, a drawer part, a point); each skill tries listed options and reports the option that worked and what the robot measured |
+| `phygs.composite` (`CompositeSkills`) | Agents that ask for whole steps | Agent-side code over the session only: the skills that walk and then move the arm, `pick`, `place`, `place_upright`, `open_drawer` and `close_drawer`, given explicit affordances (a box, a drawer part, a point); each walks to a stance computed from the affordance and the grip range, tries listed options and reports the option that worked and what the robot measured |
 | `phygs.world` (`World`) | Benchmarks and robot tests | Building the scene and the robot, the initial state and reset, stepping, the services (Nav2, the arm planner), ground truth for evaluators (`Truth`), recording, the end of the episode |
 
 Each has an exported name list (`phygs.session.__all__`, `phygs.composite.__all__`,
@@ -61,14 +61,14 @@ flowchart TB
 
     subgraph api["Public APIs — phygs/skills/*/api.py (object search: tests/robot_tests/tasks/object_search_api.py)"]
         direction LR
-        loco["locomotion<br/>command_velocity, stop, feedback"]
-        nav["navigation<br/>navigate_to, cancel, feedback"]
-        manip["manipulation<br/>move_joints, move_to_pose,<br/>execute_trajectory, gripper, cancel"]
+        loco["locomotion<br/>command_velocity, feedback"]
+        nav["navigation<br/>navigate_to, explore, cancel, feedback"]
+        manip["manipulation<br/>stow, unstow, look_at, move_joints, move_to_pose,<br/>plan, execute_trajectory, gripper, cancel"]
         obs["observe(), product()"]
         task["object_search<br/>declare_target"]
     end
 
-    subgraph exec["Execution — phygs/execution"]
+    subgraph exec["Execution — phygs/skills/*/execution"]
         direction LR
         lococ["Base controller<br/>(Spot: walking policy, 50 Hz)"]
         navb["Navigation backend<br/>Nav2 adapter"]
@@ -113,9 +113,8 @@ flowchart TB
 | Layer | Where |
 | --- | --- |
 | The world and the agent session | `phygs/world/` (World, spec, task seam, truth, report), `phygs/session/` |
-| Public skill APIs | `phygs/skills/{locomotion,navigation,manipulation}/api.py`, `tests/robot_tests/tasks/object_search_api.py` |
-| Robot descriptions and assembly | `phygs/robots/` (`RobotDescription`, `RobotControl`; one folder per robot) |
-| Execution | `phygs/execution/` |
+| Skills: the public APIs and their execution | `phygs/skills/{locomotion,navigation,manipulation}/` (`api.py` and `execution/` each), `tests/robot_tests/tasks/object_search_api.py` |
+| Robot descriptions and assembly | `phygs/robots/` (`RobotDescription`; one folder per robot), `phygs/world/robot.py` (`RobotControl`) |
 | Simulation adapters, recording | `phygs/sim/`, `phygs/recording/` |
 | Scenes, runtime and observation pipeline | `phygs/scene/`, `phygs/runtime/`, `phygs/observations/` |
 | Tasks and evaluators | A benchmark's; the robot tests' own in `tests/robot_tests/tasks/` |
@@ -131,7 +130,7 @@ through `LocomotionClient.bind_navigation()`. This one-time binding prevents dir
 motion while navigation is active or stopping. Agents continue to use the existing
 velocity, stop, and `navigate_to` commands. Nav2 terminal feedback preserves the
 original completion, cancellation, or failure reason after physical stopping.
-Execution lives in `phygs/execution`; robot assembly (`robots/control.py`) binds it to the public
+Execution lives in `phygs/execution`; robot assembly (`world/robot.py`) binds it to the public
 clients, and the World (`world/world.py`) binds those to the scene and the agent.
 
 | Module | Responsibility |
@@ -150,14 +149,13 @@ clients, and the World (`world/world.py`) binds those to the scene and the agent
 | `sim/observations.py`, `sim/cameras.py` | Isaac Lab measurement capture, publication rates, and filtering before delivery to agents. |
 | `sim/base.py`, `sim/arm.py`, `sim/footprint.py`, `sim/fabric.py` | `BaseLink` (the base link's world pose and velocity); Isaac Lab differential IK for the wrist link; live collision bounds; Fabric writes for rendering. |
 | `recording/` | The run's video, its panels, the command timeline and the skills' narration. |
-| `execution/locomotion/` | Runtime-owned leg targets; policy loading, preprocessing and inference; base controllers. |
-| `execution/navigation/` | Immutable occupancy maps, the known-box map (`known_map.py`), the Nav2 backend (adapter, ROS transport, servers), fine approach, footprint, metrics. |
-| `execution/manipulation/` | Joint/wrist controller, planning contract and worker, the arm planner host (`ArmPlanner`: known boxes and/or the robot's depth), independent path validation, planner adapters, body-frame boxes (`collision_map.py`). |
+| `skills/locomotion/execution/` | Runtime-owned leg targets; policy loading, preprocessing and inference; base controllers. |
+| `skills/navigation/execution/` | Immutable occupancy maps, the known-box map (`known_map.py`), the Nav2 backend (adapter, ROS transport, servers), fine approach, footprint, metrics. |
+| `skills/manipulation/execution/` | Joint/wrist controller, planning contract and worker, the arm planner host (`ArmPlanner`: known boxes and/or the robot's depth), independent path validation, planner adapters, body-frame boxes (`collision_map.py`). |
 | `robots/description.py` | `RobotDescription`: every robot fact, loaded and checked from `robots/<name>/robot.yaml` (no Isaac imports); `RobotInfo`, what agents read (`session.robot`). |
-| `robots/scene.py` | The robot's articulation, cameras and IMU from its description, the ground and the light; the simulation settings. |
-| `robots/control.py` | `RobotControl`: the robot's base controller (`base.kind`), runtime, execution components, pipeline and public clients, assembled once. |
+| `sim/robot_scene.py` | The robot's articulation, cameras and IMU from its description, the ground and the light; the simulation settings. |
+| `world/robot.py` | `RobotControl`: the robot's base controller (`base.kind`), runtime, execution components, pipeline and public clients, assembled once. |
 | `robots/spot/`, `robots/ridgeback_franka/` | One folder per robot: `robot.yaml` and the robot's own code (Spot: `SpotLegActuator`, the walking policy wrapper) and data (policy, calibrations, transit footprint). |
-| `robots/posture.py` | Diagnostic arm interpolation used by `ArmClient`. |
 | `session/session.py`, `session/hints.py` | `AgentSession` (action-filtered clients on the main thread, time requests, audit) and grant-checked privileged hints; `phygs.session` re-exports what agents use. |
 | `world/spec.py` | Self-contained episode specs (schema 3: scene by id, robot start, object placements, an opaque task block, actions, observations, grants, budget, seed); agents by `file.py:function`, or by name in a folder the caller gives (`load_agent`); no Isaac imports. |
 | `world/task.py` | The task seam: the `Task` protocol the World takes (public goal and description, `brief()`, `reset()`, `update()`, `result(truth, end)`, `provenance()`), `EpisodeEnd` (with every recorded contact, labelled) and `NoTask`. The framework never imports a task and never reads its answer. |
@@ -281,17 +279,16 @@ observation agents.
 
 | Module (execution paths relative to `phygs`) | Role |
 | --- | --- |
-| `phygs/skills/locomotion/api.py` | Public velocity, stop, command ID and feedback interface. |
-| `execution/locomotion/controller.py` | Runtime-owned leg execution and stop behavior. |
-| `execution/locomotion/base.py` | `BaseController`, the base controller contract; the command dead band and deceleration every base shares. |
-| `execution/locomotion/planar.py` | `PlanarJointBase`: velocity targets on a base's x, y and yaw joints (Ridgeback-Franka). |
+| `phygs/skills/locomotion/api.py` | Public velocity (all zeros stops), command ID and feedback interface. |
+| `skills/locomotion/execution/controller.py` | Runtime-owned leg execution and stop behavior. |
+| `skills/locomotion/execution/base.py` | `BaseController`, the base controller contract; the command dead band and deceleration every base shares. |
+| `skills/locomotion/execution/planar.py` | `PlanarJointBase`: velocity targets on a base's x, y and yaw joints (Ridgeback-Franka). |
 | `robots/spot/policy.py` | Spot's walking policy: loading, preprocessing, inference and target computation. |
-| `robots/scene.py` | The robot's articulation and sensor configuration. |
-| `robots/control.py` | Bind the robot, runtime, skill clients and observation provider. |
-| `robots/posture.py` | Diagnostic arm interpolation for `ArmClient`. |
+| `sim/robot_scene.py` | The robot's articulation and sensor configuration. |
+| `world/robot.py` | Bind the robot, runtime, skill clients and observation provider. |
 
-`robots/control.py` assembles the runtime and skill clients once.
-`execution/locomotion/controller.py` preserves policy timing and preprocessing.
+`world/robot.py` assembles the runtime and skill clients once.
+`skills/locomotion/execution/controller.py` preserves policy timing and preprocessing.
 Runtime expiry can execute a declared stop sequence while retaining joint ownership.
 Renewing a command preserves policy state. Reset restores physical velocities but
 sets desired PD velocity/effort targets to zero; physical state is not a command.
@@ -352,29 +349,29 @@ rectangle; see [navigation](docs/navigation.md).
 ### Navigation execution
 
 `phygs/skills/navigation/api.py` preserves the agent API and binds a `NavigationBackend`.
-`execution/navigation/backends/nav2.py` owns the external action lifecycle;
-`execution/navigation/backends/ros2.py` isolates ROS dependencies, map/pose/point-cloud
+`skills/navigation/execution/backends/nav2.py` owns the external action lifecycle;
+`skills/navigation/execution/backends/ros2.py` isolates ROS dependencies, map/pose/point-cloud
 publication, timestamps and velocity reception. External commands pass through the same
 locomotion client, resource ownership, expiry and runtime clock. A goal is finished with
-`execution/navigation/fine_approach.py` (single-axis moves from settled poses; internal to
+`skills/navigation/execution/fine_approach.py` (single-axis moves from settled poses; internal to
 `navigate_to`, not a skill). Reset awaits external cancellation. Transport timeout prevents
 connection reuse. The simulator still owns emergency termination and the evaluator judges
 physical arrival.
 
 `sim/footprint.py` projects live enabled collision bounds;
-`execution/navigation/footprint.py` accumulates and validates the measured envelope.
+`skills/navigation/execution/footprint.py` accumulates and validates the measured envelope.
 The robot's measured transit footprint (`navigation.footprint_profile`; Spot's
 `robots/spot/navigation/transit.json`) records geometry, policy and asset identities. ROS launch
-settings live in `phygs/configs/navigation/nav2.yaml` and `phygs/execution/navigation/launch/nav2.launch.py`.
+settings live in `phygs/skills/navigation/execution/launch/nav2.yaml` and `phygs/skills/navigation/execution/launch/nav2.launch.py`.
 See [setup, measurements and limitations](docs/nav2.md).
 
-Episodes start Nav2 themselves (`execution/navigation/backends/nav2_stack.py`).
+Episodes start Nav2 themselves (`skills/navigation/execution/backends/nav2_stack.py`).
 `tests/robot_tests/components/check_nav2_pipeline.py` owns only diagnostic subprocess lifecycle for
 the house search: Nav2 launch (`pointcloud`, the configuration episodes and the UI use) plus the
 Spot search test (`check_house.py`).
 
 The Nav2 transport also publishes the planner action's returned `nav_msgs/Path`
-on a latched diagnostic ROS topic. `phygs/configs/navigation/spot_nav2.rviz` visualizes
+on a latched diagnostic ROS topic. `phygs/skills/navigation/execution/launch/spot_nav2.rviz` visualizes
 that path, Nav2 costmaps, occupancy, point cloud and TF; it is observation only
 and does not change command ownership or simulation timing.
 
@@ -389,11 +386,11 @@ band and clears along every ray in 3D. See [mapping](docs/mapping.md) and
 
 ### Map providers for the Nav2 backend
 
-`execution/navigation/map.py` defines `MapProvider` and the additive
+`skills/navigation/execution/map.py` defines `MapProvider` and the additive
 `RawMapProvider` contract. `snapshot()` supplies a grid inflated for the robot;
 `raw_snapshot()` supplies the same obstacle/unknown evidence before robot inflation.
 Both grids are immutable. Unknown cells are blocked and also carry a separate mask.
-`KnownBoxMap` (privileged known boxes) and `DeclaredFloorMap` (`execution/navigation/floor.py`: the
+`KnownBoxMap` (privileged known boxes) and `DeclaredFloorMap` (`skills/navigation/execution/floor.py`: the
 flat floor, optionally unexplored beyond the spawn disk) are the providers; the bridge publishes the
 raw grid as Nav2's static map (-1/0/100 for unknown/free/occupied). Nav2 owns its costmap inflation
 from the measured outline and padding. Episode IDs fence observations across resets.
@@ -416,13 +413,13 @@ choose viewpoints themselves. No estimated-localization provider is required for
 
 - `phygs/skills/manipulation/api.py`: joint/wrist/gripper submission, command IDs,
   cancellation, and measured feedback. Imports no grasp or collision library.
-- `phygs/execution/manipulation/controller.py`: quintic joint
+- `phygs/skills/manipulation/execution/controller.py`: quintic joint
   trajectories, convergence/stop checks, timeout, and arm/gripper ownership.
 - `phygs/sim/arm.py`: Isaac Lab differential IK; world-frame
   wrist-link pose and matching world Jacobian, including floating-base DoF indexing.
 - `sim/state.py`: gravity feedforward for the configured implicit arm drives,
   refreshed each physics tick; the shared world still owns all physical stepping.
-- `robots/control.py`: optional assembly with `manipulation=True` (the arm, gripper and tools of the robot's description). Navigation
+- `world/robot.py`: optional assembly with `manipulation=True` (the arm, gripper and tools of the robot's description). Navigation
   remains subject to its folded-arm envelope; basic manipulation is free-space only.
 
 The controller remembers the last commanded gripper angle and keeps it as the gripper
@@ -434,12 +431,14 @@ and holds `motion.grip_squeeze` (0.05 rad) past the contact angle. Stillness is 
 from measured position changes, because PhysX reports nonzero joint velocity in
 sustained contact. The gripper drive uses the URDF `arm_f1x` limit (15.32 N·m).
 
-Manipulation skills (`stow` and `look_at`) sit on the same client: a skill is a generator in
-`execution/manipulation/skills/` that issues one low-level command at a time and turns
-failures into `SkillFailure` reasons. Backends `collision_avoidance_planner` and `direct`
-differ only in how the arm reaches and whether the approach is checked. Grasped objects
-are never attached in physics; a picked object's box joins the planner request, the
-trajectory guard and the map's robot voxels while the gripper still holds it. See [manipulation skills](docs/manipulation_skills.md).
+Manipulation skills (`stow`, `unstow` and `look_at`) sit on the same client: a skill is a
+generator in `skills/manipulation/execution/` that issues one low-level command at a time and
+turns failures into `SkillFailure` reasons. `look_at` tries a list of views in order until one
+is reachable; `stow` lifts the hand 0.10 m and tries again when no stow plan starts from where
+the arm is. Backends `collision_avoidance_planner` and `direct` differ only in how the arm
+reaches and whether the approach is checked. Grasped objects are never attached in physics;
+a picked object's box (`held`) joins the planner request, the trajectory guard and the map's
+robot voxels while the gripper still holds it. See [manipulation skills](docs/manipulation_skills.md).
 
 Joint trajectories have configured reference velocity/acceleration limits.
 Cartesian control is a local servo, not a collision-checked trajectory; excessive
@@ -464,7 +463,7 @@ Convex-hull robot colliders use conservative hull-plane cell pruning before sphe
 export. Other collider representations retain bounding-box coverage. Geometry
 construction remains shared between planner backends and independent validation.
 
-One arm planner host, `execution/manipulation/arm_planner.py` (`ArmPlanner`), serves the
+One arm planner host, `skills/manipulation/execution/arm_planner.py` (`ArmPlanner`), serves the
 episodes and their robot tests (known boxes or depth, as the spec grants) and the robot UI (depth). In depth
 mode each plan carries the cameras' current images; the planner rebuilds its library map in
 the body frame (cuRobo `Mapper` ESDF, MoveIt Octomap) and the library removes the robot's and
@@ -567,7 +566,7 @@ To add a new skill:
 1. Add the public method to `phygs/skills/<name>/api.py`; keep request/result types small.
 2. Put execution under `phygs/execution/<name>/`; it submits joint
    targets only through runtime-owned controllers.
-3. Bind it once in `robots/control.py` and gate it with an `allowed_actions` entry.
+3. Bind it once in `world/robot.py` and gate it with an `allowed_actions` entry.
 4. Add pure unit tests for API behavior.
 5. Add a rung to the robot-test ladder if the skill touches simulation: an agent test
    (`tests/robot_tests/episodes/`, a spec and a plan through the session) when agents call it, a

@@ -17,7 +17,7 @@ agent (:class:`~phygs.ui.session.UiSession`, every action an audited session cal
 within the spec's actions and grants) and the page is its viewer. The World writes the episode
 report (``report.json``, with the task's evaluation) and ``audit.jsonl``; the UI adds
 ``ui_summary.json``, ``ui_log.jsonl``, ``telemetry.jsonl`` and a ``recording`` that ``replay_cli.py``
-plays back. ``phygs/configs/ui/house_drawer.yaml`` runs the Bear house. The episode ends with End, the
+plays back. ``phygs/ui/configs/house_drawer.yaml`` runs the Bear house. The episode ends with End, the
 budget or E-stop. ``--demo tour`` starts at once, drives a short fixed route through the public
 locomotion API and then navigates back with Nav2, so there is something to watch.
 
@@ -43,11 +43,11 @@ sys.path.insert(0, str(PROJECT))  # Runs from a checkout without pip install.
 from isaaclab.app import AppLauncher
 
 parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-parser.add_argument("--config", type=Path, default=PROJECT / "phygs" / "configs" / "ui" / "episode.yaml")
+parser.add_argument("--config", type=Path, default=PROJECT / "phygs" / "ui" / "configs" / "episode.yaml")
 parser.add_argument(
     "--spec",
     type=Path,
-    default=PROJECT / "phygs/configs/ui/grid_drawer.yaml",
+    default=PROJECT / "phygs/ui/configs/grid_drawer.yaml",
     help="Episode spec (docs/world.md)",
 )
 parser.add_argument("--host", default="127.0.0.1", help="Address to serve on; keep it local and tunnel for remote use")
@@ -81,8 +81,8 @@ app = AppLauncher(args).app
 
 import yaml
 
-from phygs.execution.manipulation.planners.model import link_transforms
 from phygs.robots.description import load_robot
+from phygs.skills.manipulation.execution.planners.model import link_transforms
 from phygs.ui import schema
 from phygs.ui.bridge import Bridge
 from phygs.ui.recording import Recorder
@@ -99,14 +99,12 @@ def ui_cameras(robot) -> tuple[str, ...]:
 
 
 def check_spec(spec: EpisodeSpec, robot, cameras: tuple[str, ...]) -> None:
-    """The page streams ``cameras`` of ``robot``, shows the true pose, and offers no arm joint-target client."""
+    """The page streams ``cameras`` of ``robot`` and shows the true pose."""
     missing = set(cameras) - set(spec.observations.for_robot(robot))
     if missing:
         raise ValueError(f"{args.spec}: the UI streams {cameras}; the spec does not observe {sorted(missing)}.")
     if "gt_localization" not in spec.grants:
         raise ValueError(f"{args.spec}: the UI shows the true pose; grant gt_localization.")
-    if "arm" in spec.actions:
-        raise ValueError(f"{args.spec}: the UI has no arm joint-target client; use the skills or motion tier.")
 
 
 def page(spec: EpisodeSpec, task: Task) -> dict:
@@ -141,7 +139,7 @@ def tour(ui: UiSession, session):
             pose = session.observe().localization.pose.matrix
             heading = math.atan2(float(pose[1, 0]), float(pose[0, 0]))
             walked = dict(x=float(pose[0, 3]), y=float(pose[1, 3]), heading=heading)
-    ui.track("locomotion", "stop", session.locomotion.stop(), session=session)
+    ui.track("locomotion", "stop", session.locomotion.command_velocity(0.0, 0.0, 0.0), session=session)
     command = session.navigation.navigate_to(**walked)
     ui.track("navigation", "navigate_to", command, walked, session)
     while session.navigation.feedback(command).status in {"active", "stopping"}:

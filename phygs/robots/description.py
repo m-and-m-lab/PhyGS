@@ -507,7 +507,7 @@ class RobotDescription:
         the root's frame), every named joint and link exists, the arm joints are the movable joints
         from the base link to the wrist link in order, and the postures and gripper values are within
         the joint limits. Raises ``ValueError`` listing every problem."""
-        from phygs.execution.manipulation.planners.model import root_link
+        from phygs.skills.manipulation.execution.planners.model import root_link
 
         urdf = self._urdf
         links = {link.get("name") for link in urdf.findall("link")}

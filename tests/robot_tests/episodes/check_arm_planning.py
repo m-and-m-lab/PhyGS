@@ -47,9 +47,7 @@ def plan(session, steps: episode.Steps) -> None:
     steps.results["look_point"] = point
     for distance, elevation in SETTINGS["look_views"]:  # As an agent would: the next view if refused.
         steps.enter(f"look {distance} m {elevation} deg")
-        feedback = session.wait(
-            session.manipulation.look_at(PointTarget(point), distance_m=distance, elevation_deg=elevation)
-        )
+        feedback = session.wait(session.manipulation.look_at(PointTarget(point), views=[(distance, elevation)]))
         steps.results.setdefault("look", []).append(dict(view=[distance, elevation], **asdict(feedback)))
         if feedback.status == "succeeded":
             break

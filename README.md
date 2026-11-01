@@ -32,7 +32,7 @@ The `main` branch is the May 2026 beta (`phygs_simulation/`). The `develop` bran
 Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetched by id and version; they are made outside this repository (the paper's scene generator, a fork of Infinigen-Indoors, is on the `main` branch).
 
 1. **Robot and runtime** (`phygs/robots`, `phygs/runtime`, `phygs/sim`): a robot is one folder with a `robot.yaml` (joints, gripper tool frames, cameras by role, limits) and code only for its base controller and actuators. Spot with arm is the reference robot, walking under a learned policy at 250 Hz physics; Ridgeback-Franka is the second robot. One runtime owns the clock, every joint, command expiry, reset and the emergency stop.
-2. **Skills and backends** (`phygs/skills`, `phygs/execution`): three public clients, `locomotion` (velocity), `navigation` (`navigate_to`, `explore`, on Nav2 with a measured transit footprint, mapping the cameras' point clouds or a known map) and `manipulation` (joint and wrist moves, end-effector lines, gripper, `stow`, `look_at`, with cuRobo or MoveIt planning on known boxes or on depth). Every command has an id, feedback and cancel.
+2. **Skills and backends** (`phygs/skills`, each client's `api.py` and its `execution/`): three public clients, `locomotion` (velocity; all zeros stops), `navigation` (`navigate_to`, `explore`, on Nav2 with a measured transit footprint, mapping the cameras' point clouds or a known map) and `manipulation` (joint and wrist moves, end-effector lines, gripper, `stow`, `unstow`, `look_at`, with cuRobo or MoveIt planning on known boxes or on depth). Every command has an id, feedback and cancel.
 3. **The world and measurement** (`phygs/world`, `phygs/session`, `phygs/scene`, `phygs/recording`): an episode is a spec (scene by id, robot start, objects, actions, observations, grants, budget, seed); the `World` builds it, runs an agent's `run(session)` in its own thread, audits every call, records contacts and a third-person video, and hands ground truth to the task's evaluator once, after the robot has stopped. Provenance in every report: the USD, policy and threshold hashes and the code version.
 
 ## 🧲 Honest physics, stated first
@@ -49,17 +49,16 @@ Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetch
 PhyGS/
 ├── README.md  AGENTS.md  ARCHITECTURE.md  CHANGELOG.md  PLANS.md  pyproject.toml
 ├── phygs/                       # The framework (package `phygs`); layers and import rule in docs/layout.md
-│   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, replay_cli.py)
-│   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth
+│   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, replay_cli.py, configs/)
+│   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth,
+│   │                            # the robot's assembly (robot.py), environment.yaml (physics, cameras, Nav2, planner, timing)
 │   ├── session/                 # What an agent gets: AgentSession, target types, hints
-│   ├── composite/               # Composite skills over the session: stances, pick, place, drawers
+│   ├── composite/               # The skills that walk, then move the arm: pick, place, drawers
 │   ├── robots/                  # spot/ (robot.yaml, policy, assets/, spot_description submodule), ridgeback_franka/, _template/
-│   ├── skills/                  # Public clients: locomotion, navigation, manipulation
-│   ├── execution/               # locomotion/, navigation/ (Nav2, known map, launch file), manipulation/ (arm, skills, planners)
+│   ├── skills/                  # locomotion/, navigation/, manipulation/: each its api.py and execution/
 │   ├── sim/  recording/         # Isaac Lab adapters; the video, panels, timeline, narration
 │   ├── scene/  runtime/         # Scenes by id, fetcher, USD reader; clock, ownership, reset, e-stop
 │   ├── observations/            # Observation packets, localization, front view, colour detectors
-│   ├── configs/                 # environment.yaml (physics, cameras, Nav2, planner, timing), navigation/, ui/
 │   └── __main__.py              # The phygs command: run, ui, scenes, tests, version
 ├── tests/robot_tests/           # The robot tests (importable): 15 rungs, test tasks, fixture scenes, run_suite.py
 ├── tests/                       # Unit tests (no simulator) and the import guards
@@ -131,11 +130,11 @@ def run(session):
 | Part of the session | What it gives |
 | --- | --- |
 | `observe()`, `time()`, `wait(command)`, `sleep(seconds)`, `stream(camera)` | Observations and time. The clock is `charged` (time advances only while the agent waits) or `realtime`. |
-| `navigation`, `manipulation`, `locomotion`, `arm` | The clients the spec's `actions` allow (`skills`, `motion`, `joints` or a list). Each command: an id, `feedback(id)` with status and reason, `cancel(id)`. |
+| `navigation`, `manipulation`, `locomotion` | The clients the spec's `actions` allow (`skills`, `motion` or a list). Each command: an id, `feedback(id)` with status and reason, `cancel(id)`. |
 | `grants` and `hints` | Privileged channels the spec grants (`gt_localization`, `known_map`, `object_targets`, `scene_hints`); every use is audited and listed in the report. |
 | `finish(reason)` | Ends the episode. The World then cancels everything, keeps the grip, settles and evaluates. |
 
-Whole steps are composed over the same session by the composite skills (`phygs.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.go_to_reach(point)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.stow()`. Each tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
+The skills that walk and then move the arm are the composite skills (`phygs.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.place_upright(point)`, `skills.close_drawer(part)`. Each walks to where the arm reaches (stowing first), tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
 
 Everything the agent does goes into `audit.jsonl`; the report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
 

@@ -6,9 +6,9 @@ steps physics or writes actuator targets. These are **reaching experiments**, no
 a grasping or articulated-object opening implementation.
 
 **Changed 2026-10-13.** The independent trajectory guard, its hook on `JointTrajectory` and
-`execution/manipulation/validation.py` were removed: nothing checks or stops a planned motion
+`skills/manipulation/execution/validation.py` were removed: nothing checks or stops a planned motion
 while it runs; the evaluator records contact and judges the outcome. Skills solve IK with
-`execution/manipulation/kinematics.py` (multi-start least squares, joint limits only) instead
+`skills/manipulation/execution/kinematics.py` (multi-start least squares, joint limits only) instead
 of the planners' IK (MoveIt's single-seed KDL with 0.05 s and cuRobo's inflated self-collision
 model both refused poses the arm reaches). Mentions of the guard below are history.
 
@@ -62,7 +62,7 @@ apt-get install -y --no-install-recommends \
 The planners are qualified with MoveIt 2.12.4 and cuRobo V2 commit
 `78fd485fa82d9b9a063fb4985e371814587e666a`. V1 configuration/API is different.
 cuRobo V2 goes in its own folder, which `planner.curobo_dependencies` in
-`phygs/configs/environment.yaml` names (`/opt/curobo_deps`):
+`phygs/world/environment.yaml` names (`/opt/curobo_deps`):
 
 ```bash
 git clone https://github.com/NVlabs/curobo.git /tmp/curobo
@@ -80,13 +80,13 @@ folder stops the run with an error; there is no fallback.
 | Location | Responsibility |
 |---|---|
 | `phygs/skills/manipulation/api.py` | Agent commands; optional configured pose planner; trajectory admission |
-| `phygs/execution/manipulation/planning.py` | Named, timed trajectory contract and isolated worker transport |
-| `phygs/execution/manipulation/kinematics.py` | Arm forward and inverse kinematics from the planning URDF (joint limits only) |
-| `phygs/execution/manipulation/planners/` | Vendor adapters, worker entry point, shared Spot planning model |
-| `phygs/execution/manipulation/planners/interface.py` | Common planner contract: `plan(PlanRequest)` (depth images included) and `ik(IkRequest)`. MoveIt (KDL `set_from_ik`, Octomap) and cuRobo (`ik_solver.solve_pose`, `Mapper`, `RobotSegmenter`) implement it. The skills plan to a start pose with it, then move straight. |
-| `phygs/execution/manipulation/arm_planner.py` | `ArmPlanner`: the one planner host for episodes (and their robot tests) and the UI; known boxes, the robot's depth cameras, or both |
-| `phygs/execution/manipulation/controller.py` | Simulation-time reference following and physical completion |
-| `phygs/execution/manipulation/collision_map.py` | Known boxes into the body frame |
+| `phygs/skills/manipulation/execution/planning.py` | Named, timed trajectory contract and isolated worker transport |
+| `phygs/skills/manipulation/execution/kinematics.py` | Arm forward and inverse kinematics from the planning URDF (joint limits only) |
+| `phygs/skills/manipulation/execution/planners/` | Vendor adapters, worker entry point, shared Spot planning model |
+| `phygs/skills/manipulation/execution/planners/interface.py` | Common planner contract: `plan(PlanRequest)` (depth images included) and `ik(IkRequest)`. MoveIt (KDL `set_from_ik`, Octomap) and cuRobo (`ik_solver.solve_pose`, `Mapper`, `RobotSegmenter`) implement it. The skills plan to a start pose with it, then move straight. |
+| `phygs/skills/manipulation/execution/arm_planner.py` | `ArmPlanner`: the one planner host for episodes (and their robot tests) and the UI; known boxes, the robot's depth cameras, or both |
+| `phygs/skills/manipulation/execution/controller.py` | Simulation-time reference following and physical completion |
+| `phygs/skills/manipulation/execution/collision_map.py` | Known boxes into the body frame |
 | `tests/robot_tests/episodes/check_arm_planning.py`, `check_pick_place.py` | Agent tests: a plan through the session, independent physical assertions |
 | `tests/robot_tests/configs/arm_planning.yaml`, `pick_place.yaml`, `episodes/table_reach*.yaml` | Thresholds; the table scene and what the planner avoids |
 

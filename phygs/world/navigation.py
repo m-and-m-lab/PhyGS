@@ -18,13 +18,13 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from phygs.execution.navigation.backends.nav2 import Nav2BackendFactory, Nav2Config
-from phygs.execution.navigation.backends.nav2_stack import Nav2Stack
-from phygs.execution.navigation.backends.ros2_check import require_ros2
-from phygs.execution.navigation.floor import DeclaredFloorMap
-from phygs.execution.navigation.footprint import load_footprint, transit_footprint, validate_transit
-from phygs.execution.navigation.known_map import BoxGeometry, KnownBoxMap
 from phygs.sim.footprint import CollisionFootprint
+from phygs.skills.navigation.execution.backends.nav2 import Nav2BackendFactory, Nav2Config
+from phygs.skills.navigation.execution.backends.nav2_stack import Nav2Stack
+from phygs.skills.navigation.execution.backends.ros2_check import require_ros2
+from phygs.skills.navigation.execution.floor import DeclaredFloorMap
+from phygs.skills.navigation.execution.footprint import load_footprint, transit_footprint, validate_transit
+from phygs.skills.navigation.execution.known_map import BoxGeometry, KnownBoxMap
 
 if TYPE_CHECKING:
     from phygs.robots.description import RobotDescription
@@ -71,8 +71,8 @@ def nav2_navigation(
     (x, y) [m] until the cameras see it; without it the whole floor is declared free)}. ``robot`` is
     the robot's description: its navigation limits, kinematics and transit footprint profile; ``base``
     reads its base link. Nav2's files (and explore_lite's log) go to ``output``."""
-    from phygs.robots.control import base_controller_class
     from phygs.skills.navigation.api import NavigationConfig
+    from phygs.world.robot import base_controller_class
 
     if (known_boxes is None) == (point_cloud is None):
         raise ValueError("Nav2 maps either known boxes or point clouds.")

@@ -9,53 +9,53 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import Future
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from phygs.execution.manipulation.controller import (
-        ManipulationController,
-    )
-    from phygs.execution.manipulation.kinematics import ArmKinematics
-    from phygs.execution.manipulation.skills.backends import DirectSkills
     from phygs.observations.types import ObservationReader
     from phygs.robots.description import RobotDescription
     from phygs.runtime.episode import EpisodeRuntime
+    from phygs.skills.manipulation.execution.backends import DirectSkills
+    from phygs.skills.manipulation.execution.controller import (
+        ManipulationController,
+    )
+    from phygs.skills.manipulation.execution.kinematics import ArmKinematics
     from phygs.skills.navigation.api import NavigationClient
 
-from phygs.execution.manipulation.lowering import TrajectoryRefused as TrajectoryRefused
-from phygs.execution.manipulation.lowering import lower, pose_error
-from phygs.execution.manipulation.planning import (
+from phygs.runtime.commands import CommandClient, CommandFeedback
+from phygs.runtime.timing import duration_ticks
+from phygs.skills.manipulation.execution.lowering import TrajectoryRefused as TrajectoryRefused
+from phygs.skills.manipulation.execution.lowering import lower, pose_error
+from phygs.skills.manipulation.execution.planning import (
     EndEffectorTrajectory as EndEffectorTrajectory,
 )
-from phygs.execution.manipulation.planning import JointTrajectory as JointTrajectory
-from phygs.execution.manipulation.skills.runner import (
+from phygs.skills.manipulation.execution.planning import JointTrajectory as JointTrajectory
+from phygs.skills.manipulation.execution.runner import (
     SkillRun,
     SkillSequence,
 )
-from phygs.execution.manipulation.skills.types import (
+from phygs.skills.manipulation.execution.types import (
     ArticulatedPart as ArticulatedPart,
 )
-from phygs.execution.manipulation.skills.types import (
+from phygs.skills.manipulation.execution.types import (
     HeldObject as HeldObject,
 )
-from phygs.execution.manipulation.skills.types import (
+from phygs.skills.manipulation.execution.types import (
     ObjectTarget as ObjectTarget,
 )
-from phygs.execution.manipulation.skills.types import (
+from phygs.skills.manipulation.execution.types import (
     PixelTarget as PixelTarget,
 )
-from phygs.execution.manipulation.skills.types import (
+from phygs.skills.manipulation.execution.types import (
     PointTarget as PointTarget,
 )
-from phygs.execution.manipulation.skills.types import SkillFailure
-from phygs.execution.manipulation.skills.types import (
+from phygs.skills.manipulation.execution.types import SkillFailure
+from phygs.skills.manipulation.execution.types import (
     SkillTarget as SkillTarget,
 )
-from phygs.runtime.commands import CommandClient, CommandFeedback
-from phygs.runtime.timing import duration_ticks
 
 
 @dataclass(frozen=True)
@@ -251,7 +251,8 @@ class ManipulationClient(CommandClient):
         """Fold the arm into the transit posture navigation requires; close an empty gripper.
 
         A held object stays held and is carried; the planned part avoids obstacles with ``held``
-        (its box and name). The navigation footprint does not cover it.
+        (its box and name). The navigation footprint does not cover it. When no stow plan starts
+        from where the arm is, the hand rises 0.10 m straight up and the stow is tried once more.
         """
         return self._start_skill("stow", lambda skills: skills.stow(held))
 
@@ -265,17 +266,19 @@ class ManipulationClient(CommandClient):
         self,
         target: SkillTarget,
         *,
-        distance_m: float = 0.5,
-        elevation_deg: float = 45.0,
+        views: Sequence[tuple[float, float]] | None = None,
         held: HeldObject | None = None,
     ) -> int:
-        """Move the hand camera to one view of the target and aim it there, upright.
+        """Move the hand camera to a view of the target and aim it there, upright.
 
-        The camera is distance_m [m] from the target, elevation_deg [deg] above the horizontal,
-        on the robot's side. Ends when the arm has settled; it does not check what the camera
-        sees: observe afterwards to get the view. An object target means its center.
+        ``views`` are (distance [m] from the target, elevation [deg] above the horizontal) pairs on
+        the robot's side, tried in order until one is reachable (None: the skill settings' ``look_views``,
+        e.g. ``[(0.5, 45.0)]`` for one view). Ends when the arm has settled; it does not check what
+        the camera sees: observe afterwards to get the view. An object target means its center.
+        ``held`` as for :meth:`stow`. The feedback's ``step`` names the view reached.
         """
-        return self._start_skill("look_at", lambda skills: skills.look_at(target, distance_m, elevation_deg, held))
+        views = None if views is None else tuple((float(d), float(e)) for d, e in views)
+        return self._start_skill("look_at", lambda skills: skills.look_at(target, views, held))
 
     def _start_skill(self, name: str, sequence: Callable[[DirectSkills], SkillSequence]) -> int:
         if self._skills is None:
@@ -351,8 +354,8 @@ class ManipulationClient(CommandClient):
         A configured planner plans around the permitted obstacles and times the motion; ``held`` is
         the object the gripper carries (its box in the wrist frame and name), so the planner avoids
         obstacles with it and leaves it out of them. From the stow the arm first moves straight to
-        the pre-stow posture. Otherwise this uses free-space differential IK,
-        with duration defaulting to 3 s. Planner failure never switches to differential IK.
+        the pre-stow posture. Otherwise this uses free-space differential IK, with duration
+        defaulting to 3 s. Planner failure never switches to differential IK.
         """
         pose_xyzw = self._wrist_pose(pose_xyzw, tool)
         self._require_available()

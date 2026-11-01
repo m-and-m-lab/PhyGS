@@ -9,7 +9,7 @@ After the reset's settle the robot must stand (its base upright, above its falle
 scene body must be at rest where the episode placed it, and every drawer closed. A failed check is
 a setup error: the World reports it (``status: setup_error``) and never starts the agent, so a broken
 scene or episode is fixed, not scored. The limits are the ``start_check`` settings
-(``configs/environment.yaml``).
+(``world/environment.yaml``).
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ def check(truth, fallen_height: float | None, limits: dict) -> dict:
     drawers start open."""
     missing = set(LIMITS) - set(limits)
     if missing:
-        raise ValueError(f"start_check lacks {sorted(missing)} (configs/environment.yaml).")
+        raise ValueError(f"start_check lacks {sorted(missing)} (world/environment.yaml).")
     base = truth.base_pose()
     height, up = float(base[2, 3]), float(base[2, 2])
     motion = truth.body_motion()

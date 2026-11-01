@@ -32,10 +32,9 @@ SCHEMA = 3
 ACTION_SETS = {
     "skills": ("navigation", "manipulation"),
     "motion": ("navigation", "manipulation", "motion"),
-    "joints": ("motion", "arm"),
 }
 UNSUPPORTED_ACTION_SETS = {"whole_body": "leg joint targets need a runtime without the walking policy"}
-ACTIONS = ("navigation", "manipulation", "motion", "arm")
+ACTIONS = ("navigation", "manipulation", "motion")
 GRANTS = ("gt_localization", "known_map", "object_targets", "scene_hints")
 
 

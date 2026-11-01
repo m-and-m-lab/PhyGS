@@ -31,12 +31,13 @@ from typing import Any
 
 import numpy as np
 
-from phygs.execution.manipulation.lowering import TrajectoryRefused  # noqa: F401 (re-exported for agents)
-from phygs.execution.manipulation.planning import (  # noqa: F401 (re-exported for agents)
+from phygs.robots.description import RobotInfo  # noqa: F401 (re-exported for agents)
+from phygs.skills.manipulation.execution.lowering import TrajectoryRefused  # noqa: F401 (re-exported for agents)
+from phygs.skills.manipulation.execution.planning import (  # noqa: F401 (re-exported for agents)
     EndEffectorTrajectory,
     JointTrajectory,
 )
-from phygs.execution.manipulation.skills.types import (  # noqa: F401 (re-exported for agents)
+from phygs.skills.manipulation.execution.types import (  # noqa: F401 (re-exported for agents)
     ArticulatedPart,
     HeldObject,
     ObjectTarget,
@@ -47,7 +48,6 @@ from phygs.execution.manipulation.skills.types import (  # noqa: F401 (re-export
     motion_failure,
     unit_approach,
 )
-from phygs.robots.description import RobotInfo  # noqa: F401 (re-exported for agents)
 
 # Command statuses of a command still running (every skill client).
 ACTIVE = frozenset({"active", "stopping"})
@@ -56,7 +56,6 @@ CLIENTS = {
     "navigation": ("navigation", "skills"),
     "manipulation": ("manipulation", "skills"),
     "locomotion": ("motion", "motion"),
-    "arm": ("arm", "joints"),
 }
 # Client members only the World uses: ticking, resets, wiring.
 ENVIRONMENT_ONLY = frozenset(
@@ -342,7 +341,7 @@ class AgentSession:
     """The only object an agent receives.
 
     ``robot`` describes the robot (:class:`RobotInfo`: arm joints, gripper, tools, cameras).
-    ``navigation``, ``manipulation``, ``locomotion`` and ``arm`` are the skill clients the tier
+    ``navigation``, ``manipulation`` and ``locomotion`` are the skill clients the tier
     allows (None otherwise); ``hints`` are the privileged hints, each call refused without its
     grant. Command ids are :class:`Command` ints; :meth:`wait` returns a command's final feedback.
     :meth:`step` names a part of the agent's plan for the run's timeline.

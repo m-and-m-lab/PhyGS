@@ -66,17 +66,17 @@ def test_an_episode_ended_by_the_environment_ends_the_page():
 def test_estop_stops_the_base_and_finishes_the_episode_as_interrupted():
     control, bridge, ui = episode()
     stops = []
-    control.locomotion.stop = lambda: stops.append("stop") or 7
+    control.locomotion.command_velocity = lambda *velocity: stops.append(velocity) or 7
     bridge.request(START)
     bridge.request({"type": "estop"})
     ui.update()
     assert ui.phase == "ended" and events(bridge, "episode")[-1]["outcome"] == "interrupted"
-    assert stops == ["stop"] and ui.robot.finished == ["E-stop from the UI"]
+    assert stops == [(0.0, 0.0, 0.0)] and ui.robot.finished == ["E-stop from the UI"]
     assert ui.summary()["reason"] == "E-stop from the UI"
     # A failing step is shown, and the episode still ends.
     control, bridge, ui = episode()
     bridge.request(START)
     bridge.request({"type": "estop"})
-    ui.update()  # The fake base has no stop(): the error is shown.
+    ui.update()  # The fake base has no command_velocity(): the error is shown.
     assert ui.robot.finished == ["E-stop from the UI"]
     assert "E-stop could not stop the base" in events(bridge, "error")[-1]["message"]

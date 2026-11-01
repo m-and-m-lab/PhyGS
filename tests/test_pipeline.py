@@ -12,12 +12,6 @@ import pytest
 import torch
 from fakes import SPOT_COVERAGE, SPOT_DEAD_BAND, FakeWorld, Motion, ObservationScene, Runtime, grid, observations
 
-from phygs.execution.navigation.backends.nav2 import (
-    Nav2BackendFactory,
-    Nav2Config,
-    Nav2NavigationBackend,
-    Nav2Update,
-)
 from phygs.observations.types import (
     CameraPermission,
     LocalizationObservation,
@@ -33,6 +27,12 @@ from phygs.runtime.pipeline import (
     ServiceDeclaration,
 )
 from phygs.skills.navigation.api import NavigationClient, NavigationConfig
+from phygs.skills.navigation.execution.backends.nav2 import (
+    Nav2BackendFactory,
+    Nav2Config,
+    Nav2NavigationBackend,
+    Nav2Update,
+)
 
 
 def capture(localization="ground_truth"):

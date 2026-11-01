@@ -24,6 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # phygs from the c
 
 from phygs_robot_tests.common import CONFIGS, Check, parser, robot  # noqa: E402
 
+from phygs.session import AgentFailed  # noqa: E402
+
 SETTINGS = yaml.safe_load((CONFIGS / "episodes.yaml").read_text())
 
 
@@ -47,7 +49,7 @@ def start(description: str, default_spec: str, extra=None):
 
 def world(args, spec, planner: str | None = None):
     """The episode's World (a context manager); ``planner`` (``curobo`` or ``moveit``) overrides the
-    arm planner backend of ``phygs/configs/environment.yaml``."""
+    arm planner backend of ``phygs/world/environment.yaml``."""
     from phygs_robot_tests.tasks import load_task
 
     from phygs.world import World
@@ -96,6 +98,14 @@ class Steps:
             self._each_tick(world, self.current)
 
 
+def stow(session, held=None) -> None:
+    """Stow the arm, carrying ``held`` (the object the gripper holds), and wait; an agent failure
+    when it fails."""
+    feedback = session.wait(session.manipulation.stow(held=held))
+    if feedback.status != "succeeded":
+        raise AgentFailed(f"stow: {feedback.reason}")
+
+
 def move_body(world, name: str, position, yaw: float = 0.0) -> None:
     """Place the kinematic scene body ``name`` (furniture, a course's box) at a world position [m] and
     yaw [rad] (test side only)."""
@@ -117,8 +127,8 @@ def clearance(world, boxes) -> float:
     nearest of ``boxes`` ((centre, size) [m]); negative: they overlap (the robot touches it)."""
     import math
 
-    from phygs.execution.navigation.footprint import transit_footprint
-    from phygs.execution.navigation.known_map import footprint_corners, rectangle_box_distance
+    from phygs.skills.navigation.execution.footprint import transit_footprint
+    from phygs.skills.navigation.execution.known_map import footprint_corners, rectangle_box_distance
 
     footprint = getattr(world, "_robot_test_footprint", None)
     if footprint is None:
@@ -173,7 +183,7 @@ def pose_error(achieved: np.ndarray, goal) -> tuple[float, float]:
 
 def geometry_audit(world, cell_size: float) -> dict:
     """USD collider coverage by the planner's sphere model of the robot (``qualified`` or not)."""
-    from phygs.execution.manipulation.planners.model import audit_collision_geometry, collider_spheres
+    from phygs.skills.manipulation.execution.planners.model import audit_collision_geometry, collider_spheres
 
     planning = world.robot.planning
     spheres = collider_spheres(world.sim.stage, ROBOT_PATH, planning, cell_size=cell_size)
@@ -185,7 +195,7 @@ def link_alignment(world) -> dict:
     position [m] and rotation [rad] error, and the link with the largest position error."""
     from scipy.spatial.transform import Rotation
 
-    from phygs.execution.manipulation.planners.model import link_transforms
+    from phygs.skills.manipulation.execution.planners.model import link_transforms
 
     robot = world.scene["robot"]
     packet = world.control.observe()
@@ -272,7 +282,7 @@ def save_view(rgb: np.ndarray, path: Path, label: str) -> None:
 def blocked_start(world, goal: dict[str, float]) -> dict:
     """Ask the arm planner for a plan from the measured arm, inside a 4 m box around the robot, to
     the arm with the ``goal`` joints [rad] changed; its result (``success`` must be False)."""
-    from phygs.execution.manipulation.planners.interface import PlanRequest
+    from phygs.skills.manipulation.execution.planners.interface import PlanRequest
 
     packet = world.control.observe()
     joints = dict(zip(packet.joints.names, packet.joints.positions.cpu().tolist(), strict=True))
@@ -288,7 +298,7 @@ def blocked_start(world, goal: dict[str, float]) -> dict:
 
 def jaw_bottom(world) -> float:
     """The lowest point [m] of the jaws' collision spheres in the planner's model, at the measured joints."""
-    from phygs.execution.manipulation.planners.model import transformed_spheres
+    from phygs.skills.manipulation.execution.planners.model import transformed_spheres
 
     model = world.planner.model
     packet = world.control.observe()

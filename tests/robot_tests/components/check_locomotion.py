@@ -39,10 +39,10 @@ from isaaclab.assets import AssetBaseCfg  # noqa: E402
 from isaaclab.scene import InteractiveScene  # noqa: E402
 from isaaclab.sensors import ContactSensorCfg  # noqa: E402
 
-from phygs.robots.control import RobotControl  # noqa: E402
-from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
+from phygs.sim.robot_scene import make_scene_cfg, simulation_cfg  # noqa: E402
+from phygs.world.robot import RobotControl  # noqa: E402
 
 require = common.require
 _ARM_POSE_LIBRARY_PATH = common.ROOT / "spot_arm_pose_library.npz"
@@ -121,7 +121,17 @@ def create_control():
     robot = scene["robot"]
     require(not robot.is_fixed_base, "The locomotion check requires a floating-base walking robot")
     mode = RunMode.HUMAN if args.manual else RunMode.AUTONOMOUS
-    return RobotControl.create(sim, scene, robot_description, mode=mode), scene
+    control = RobotControl.create(
+        sim, scene, robot_description, mode=mode, manipulation=True, allowed_actions=("motion", "manipulation")
+    )
+    return control, scene
+
+
+def move_arm(control, target: dict[str, float]) -> int:
+    """Move arm joints [rad] while the base walks: the manipulation client's joint move."""
+    return control.manipulation.move_joints(
+        target, duration=max(1.0, control.manipulation.minimum_move_duration(target))
+    )
 
 
 def run_auto(control, scene, report):
@@ -153,7 +163,7 @@ def run_auto(control, scene, report):
         report["scenarios"].append(entry)
         motion_seconds = config["collision_seconds"] if name == "collision" else config["motion_seconds"]
         command_id = control.locomotion.command_velocity(*command, duration=motion_seconds)
-        control.arm.command_joint_positions({"arm_sh0": config["arm_target_rad"]}, duration=1.0)
+        move_arm(control, {"arm_sh0": config["arm_target_rad"]})
         ticks, sample_ticks = duration_ticks(motion_seconds, dt), duration_ticks(config["sample_seconds"], dt)
         peak_contact_force = 0.0
         measurements = []
@@ -194,7 +204,7 @@ def run_auto(control, scene, report):
             f"Arm target was not maintained while walking: {arm_position}",
         )
         # Forward tests expiration; the remaining scenarios request an explicit stop.
-        stop_id = command_id if name == "forward" else control.locomotion.stop()
+        stop_id = command_id if name == "forward" else control.locomotion.command_velocity(0.0, 0.0, 0.0)
         for _ in range(duration_ticks(config["stop_observation_seconds"], dt)):
             control.step()
         final = observe(robot)
@@ -243,7 +253,7 @@ def run_manual(control, scene, report):
                 control.locomotion.command_velocity(*command(), duration=0.5)
             if control.runtime.tick % arm_ticks == 0:
                 pose = arm_poses[int(rng.integers(len(arm_poses)))]
-                control.arm.command_joint_positions(dict(zip(_ARM_POSE_JOINT_ORDER, pose.tolist(), strict=True)))
+                move_arm(control, dict(zip(_ARM_POSE_JOINT_ORDER, pose.tolist(), strict=True)))
             control.step()
             if control.runtime.tick % duration_ticks(1.0, dt) == 0:
                 print(

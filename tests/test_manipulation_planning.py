@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from fakes import SPOT, FakeScene, advance, isaaclab_world, setup
 
-from phygs.execution.manipulation.collision_map import boxes_in_body
-from phygs.execution.manipulation.planners.interface import IkRequest, PlanRequest
-from phygs.execution.manipulation.planning import JointTrajectory
+from phygs.skills.manipulation.execution.collision_map import boxes_in_body
+from phygs.skills.manipulation.execution.planners.interface import IkRequest, PlanRequest
+from phygs.skills.manipulation.execution.planning import JointTrajectory
 
 REQUEST = PlanRequest(start=[0.0] * 6, boxes=[], goal=[0.0] * 6)
 
@@ -184,7 +184,7 @@ def test_async_stale_start_fails_without_motion():
 def test_geometry_includes_hidden_guide_colliders_and_primitive_interiors():
     from pxr import Usd, UsdGeom, UsdPhysics
 
-    from phygs.execution.manipulation.planners.model import audit_collision_geometry, collider_spheres
+    from phygs.skills.manipulation.execution.planners.model import audit_collision_geometry, collider_spheres
 
     stage = Usd.Stage.CreateInMemory()
     root = UsdGeom.Xform.Define(stage, "/Robot")
@@ -214,7 +214,7 @@ def test_geometry_includes_hidden_guide_colliders_and_primitive_interiors():
 def test_convex_hull_spheres_exclude_empty_aabb_corners_without_losing_coverage():
     from pxr import Usd, UsdGeom, UsdPhysics
 
-    from phygs.execution.manipulation.planners.model import collider_spheres
+    from phygs.skills.manipulation.execution.planners.model import collider_spheres
 
     stage = Usd.Stage.CreateInMemory()
     UsdGeom.Xform.Define(stage, "/robot")
@@ -236,7 +236,7 @@ def test_convex_hull_spheres_exclude_empty_aabb_corners_without_losing_coverage(
 
 
 def test_batched_sphere_transforms_match_individual_transforms(tmp_path):
-    from phygs.execution.manipulation.planners.model import link_transforms, transformed_spheres
+    from phygs.skills.manipulation.execution.planners.model import link_transforms, transformed_spheres
 
     urdf = tmp_path / "robot.urdf"
     urdf.write_text(
@@ -263,7 +263,7 @@ def test_batched_sphere_transforms_match_individual_transforms(tmp_path):
 
 
 def test_kinematics_cache_reloads_file_and_keeps_current_joint_state(tmp_path, monkeypatch):
-    from phygs.execution.manipulation.planners import model
+    from phygs.skills.manipulation.execution.planners import model
 
     path = tmp_path / "robot.urdf"
     template = (
@@ -298,7 +298,7 @@ def test_kinematics_cache_reloads_file_and_keeps_current_joint_state(tmp_path, m
 def test_plan_request_round_trips_through_json_and_needs_one_goal():
     import json
 
-    from phygs.execution.manipulation.planners.interface import (
+    from phygs.skills.manipulation.execution.planners.interface import (
         DepthImage,
         HeldShape,
         IkRequest,
@@ -327,7 +327,7 @@ def test_planner_process_stays_busy_until_an_abandoned_request_finishes(tmp_path
     import textwrap
     import time
 
-    from phygs.execution.manipulation.planning import PlannerProcess
+    from phygs.skills.manipulation.execution.planning import PlannerProcess
 
     worker = tmp_path / "worker.py"
     worker.write_text(
@@ -371,7 +371,7 @@ def test_planner_process_close_kills_a_worker_that_ignores_shutdown(tmp_path):
     import sys
     import textwrap
 
-    from phygs.execution.manipulation.planning import PlannerProcess
+    from phygs.skills.manipulation.execution.planning import PlannerProcess
 
     worker = tmp_path / "stubborn.py"
     worker.write_text(
@@ -397,7 +397,7 @@ def test_planner_process_close_kills_a_worker_that_ignores_shutdown(tmp_path):
 def test_planning_model_uses_urdf_meshes_plus_usd_boxes_and_skips_static_pairs(tmp_path):
     import xml.etree.ElementTree as ET
 
-    from phygs.execution.manipulation.planners.model import prepare_model
+    from phygs.skills.manipulation.execution.planners.model import prepare_model
 
     # Every joint outside the arm, as measured (the model locks them).
     locked = dict.fromkeys(set(SPOT.joint_limits) - set(SPOT.arm.joints), 0.0)
@@ -462,7 +462,7 @@ def test_usd_only_boxes_cover_colliders_the_urdf_lacks():
     pytest.importorskip("pxr")
     from pxr import Usd, UsdGeom, UsdPhysics
 
-    from phygs.execution.manipulation.planners.model import usd_only_boxes
+    from phygs.skills.manipulation.execution.planners.model import usd_only_boxes
 
     stage = Usd.Stage.CreateInMemory()
     UsdGeom.Xform.Define(stage, "/robot")
@@ -481,7 +481,7 @@ def test_usd_only_boxes_cover_colliders_the_urdf_lacks():
 def test_arm_ik_solves_reachable_poses_and_stays_inside_single_precision_limits(tmp_path):
     from scipy.spatial.transform import Rotation
 
-    from phygs.execution.manipulation.kinematics import ArmKinematics
+    from phygs.skills.manipulation.execution.kinematics import ArmKinematics
 
     links = "".join(f'<link name="{n}"/>' for n in ("body", "a", "b"))
     urdf = tmp_path / "arm.urdf"
@@ -512,7 +512,7 @@ def test_arm_ik_returns_the_solution_nearest_the_seed(tmp_path):
     """A planar three-link arm reaches a tip pose elbow up or elbow down; the seed's side is kept."""
     from scipy.spatial.transform import Rotation
 
-    from phygs.execution.manipulation.kinematics import ArmKinematics
+    from phygs.skills.manipulation.execution.kinematics import ArmKinematics
 
     links = "".join(f'<link name="{n}"/>' for n in ("body", "a", "b", "c", "tip"))
     joint = '<joint name="{}" type="revolute"><parent link="{}"/><child link="{}"/><origin xyz="{} 0 0"/>'

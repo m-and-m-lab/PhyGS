@@ -13,34 +13,63 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.10.0 (not tagged yet)
 
-The composite skills are part of the framework (2026-11-01): whole steps an agent asks for, given
-explicit affordances, over the agent session only. They replace the robot tests' routines, which
-were test code that a benchmark imported.
+The composite skills are part of the framework (2026-11-01): the skills that walk and then move
+the arm, given explicit affordances, over the agent session only. They replace the robot tests'
+routines, which were test code that a benchmark imported. One skill list: what a composite skill
+added to a session skill (a retry, a view list, a lift before a stow) moved into the session skill,
+and no composite skill repeats one. Each skill's machinery lives under its client
+(`skills/<name>/execution/`), each config beside its one reader ([docs/layout.md](docs/layout.md)).
 
 Added (2026-11-01):
 
-- `phygs.composite`: `CompositeSkills(session, tuning=TUNING)` with `walk`, `go_to_reach`, `stow`,
-  `look_at`, `pick`, `place`, `place_upright`, `place_spot`, `open_drawer` and `close_drawer`, and the
-  stances they compute (`open_stance`, `close_stance`, `reach_stances`) from a drawer part or a point
-  and the grip range. Each skill tries its listed options in order (`Tuning`, tuned on Spot) and
-  returns an `Outcome`: the option that worked, how many were refused, and what the robot measured
-  (the hand's travel along a slide, the hold reading, the base pose). The package imports the
-  session only (`tests/test_agent_imports.py`); `tests/test_public_surface.py` lists its names.
+- `phygs.composite`: `CompositeSkills(session, tuning=TUNING)` with `pick`, `place`,
+  `place_upright`, `open_drawer` and `close_drawer`; each walks to a stance it computes from a
+  drawer part or a point and the grip range (`open_stance`, `close_stance`, `reach_stances`;
+  `place_spot` for a drawer), stowing the arm first, then moves the arm. Each skill tries its listed
+  options in order (`Tuning`, tuned on Spot) and returns an `Outcome`: the option that worked, how
+  many were refused, and what the robot measured (the hand's travel along a slide, the hold
+  reading, the base pose). The package imports the session only (`tests/test_agent_imports.py`);
+  `tests/test_public_surface.py` lists its names.
+- `ManipulationClient.look_at(target, views=...)`: (distance [m], elevation [deg]) views tried in
+  order until one is reachable; without `views`, `SkillConfig.look_views` (five views measured on
+  Spot). Fails `out_of_reach` when none is.
+- `ManipulationClient.stow`: when no stow plan starts from where the arm is, the hand rises 0.10 m
+  straight up and the stow is tried once more.
 - `MotionConfig.hold_tolerance` (robot.yaml `arm.motion.hold_tolerance`, optional; default a fifth
   of `grip_squeeze`): how far short of its squeeze setpoint the gripper must stay to read as holding.
 
 Changed (2026-11-01):
 
+- **Breaking:** `ManipulationClient.look_at(target, distance_m=..., elevation_deg=...)` is
+  `look_at(target, views=[(distance_m, elevation_deg)])`.
+- **Breaking:** `LocomotionClient.stop()` is gone: `command_velocity(0, 0, 0)` starts the same
+  controlled stop at once (slow down, stand, release), its command ending when the base stands.
+- **Breaking:** paths moved; old imports fail with `ModuleNotFoundError` (the table is in
+  [docs/layout.md](docs/layout.md), "Moved in 0.10.0"): `phygs.execution.<name>` is
+  `phygs.skills.<name>.execution` (`execution.manipulation.skills.*` is
+  `skills.manipulation.execution.*`), `phygs.robots.control` is `phygs.world.robot`,
+  `phygs.robots.scene` is `phygs.sim.robot_scene`, `phygs/configs/environment.yaml` is
+  `phygs/world/environment.yaml`, `phygs/configs/navigation/` is
+  `phygs/skills/navigation/execution/launch/` and `phygs/configs/ui/` is `phygs/ui/configs/`.
+- navigate_to with the arm out of the transit posture is refused with "stow it first".
+- The composite pick measures the held box in the wrist frame after the jaws close, as the routines
+  did: closing moved Spot's wrist 2.8 cm, and measured before it the place missed by 2.3 cm.
 - The robot tests' episode plans (`check_retrieve`, `check_drawer_stroke`, `check_drawer_place`,
   `check_pick_place`) use `phygs.composite`. The close stance centres the push in the grip range and
   the table stance faces the target along the line from the base, both computed: the per-scene
-  stance files are gone. A table stance that navigation refuses (the robot does not fit there)
-  turns about the target (`reach_turns_deg`). A refused drawer stroke stands again one walk
+  stance files are gone. A point within 45 deg of the base's heading is reached keeping the heading
+  (`keep_heading_deg`; square to the drawer the robot stands at: along the line of sight, 16 deg
+  off square, a house drawer pick closed on nothing). A table stance that navigation refuses (the
+  robot does not fit there) turns about the target (`reach_turns_deg`). A refused drawer stroke stands again one walk
   tolerance nearer. A drawer place spot keeps 0.08 m from the drawer front (was 0.02 m; the planned
   move above it was refused at 0.05 m), so an opening under 0.27 m moves it toward the carcass.
 
 Removed (2026-11-01):
 
+- **Breaking:** the joint-target tier: `actions: joints`, the `arm` action, `session.arm`
+  (`ArmClient.command_joint_positions`) and `phygs.robots.posture`. Use `manipulation.move_joints`
+  (with velocity limits and a settling check); the entry-point rung's second spec is
+  `motion_grid` (locomotion only).
 - `phygs_robot_tests.routines` (`arm`, `base`, `drawer`, `geometry`, `params.yaml`) and
   `tests/robot_tests/configs/stances/`. Use `phygs.composite.CompositeSkills` (the same moves, with
   explicit affordances instead of part names) and `phygs.composite.geometry` (the same functions);

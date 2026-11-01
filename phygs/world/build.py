@@ -19,15 +19,15 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from phygs.execution.navigation.footprint import transit_footprint
 from phygs.observations.types import CameraPermission, ObservationAccess, ObservationConfig
 from phygs.recording.panels import PanelFeed
 from phygs.robots.description import RobotDescription
 from phygs.runtime.pipeline import PipelineConfig, ServiceDeclaration
+from phygs.skills.navigation.execution.footprint import transit_footprint
 from phygs.world.spec import EpisodeSpec
 
 PROJECT = Path(__file__).resolve().parents[2]  # The PhyGS checkout.
-SETTINGS = PROJECT / "phygs" / "configs" / "environment.yaml"  # The framework's settings.
+SETTINGS = PROJECT / "phygs" / "world" / "environment.yaml"  # The framework's settings.
 
 
 def load_settings(path: Path, overrides: dict | None = None) -> dict:

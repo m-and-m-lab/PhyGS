@@ -3,8 +3,4 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Basic arm and gripper commands; optional grasp experiments import their own modules."""
-
-from .api import ManipulationClient, MotionFeedback
-
-__all__ = ["ManipulationClient", "MotionFeedback"]
+"""Public manipulation skill interface; import commands from api.py, the machinery is in execution/."""

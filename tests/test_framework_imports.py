@@ -20,7 +20,7 @@ PACKAGE = PROJECT / "phygs"
 FRAMEWORK = sorted(path for path in PACKAGE.rglob("*.py") if path.relative_to(PACKAGE).parts[0] != "agents")
 SKILLS = sorted((PACKAGE / "skills").rglob("*.py"))
 SPECS = sorted((PROJECT / "tests" / "robot_tests" / "configs" / "episodes").glob("*.yaml")) + sorted(
-    (PACKAGE / "configs" / "ui").glob("*.yaml")
+    (PACKAGE / "ui" / "configs").glob("*.yaml")
 )
 
 

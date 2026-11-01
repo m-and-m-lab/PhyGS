@@ -18,11 +18,11 @@ import torch
 from fakes import FakeWorld, advance
 from scipy.spatial.transform import Rotation
 
-from phygs.execution.locomotion.planar import PlanarJointBase
-from phygs.execution.manipulation.kinematics import ArmKinematics
-from phygs.execution.manipulation.planners.model import gripper_positions, link_transforms, prepare_model
 from phygs.robots.description import load_robot
 from phygs.runtime.episode import EpisodeRuntime, RunMode
+from phygs.skills.locomotion.execution.planar import PlanarJointBase
+from phygs.skills.manipulation.execution.kinematics import ArmKinematics
+from phygs.skills.manipulation.execution.planners.model import gripper_positions, link_transforms, prepare_model
 
 ROBOT = load_robot(Path(__file__).parent / "fixtures" / "robots" / "fake_mm")
 
@@ -63,8 +63,8 @@ def test_follower_fingers_take_the_primarys_targets_and_cannot_be_commanded_alon
         "finger_left_joint": (0.0, 0.04),
         "finger_right_joint": (0.0, 0.04),
     }
-    from phygs.execution.manipulation.controller import ManipulationController, MotionConfig
     from phygs.skills.manipulation.api import ManipulationClient
+    from phygs.skills.manipulation.execution.controller import ManipulationController, MotionConfig
 
     controller = ManipulationController(
         joints,

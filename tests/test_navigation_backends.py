@@ -13,15 +13,15 @@ import pytest
 import torch
 from fakes import SPOT_COVERAGE, SPOT_DEAD_BAND, TRANSIT, Motion, Runtime, grid, nav2_transport
 
-from phygs.execution.navigation.backends.nav2 import (
+from phygs.runtime.episode import EpisodeStatus
+from phygs.skills.navigation.api import NavigationClient, NavigationConfig
+from phygs.skills.navigation.execution.backends.nav2 import (
     ExploreEvent,
     Nav2Config,
     Nav2NavigationBackend,
     Nav2PlanningError,
     Nav2Update,
 )
-from phygs.runtime.episode import EpisodeStatus
-from phygs.skills.navigation.api import NavigationClient, NavigationConfig
 
 
 class Transport:
@@ -365,7 +365,7 @@ def test_velocity_lease_cannot_outlive_external_command(backend):
 def test_costmap_acknowledges_physical_cells_without_double_inflation():
     import numpy as np
 
-    from phygs.execution.navigation.backends.ros2 import costmap_matches
+    from phygs.skills.navigation.execution.backends.ros2 import costmap_matches
 
     source = grid()
     metadata = SimpleNamespace(
@@ -388,7 +388,7 @@ def test_ros_occupancy_preserves_unknown_before_inflation():
 
     import numpy as np
 
-    from phygs.execution.navigation.backends.ros2 import costmap_matches, occupancy_values
+    from phygs.skills.navigation.execution.backends.ros2 import costmap_matches, occupancy_values
 
     source = grid()
     occupied = source.occupied.copy()
@@ -477,7 +477,7 @@ def test_cameras_map_between_goals_only_with_the_arm_folded():
 
 
 def test_costmap_path_invalidation_uses_only_remaining_segments():
-    from phygs.execution.navigation.backends.ros2 import costmap_blocks_path
+    from phygs.skills.navigation.execution.backends.ros2 import costmap_blocks_path
 
     data = [0] * 100
     metadata = SimpleNamespace(
@@ -556,7 +556,7 @@ def test_ros2_check_before_kit_imports_no_numpy_or_torch():
     from pathlib import Path
 
     code = (
-        "import sys; import phygs.execution.navigation.backends.ros2_check; "
+        "import sys; import phygs.skills.navigation.execution.backends.ros2_check; "
         "print(sorted(m for m in ('numpy', 'torch') if m in sys.modules))"
     )
     source = Path(__file__).parents[1]

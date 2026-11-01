@@ -19,9 +19,9 @@ for module in ("nav2_msgs.srv", "nav2_msgs.action", "rosgraph_msgs.msg"):
 
 from fakes import nav2_transport  # noqa: E402
 
-from phygs.execution.navigation.backends.nav2 import Nav2Config, Nav2State  # noqa: E402
-from phygs.execution.navigation.floor import DeclaredFloorMap  # noqa: E402
-from phygs.execution.navigation.map import RectangleFootprint  # noqa: E402
+from phygs.skills.navigation.execution.backends.nav2 import Nav2Config, Nav2State  # noqa: E402
+from phygs.skills.navigation.execution.floor import DeclaredFloorMap  # noqa: E402
+from phygs.skills.navigation.execution.map import RectangleFootprint  # noqa: E402
 
 
 def test_costmaps_clear_before_episode_observations_accumulate():
@@ -64,8 +64,8 @@ def test_planning_failure_distinguishes_blocked_goals(error_name, unreachable):
     from types import SimpleNamespace
 
     nav2_msgs = pytest.importorskip("nav2_msgs.action")
-    from phygs.execution.navigation.backends.nav2 import Nav2PlanningError
-    from phygs.execution.navigation.types import NavigationGoal
+    from phygs.skills.navigation.execution.backends.nav2 import Nav2PlanningError
+    from phygs.skills.navigation.execution.types import NavigationGoal
 
     result = nav2_msgs.ComputePathToPose.Result()
     result.error_code = getattr(result, error_name)
@@ -191,7 +191,7 @@ def test_voxel_filter_sends_one_centroid_per_occupied_cube():
     """Nav2 raytraces every point it receives: the bridge sends one point per voxel_size cube, marking
     when any point in it marks."""
     torch = pytest.importorskip("torch")
-    from phygs.execution.navigation.backends.ros2 import voxel_filter
+    from phygs.skills.navigation.execution.backends.ros2 import voxel_filter
 
     points = torch.tensor([[0.01, 0.01, 1.01], [0.03, 0.03, 1.03], [0.07, 0.0, 1.0], [-0.01, 0.0, 1.0]])
     centroids, marked = voxel_filter(points, 0.05, torch.tensor([False, True, False, False]))
@@ -242,7 +242,7 @@ def test_the_bottom_mark_margin_of_each_image_only_clears():
     import numpy as np
     import torch
 
-    from phygs.execution.navigation.backends.nav2 import Nav2Config, Nav2State
+    from phygs.skills.navigation.execution.backends.nav2 import Nav2Config, Nav2State
 
     config = Nav2Config(sensor_cameras=("front",), sensor_mark_margin=0.25)
     transport = nav2_transport(config, _state=Nav2State(1, 0.0, 0, 0, 0, 0, 0, 0))

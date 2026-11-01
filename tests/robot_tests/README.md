@@ -49,7 +49,7 @@ test side.
 | 12 | `drawer_place` | agent | Carries the target from the table into a drawer and closes it (`check_drawer_place.py`) | ROS 2, cuRobo |
 | 13 | `search_house` | component | Explores the house kitchen until a colour detector sees the cube (`check_nav2_pipeline.py`, which runs `check_house.py`) | explore_lite overlay |
 | 14 | `retrieve_grid`, `retrieve_house`, `retrieve_repeat` | agent | Finds the target in a closed drawer, opens it, picks the target, stows (`check_retrieve.py`); `retrieve_repeat` runs the grid episode three times in one World (`--repeats 3`), each from the same checked start | ROS 2, cuRobo |
-| 15 | `entry_point` | agent | The template agent through `examples/run_world.py` on a skills-tier and a joints-tier spec (`check_entry_point.py`) | ROS 2, cuRobo |
+| 15 | `entry_point` | agent | The template agent through `examples/run_world.py` on a skills-tier spec and a locomotion-only spec (`check_entry_point.py`) | ROS 2, cuRobo |
 
 Every rung takes `--robot`. A new robot starts before rung 1 with `components/check_bring_up.py`
 (spawn, drive, arm, gripper, cameras; every value from its `robot.yaml`), then rung 4 for its

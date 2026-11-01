@@ -5,7 +5,7 @@
 
 """The public entry point, as a user first runs it: ``examples/run_world.py`` with the template agent
 (``examples/agents/template.py``) on a skills-tier spec (``dev_grid_table``: walk, stow) and a
-joints-tier spec (``joints_grid``: a body velocity, an arm joint move). Each run is its own process
+locomotion-only spec (``motion_grid``: a body velocity). Each run is its own process
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code
 and ``report.json`` (and the video with ``--record``).
 
@@ -28,7 +28,7 @@ SPECS = ROOT / "configs" / "episodes"
 # Spec -> (the session levels the template uses there, the clients whose commands must succeed).
 RUNS = {
     "dev_grid_table": (["skills"], ("navigation", "manipulation")),
-    "joints_grid": (["joints", "motion"], ("locomotion", "arm")),
+    "motion_grid": (["motion"], ("locomotion",)),
 }
 REPORT_KEYS = (
     "status",

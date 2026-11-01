@@ -18,7 +18,7 @@ ARG ROS2_APT_PACKAGE=ros-base
 # Pinned versions: the ones the robot tests pass on (docs/nav2.md, docs/manipulation_planners.md).
 ARG EXPLORE_LITE_COMMIT=326cf8a0b487c34246bb8f3326afbcd69576dc60
 ARG CUROBO_COMMIT=78fd485fa82d9b9a063fb4985e371814587e666a
-# Where cuRobo V2 is installed, beside the simulator's own Torch and Warp (configs/environment.yaml
+# Where cuRobo V2 is installed, beside the simulator's own Torch and Warp (world/environment.yaml
 # planner.curobo_dependencies names it).
 ARG CUROBO_DEPENDENCIES=/opt/curobo_deps
 

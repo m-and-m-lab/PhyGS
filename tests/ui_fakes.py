@@ -261,8 +261,8 @@ class Manipulation:
         self.calls.append(("stow",))
         return len(self.calls)
 
-    def look_at(self, target, *, distance_m, elevation_deg, held=None):
-        self.calls.append(("look_at", target, distance_m, elevation_deg))
+    def look_at(self, target, *, views=None, held=None):
+        self.calls.append(("look_at", target, *views[0]))
         return len(self.calls)
 
     def move_to_pose(self, pose, *, tool="hand", held=None):  # The defaults are the API's.

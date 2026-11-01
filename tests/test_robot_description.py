@@ -132,8 +132,8 @@ def test_every_robot_s_tools_follow_the_gripper_axes():
 def test_the_motion_fields_robot_yaml_reads_are_motion_configs():
     from dataclasses import fields
 
-    from phygs.execution.manipulation.controller import MotionConfig
     from phygs.robots.description import JOINT_MOTION, OTHER_MOTION
+    from phygs.skills.manipulation.execution.controller import MotionConfig
 
     assert sorted(JOINT_MOTION + OTHER_MOTION) == sorted(f.name for f in fields(MotionConfig))
     assert load_robot(FAKE).arm.transit_posture[0] == ("lift", 0.0)
@@ -151,9 +151,9 @@ def test_two_folders_with_one_robot_name_keep_their_own_plugins(tmp_path):
 def test_a_differential_base_cannot_be_commanded_sideways():
     from types import SimpleNamespace
 
-    from phygs.execution.locomotion.base import DeadBand
     from phygs.runtime.episode import ControllerDeclaration
     from phygs.skills.locomotion.api import LocomotionClient
+    from phygs.skills.locomotion.execution.base import DeadBand
 
     controller = SimpleNamespace(
         declaration=ControllerDeclaration("locomotion", ("left_wheel", "right_wheel")),
@@ -180,8 +180,8 @@ def test_every_measured_footprint_still_matches_the_files_it_pins():
     """A robot's transit footprint (``navigation/transit.json``) pins the robot's USD and the files
     its base's motion depends on (the walking policy and its training config) by hash; a byte
     changed in any of them, even a comment, invalidates the measurement and every navigation run."""
-    from phygs.execution.navigation.footprint import load_footprint
-    from phygs.robots.control import base_controller_class
+    from phygs.skills.navigation.execution.footprint import load_footprint
+    from phygs.world.robot import base_controller_class
 
     for folder in ROBOT_FOLDERS:
         robot = load_robot(folder.name)

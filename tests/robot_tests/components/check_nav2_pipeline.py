@@ -48,7 +48,7 @@ def commands(args: argparse.Namespace) -> tuple[list[str], list[str]]:
     launch = [
         "ros2",
         "launch",
-        str(PROJECT / "phygs/execution/navigation/launch/nav2.launch.py"),
+        str(PROJECT / "phygs/skills/navigation/execution/launch/nav2.launch.py"),
         f"experiment:={ROBOT_TESTS / 'configs' / 'house.yaml'}",
         "sensor_mode:=pointcloud",
     ]
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
                         [
                             "rviz2",
                             "-d",
-                            str(PROJECT / "phygs/configs/navigation/spot_nav2.rviz"),
+                            str(PROJECT / "phygs/skills/navigation/execution/launch/spot_nav2.rviz"),
                             "--ros-args",
                             "-p",
                             "use_sim_time:=true",

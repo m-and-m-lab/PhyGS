@@ -38,13 +38,13 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from isaaclab.scene import InteractiveScene  # noqa: E402
 
-from phygs.execution.navigation.footprint import FootprintSweep  # noqa: E402
-from phygs.robots.control import RobotControl, base_controller_class  # noqa: E402
-from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
 from phygs.sim.base import BaseLink  # noqa: E402
 from phygs.sim.footprint import CollisionFootprint  # noqa: E402
+from phygs.sim.robot_scene import make_scene_cfg, simulation_cfg  # noqa: E402
+from phygs.skills.navigation.execution.footprint import FootprintSweep  # noqa: E402
+from phygs.world.robot import RobotControl, base_controller_class  # noqa: E402
 
 
 def run(report):
@@ -155,7 +155,7 @@ def run(report):
             if control.runtime.tick % every == 0:
                 entry["samples"].append(state)
         stop_position = np.asarray(state["position"][:2])
-        control.locomotion.stop()
+        control.locomotion.command_velocity(0.0, 0.0, 0.0)
         stop_distance = 0.0
         previous = stop_position
         for _ in range(duration_ticks(config["stop_seconds"], dt)):

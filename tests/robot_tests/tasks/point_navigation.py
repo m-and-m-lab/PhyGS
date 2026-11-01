@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
-from phygs.execution.navigation.types import NavigationGoal, angle_error
+from phygs.skills.navigation.execution.types import NavigationGoal, angle_error
 
 
 @dataclass(frozen=True)

@@ -130,7 +130,7 @@ Drive (hold W A S D Q E or the pad) and Stop; a running command can be cancelled
 Joint path, Stow, Open and Close move the arm and gripper; Look at and Move to pose take a point
 clicked in a camera view; Move along runs a straight wrist line in a direction. With
 `arm.backend: planned` (default) the arm plans collision-free paths on the robot's own depth
-cameras (the core `ArmPlanner`, `execution/manipulation/arm_planner.py`). Arm joints and Move to pose can Preview their plan. Drive has
+cameras (the core `ArmPlanner`, `skills/manipulation/execution/arm_planner.py`). Arm joints and Move to pose can Preview their plan. Drive has
 Look around (one turn on the spot; unknown floor is blocked, so start with it). The Telemetry
 button (key T) opens a drawer over the status column: health (speed vs real time, runner and map
 timing, planner, cameras, link), base and arm charts, joint limit margins, the mission, and any
@@ -148,7 +148,7 @@ gets `telemetry.jsonl` (5 Hz of sim time).
   scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_ui_grid
 ```
 
-`--spec <file>` runs another spec, e.g. `phygs/configs/ui/house_drawer.yaml`; `--demo tour` drives a
+`--spec <file>` runs another spec, e.g. `phygs/ui/configs/house_drawer.yaml`; `--demo tour` drives a
 short fixed route; `--autostart` starts without the page. Unit tests: `test_ui_stitch.py`,
 `test_ui_translate.py`, `test_ui_session.py`, `test_ui_episode.py`,
 `test_ui_replay.py`, `test_ui_previews.py`, `test_ui_telemetry.py`.

@@ -26,12 +26,10 @@ def plan(session, seen: dict) -> None:
     opening after it [m]."""
     skills = CompositeSkills(session)
     name = seen["drawer"] = session.hints.target().inside
-    skills.stow()
     seen["planned_m"] = skills.open_drawer(session.hints.part(name)).option["stroke_m"]
     seen["opened_m"] = session.hints.part(name).opening
-    skills.stow()
     skills.close_drawer(session.hints.part(name))
-    skills.stow()
+    episode.stow(session)
 
 
 def main() -> None:

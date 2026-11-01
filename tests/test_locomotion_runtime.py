@@ -12,11 +12,11 @@ import torch
 import yaml
 from fakes import SPOT, FakeRobot, FakeScene, FakeWorld, isaaclab_world
 
-from phygs.execution.locomotion.base import DeadBand, Deceleration
-from phygs.execution.locomotion.controller import LocomotionController
 from phygs.robots.spot.policy import SpotFlatTerrainPolicy
 from phygs.runtime.episode import EpisodeRuntime, JointTargets, RunMode
 from phygs.skills.locomotion.api import LocomotionClient
+from phygs.skills.locomotion.execution.base import DeadBand, Deceleration
+from phygs.skills.locomotion.execution.controller import LocomotionController
 
 NO_DEAD_BAND = DeadBand((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0))
 DECELERATION = Deceleration((2.0, 1.0, 2.0))
@@ -189,11 +189,11 @@ def test_updates_do_not_restart_policy_and_stop_has_feedback(policy, caplog):
     assert len(policy.policy.observations) == 1
     assert client.feedback(first).status == "overridden"
     assert client.feedback(second).status == "active"
-    stop = client.stop()
+    stop = client.command_velocity(0, 0, 0)  # All zeros stops at once.
     assert [r.getMessage() for r in caplog.records] == [
         "command_velocity: v_x 0.40 m/s, v_y 0.00 m/s, v_rot 0.00 rad/s for 0.50 s; then slowing down",
         "command_velocity: v_x 0.30 m/s, v_y 0.10 m/s, v_rot 0.00 rad/s for 0.50 s; then slowing down",
-        "stop: controlled stop requested",
+        "command_velocity: 0, stopping",
     ]
     assert client.feedback(second).status == "overridden"
     assert client.feedback(stop).status == "stopping"
@@ -231,11 +231,11 @@ def test_direct_motion_requires_explicit_navigation_handoff(policy):
     with pytest.raises(RuntimeError, match="Cancel navigation"):
         client.command_velocity(1, 0, 0)
     with pytest.raises(RuntimeError, match="controlled stop"):
-        client.stop()
+        client.command_velocity(0, 0, 0)
     assert runtime.controller_state("locomotion") == "idle"
     navigation.active = False
     assert client.command_velocity(1, 0, 0) == 1
-    assert client.stop() == 2
+    assert client.command_velocity(0, 0, 0) == 2
 
 
 @pytest.mark.parametrize("duration", [0, -1, 0.003, float("nan")])
@@ -261,33 +261,6 @@ def test_reset_does_not_turn_physical_velocity_into_a_command():
     torch.testing.assert_close(robot.data.joint_vel.torch, torch.full((1, 19), 0.3))
     torch.testing.assert_close(robot.velocity_target, torch.zeros(1, 19))
     torch.testing.assert_close(robot.effort_target, torch.zeros(1, 19))
-
-
-def test_arm_and_locomotion_clients_share_runtime_without_conflicts(policy):
-    from phygs.robots.control import ArmClient, RobotControl
-    from phygs.robots.posture import PostureController
-
-    world = robot_world()
-    locomotion = make_controller(policy)
-    posture = PostureController(world.joint_names[12:18])
-    runtime = EpisodeRuntime(world, (locomotion, posture), mode=RunMode.AUTONOMOUS)
-    client = LocomotionClient(runtime, locomotion)
-    arm = ArmClient(runtime, posture, world, dict.fromkeys(posture.declaration.joints, (-1.0, 1.0)))
-    control = RobotControl(runtime, client, arm, SPOT)
-    control.reset(settling_seconds=0.004)
-    walking = client.command_velocity(0.4, 0, 0)
-    moving_arm = arm.command_joint_positions({"joint_12": 0.3}, duration=0.1)
-    for _ in range(60):
-        control.step()
-    assert world.state["joint_12"] == pytest.approx(0.3)
-    assert arm.feedback(moving_arm).status == "done"
-    assert client.feedback(walking).status == "active"
-    with pytest.raises(ValueError, match="outside"):
-        arm.command_joint_positions({"joint_12": 2.0})
-    runtime.emergency_stop("operator")
-    control.reset(settling_seconds=0.004)
-    assert client.feedback(walking).status == "interrupted"
-    assert arm.feedback(moving_arm).status == "done"
 
 
 def test_gain_buffers_restore_to_initial_values():

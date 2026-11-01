@@ -4,7 +4,7 @@ The environment binds Spot once. Agents receive small clients; they do not load
 checkpoints, acquire joint resources, adjust actuator gains, or tick the policy.
 
 ```python
-from phygs.robots.control import RobotControl
+from phygs.world.robot import RobotControl
 from phygs.runtime.episode import RunMode
 
 # Environment setup: sim and scene have already been initialized.
@@ -15,23 +15,10 @@ control.reset()
 command_id = control.locomotion.command_velocity(0.4, 0.0, 0.0, duration=2.0)
 
 # The environment's existing loop calls control.step() once per physics tick.
-# Agents may query feedback and request stopping later:
+# Agents may query feedback and stop later: all zeros starts the controlled stop at once.
 feedback = control.locomotion.feedback(command_id)
-stop_id = control.locomotion.stop()
+stop_id = control.locomotion.command_velocity(0.0, 0.0, 0.0)
 ```
-
-An independent arm command uses the same runtime:
-
-```python
-arm_id = control.arm.command_joint_positions({"arm_sh0": 0.3}, duration=1.0)
-arm_feedback = control.arm.feedback(arm_id)
-```
-
-Arm commands interpolate from measured positions and hold unspecified arm joints.
-They validate the configured joint limits. Completion means the interpolation or
-stop sequence has finished; task evaluation must independently measure physical
-success. The gripper holds its initialized target; a gripper client is not part
-of this milestone.
 
 ## Command behavior
 

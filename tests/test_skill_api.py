@@ -23,7 +23,7 @@ from phygs.skills.navigation.api import (
     NavigationClient, NavigationGoal, NavigationConfig, NavigationFeedback,
 )
 from phygs.observations.types import ObservationConfig
-from phygs.robots.control import RobotControl, base_controller_class
+from phygs.world.robot import RobotControl, base_controller_class
 from phygs.robots.description import load_robot
 robot = load_robot("spot")
 robot.validate_urdf()

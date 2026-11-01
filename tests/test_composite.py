@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The composite skills and the robot tests' retrieve plan on a fake session: order, retries, the
-options and measurements they report, and geometry (no Isaac Sim)."""
+"""The composite skills (pick, place, open_drawer, close_drawer) and the robot tests' retrieve plan
+on a fake session: order, retries, the options and measurements they report, and geometry (no Isaac
+Sim)."""
 
 from __future__ import annotations
 
@@ -59,10 +60,10 @@ ROBOT = SPOT.info()
 class FakeSession:
     """Clients return feedback as their command id; ``wait`` hands it back. Scripted results are
     consumed in order per kind (``approach``: planned moves, ``line``: end-effector lines,
-    ``navigate_to``, ``stow``); the rest succeed. The tool pose follows the moves that succeed; the
-    arm joints are at the stow posture after a stow and out after any other arm move."""
+    ``navigate_to``, ``stow``, ``look_at``); the rest succeed. The tool pose follows the moves that
+    succeed; the arm joints are at the stow posture after a stow and out after any other arm move."""
 
-    def __init__(self, inside="storage_drawer", heading=math.pi / 2, **results):
+    def __init__(self, inside="storage_drawer", heading=math.pi / 2, navigation=True, **results):
         self.robot = ROBOT
         self.position = (0.0, 0.0)
         self.calls, self.results, self.heading = [], {k: list(v) for k, v in results.items()}, heading
@@ -72,12 +73,12 @@ class FakeSession:
         self.tool = np.array([0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0])
         target = TargetHint("target", (0.0, 2.4, 0.1), (0.04, 0.04, 0.12), inside, None if inside else "table")
         self.hints = SimpleNamespace(target=lambda: target, part=lambda name: DRAWER)
-        self.navigation = SimpleNamespace(navigate_to=self._navigate)
+        self.navigation = SimpleNamespace(navigate_to=self._navigate) if navigation else None
         self.manipulation = SimpleNamespace(
             holding=False,
             episode_id=1,
             stow=self._stow,
-            look_at=lambda target, **view: self._arm_call("look_at"),
+            look_at=lambda target, views=None, held=None: self._arm_call("look_at", views),
             open_gripper=lambda: self._gripper(False),
             close_gripper=lambda: self._gripper(True),
             move_to_pose=self._move_to_pose,
@@ -168,18 +169,18 @@ def test_the_retrieve_plan_opens_the_drawer_then_reaches_in_picks_and_stows():
     plan(session)
     releases = ["line"] * len(TUNING.handle_release)
     assert session.names() == [
-        "stow",
-        "navigate_to", "sleep",  # The open stance; the legs settle.
+        "stow", "navigate_to",  # The arm folds to walk to the open stance.
         "look_at",  # The handle.
         "open_gripper", "approach", "line", "close_gripper", "line", "open_gripper", *releases, "sleep",
-        "stow",
-        "navigate_to", "sleep",  # The reach-in stance.
+        "stow", "navigate_to",  # The reach-in stance.
         "look_at", "open_gripper", "approach", "line", "close_gripper", "line", "sleep",  # Pick: in, lift.
         "stow",
     ]  # fmt: skip
     open_walk, reach_walk = (call[1] for call in session.calls if call[0] == "navigate_to")
     assert open_walk == pytest.approx(OPEN)
     assert reach_walk == pytest.approx((0.0, 2.4 - TUNING.reach_ahead_m, math.pi / 2))  # The target ahead.
+    handle_view, target_view = (call[1] for call in session.calls if call[0] == "look_at")
+    assert handle_view == TUNING.look_views["handle"] and target_view is None  # look_at's own views.
     into, slide, *release = session.lines()[: 2 + len(TUNING.handle_release)]
     assert into[2] == pytest.approx(TUNING.handle_approach_m[0])  # Straight onto the handle.
     assert slide[1] == (0.0, -1.0, 0.0) and slide[2] == pytest.approx(PULL_M)  # Until the grip range's near end.
@@ -203,18 +204,7 @@ def test_the_retrieve_plan_opens_the_drawer_then_reaches_in_picks_and_stows():
 def test_the_retrieve_plan_names_its_steps_for_the_timeline():
     session = FakeSession()
     plan(session)
-    assert session.steps == [
-        (0, "stow"),
-        (0, "open_drawer"),
-        (1, "walk"),
-        (1, "look_at(handle)"),
-        (0, "stow"),
-        (0, "go_to_reach"),
-        (1, "walk"),
-        (0, "pick(target)"),
-        (1, "look_at(target)"),  # Inside the pick.
-        (0, "stow"),
-    ]
+    assert session.steps == [(0, "open_drawer"), (0, "pick(target)")]
 
 
 def test_each_skill_reports_the_option_that_worked_and_what_it_measured():
@@ -223,14 +213,18 @@ def test_each_skill_reports_the_option_that_worked_and_what_it_measured():
     opened = skills.open_drawer(DRAWER)
     assert opened.option == dict(stance=0, stroke_m=pytest.approx(PULL_M), pitch_deg=30.0, approach_m=0.08, side=-1.0)
     assert opened.measured == dict(moved_m=pytest.approx(PULL_M), held_handle=True)
-    skills.stow()
-    skills.go_to_reach((0.0, 2.4, 0.1), part=DRAWER)
-    picked = skills.pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), name="target")
-    assert picked.option == dict(approach=None, yaw_deg=0.0) and picked.refused == 0
-    assert picked.measured["holding"] and skills.held.name == "target"
-    walked = skills.walk((1.0, 2.0, 0.0))
-    assert walked.option == dict(stance=[1.0, 2.0, 0.0], attempt=1)
-    assert walked.measured["base"] == pytest.approx([1.0, 2.0, 0.0])
+    picked = skills.pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), name="target", part=DRAWER)
+    stance = (0.0, 2.4 - TUNING.reach_ahead_m, math.pi / 2)
+    assert picked.option == dict(
+        approach=None,
+        yaw_deg=0.0,
+        stance=pytest.approx(stance, abs=1e-4),
+        turn_deg=0.0,
+        base=pytest.approx(stance, abs=1e-4),
+    )
+    assert picked.refused == 0 and picked.measured["holding"] and skills.held.name == "target"
+    placed = skills.place((0.0, 2.0, 0.5))
+    assert placed.option["turn_deg"] == 0.0 and len(placed.measured["released_at"]) == 3
 
 
 def test_the_pick_uses_the_target_where_the_open_drawer_moved_it():
@@ -293,20 +287,31 @@ def test_a_target_on_a_table_is_reached_along_the_line_from_the_base():
     assert session.names().count("approach") == 1  # No drawer to open: only the pick's planned move.
 
 
+def test_a_point_near_the_base_heading_is_reached_keeping_the_heading():
+    """Square to the open drawer it stands at, the robot keeps its heading for a point within
+    keep_heading_deg of it (16 deg off square, a house drawer pick closed on nothing twice)."""
+    heading = math.pi / 2 + math.radians(20.0)
+    session = FakeSession(inside=None, heading=heading)
+    CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    stance = next(call[1] for call in session.calls if call[0] == "navigate_to")
+    ahead = TUNING.reach_ahead_m
+    assert stance == pytest.approx((-ahead * math.cos(heading), 2.4 - ahead * math.sin(heading), heading))
+
+
 def test_a_reach_stance_the_robot_does_not_fit_turns_about_the_point():
     """Facing a table's corner the body did not fit at the stance (drawer_place, 2026-11-01): the
     next stance turns about the point. Square to a drawer it does not turn."""
     unreachable = Feedback("unreachable", "Nav2 planner failed with code 206")
     session = FakeSession(inside=None, heading=0.0, navigate_to=[unreachable])
-    reached = CompositeSkills(session).go_to_reach((0.0, 2.4, 0.1))
+    picked = CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
     turned = math.pi / 2 + math.radians(TUNING.reach_turns_deg[1])
     stances = [call[1] for call in session.calls if call[0] == "navigate_to"]
     assert stances[1] == pytest.approx(
         (-TUNING.reach_ahead_m * math.cos(turned), 2.4 - TUNING.reach_ahead_m * math.sin(turned), turned)
     )
-    assert reached.refused == 1 and reached.option["turn_deg"] == TUNING.reach_turns_deg[1]
+    assert picked.option["turn_deg"] == TUNING.reach_turns_deg[1]
     with pytest.raises(AgentFailed, match="unreachable"):
-        CompositeSkills(FakeSession(navigate_to=[unreachable])).go_to_reach((0.0, 2.4, 0.1), part=DRAWER)
+        CompositeSkills(FakeSession(navigate_to=[unreachable])).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), part=DRAWER)
 
 
 def test_refused_options_move_on_in_order():
@@ -347,47 +352,38 @@ def test_a_refused_release_move_is_tried_at_half_then_ends_the_release():
     assert after[0] == "sleep"  # The later release moves were skipped.
 
 
-def test_a_timed_out_walk_is_issued_again_once():
-    timed_out = Feedback("timed_out", "Navigation time budget exhausted")
-    session = FakeSession(navigate_to=[timed_out])
-    plan(session)
-    stances = [call for call in session.calls if call[0] == "navigate_to"]
-    assert stances[0][1] == stances[1][1] == pytest.approx(OPEN)
-    assert session.timeouts[0] == TUNING.walk_timeout_s
-    with pytest.raises(AgentFailed, match="timed_out"):
-        plan(FakeSession(navigate_to=[timed_out] * TUNING.walk_tries))
-    with pytest.raises(AgentFailed, match="blocked"):
-        plan(FakeSession(navigate_to=[Feedback("blocked", "Goal unreachable")]))
-
-
-def test_a_look_at_tries_each_view_and_reports_when_none_was_reachable():
-    out_of_reach = Feedback("failed", "out of reach", SkillFailure.OUT_OF_REACH, progress=0.0)
-    views = TUNING.look_views["handle"]
-    session = FakeSession(look_at=[out_of_reach])
-    looked = CompositeSkills(session).look_at((0.0, 2.0, 0.5), "handle")
-    assert looked.succeeded and looked.refused == 1
-    assert looked.option == dict(distance_m=views[1][0], elevation_deg=views[1][1])
-    session = FakeSession(look_at=[out_of_reach] * len(views))
-    looked = CompositeSkills(session).look_at((0.0, 2.0, 0.5), "handle")
-    assert not looked.succeeded and "no view" in looked.reason and session.names().count("look_at") == len(views)
-    with pytest.raises(AgentFailed, match="look_at"):
-        CompositeSkills(FakeSession(look_at=[STALLED])).look_at((0.0, 2.0, 0.5))  # Failed while moving.
-
-
-def test_a_walk_stows_an_arm_that_is_out_first():
+def test_a_walk_navigation_does_not_finish_ends_the_skill():
+    """navigate_to ends a walk itself (its fine approach, its corrections from the settled pose): no
+    time limit and no second try on top."""
     session = FakeSession()
-    CompositeSkills(session).walk((1.0, 0.0, 0.0))
-    assert session.names() == ["stow", "navigate_to", "sleep"]
+    plan(session)
+    assert session.timeouts == [None, None]
+    for status in ("timed_out", "blocked"):
+        with pytest.raises(AgentFailed, match=status):
+            plan(FakeSession(navigate_to=[Feedback(status, "Goal unreachable")]))
 
 
-def test_a_stow_without_a_plan_from_where_the_arm_is_lifts_the_hand_and_stows_again():
-    no_plan = Feedback("failed", "Pose planner failed: no_plan_within_budget", SkillFailure.PLANNING_FAILED, progress=0)
-    session = FakeSession(stow=[no_plan])
-    stowed = CompositeSkills(session).stow()
-    assert session.names() == ["stow", "line", "stow"] and stowed.option == dict(how="lift, then stow")
-    assert session.lines()[0][1:] == ((0.0, 0.0, 1.0), pytest.approx(TUNING.unstick_m))
-    with pytest.raises(AgentFailed, match="stow"):
-        CompositeSkills(FakeSession(stow=[no_plan, no_plan])).stow()
+def test_a_drawer_stroke_goes_on_when_no_view_of_the_handle_is_reachable():
+    """look_at tries the handle views itself; with none reachable the stroke goes on without the look.
+    The arm failing while it moves ends the skill."""
+    no_view = Feedback("failed", "No view of the target is reachable", SkillFailure.OUT_OF_REACH, progress=0.0)
+    opened = CompositeSkills(FakeSession(look_at=[no_view])).open_drawer(DRAWER)
+    assert opened.measured["moved_m"] == pytest.approx(PULL_M)
+    with pytest.raises(AgentFailed, match="look_at"):
+        CompositeSkills(FakeSession(look_at=[STALLED])).open_drawer(DRAWER)
+
+
+def test_a_skill_stows_an_arm_that_is_out_before_it_walks_and_without_navigation_stays():
+    session = FakeSession(inside=None)
+    CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    assert session.names()[:2] == ["stow", "navigate_to"]
+    stowed = FakeSession(inside=None)
+    stowed.arm = np.asarray(ROBOT.stow)
+    CompositeSkills(stowed).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    assert stowed.names()[0] == "navigate_to"
+    standing = FakeSession(inside=None, navigation=False)  # A tier without navigation: picks from here.
+    CompositeSkills(standing).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    assert "navigate_to" not in standing.names() and "stow" not in standing.names()
 
 
 def test_a_failure_while_moving_ends_the_plan():
@@ -396,6 +392,25 @@ def test_a_failure_while_moving_ends_the_plan():
     before_lift = 2 + len(TUNING.handle_release) + 1  # Handle in, slide, releases, pick in.
     with pytest.raises(AgentFailed, match="pick lift"):
         plan(FakeSession(line=[Feedback()] * before_lift + [STALLED]))
+
+
+def test_the_held_box_is_measured_in_the_wrist_after_the_jaws_close():
+    """Closing on the box moved Spot's wrist 2.8 cm (pick_place_depth_moveit, 2026-11-01): measured
+    before the close, the box sat that far off in the wrist frame and the place missed by 2.3 cm."""
+    session = FakeSession(inside=None)
+    close, closed_at = session.manipulation.close_gripper, []
+
+    def closing():
+        session.tool = session.tool + [0.02, 0.0, 0.02, 0.0, 0.0, 0.0, 0.0]  # The jaw pushes the wrist.
+        closed_at.append(session.tool.copy())
+        return close()
+
+    session.manipulation.close_gripper = closing
+    skills = CompositeSkills(session)
+    skills.pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), name="target")
+    session.tool = closed_at[0]
+    expected = skills.held_object("target", np.array([0.0, 2.4, 0.1]), (0.04, 0.04, 0.12))
+    assert skills.held.wrist_from_object == pytest.approx(expected.wrist_from_object)
 
 
 def test_a_place_without_a_picked_object_or_that_keeps_holding_it_fails():

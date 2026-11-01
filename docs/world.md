@@ -29,7 +29,7 @@ starts and only `World` (with `Truth` and `run_episode`) needs it.
 | --- | --- | --- |
 | Spec | `world/spec.py` (`EpisodeSpec`, `SCHEMA = 3`, `load_agent`) | Scene by id and version, robot and start, objects, an opaque `task` block, actions, observations, grants, budget, seed. A benchmark adds its own blocks beside these and strips them before `from_dict`. |
 | Task | `world/task.py` (`Task` protocol, `NoTask`, `load_task(block, loader)`) | `goal`, `description` (public), `brief()`, `reset(truth)` (the settled world, before the agent starts), `update(truth)` (every `evaluation_period_seconds` while the agent runs), `result(truth, end)` (once, after the stop and settle; `end` is an `EpisodeEnd`: how it ended, the simulated time, the arm contacts labelled unintended and the grasp's squeeze, for the benchmark's own conduct rules), `provenance()`. The framework never imports a task; it takes the object, and never reads the task's answer: the caller passes `World(target=...)`, the object the hints, the known map and the arm planner treat as the target; the grants decide what the agent learns. |
-| World | `world/world.py` (`World`, `run_episode`) | Builds the scene, robot, runtime, backends; checks the settled world before the agent starts (`world/start.py`); runs the agent in a thread; audits; stops; evaluates; writes the report. `overrides` pins settings over `configs/environment.yaml` (`world/build.py`, `SETTINGS`). |
+| World | `world/world.py` (`World`, `run_episode`) | Builds the scene, robot, runtime, backends; checks the settled world before the agent starts (`world/start.py`); runs the agent in a thread; audits; stops; evaluates; writes the report. `overrides` pins settings over `world/environment.yaml` (`world/build.py`, `SETTINGS`). |
 | Ground truth | `World.truth()` → `Truth` (`world/truth.py`) | Object poses and boxes, `held`, `pinched` (every jaw pressing on a body), arm contacts, the drawer a body started in, how far bodies moved from where they were placed, drawer openings, base pose, arm joints, stow error. Only the task's evaluator and robot tests read it. |
 | Report | `world/report.py` (`REPORT_SCHEMA`, `KEYS`, `compose`), `world/recorder.py`, `world/provenance.py` | `report.json` keys with their meaning; `audit.jsonl`; the video; hashes of every asset and threshold and the code version. `status` says whether the episode can be scored: `completed`, `setup_error` (the start check failed, the agent never ran) or `error` (the simulator or the World broke). Only `completed` episodes count in a rate. |
 | Scenes | `scene/registry.py` (`scene_file(id, version)`), `scene/fetch.py` (`phygs scenes`) | Roots: `$PHYGS_SCENES`, `~/.cache/phygs/scenes`, the fixtures. [scenes.md](scenes.md). |
@@ -61,7 +61,7 @@ renders the floor once and keeps it in `~/.cache/phygs/plans/<scene sha256>`.
 
 ## Settings a benchmark owns
 
-`configs/environment.yaml` names them in its header; a benchmark passes them as `overrides` and
+`world/environment.yaml` names them in its header; a benchmark passes them as `overrides` and
 records them in its own rules file, never a copy of the settings:
 
 | Key | What it decides |

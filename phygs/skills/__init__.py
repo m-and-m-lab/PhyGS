@@ -3,4 +3,5 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Agent-facing skill APIs: ``skills.locomotion``, ``skills.navigation`` and ``skills.manipulation``."""
+"""The skills, one folder per client: ``locomotion``, ``navigation`` and ``manipulation``, each with
+``api.py`` (the client agents call) and ``execution/`` (the machinery behind it)."""

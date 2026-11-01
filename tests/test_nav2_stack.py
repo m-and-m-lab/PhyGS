@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from phygs.execution.navigation.backends import nav2_stack
-from phygs.execution.navigation.backends.nav2_stack import Nav2Stack, stop_group
+from phygs.skills.navigation.execution.backends import nav2_stack
+from phygs.skills.navigation.execution.backends.nav2_stack import Nav2Stack, stop_group
 
 
 def test_the_stack_needs_ros_and_a_known_sensor_mode(tmp_path, monkeypatch):

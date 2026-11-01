@@ -13,16 +13,16 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from phygs.execution.navigation.footprint import (
+from phygs.skills.navigation.execution.footprint import (
     FootprintSweep,
     convex_hull,
     load_footprint,
     path_error,
     transit_footprint,
 )
-from phygs.execution.navigation.known_map import BoxGeometry, KnownBoxMap
-from phygs.execution.navigation.map import RectangleFootprint
-from phygs.execution.navigation.metrics import NavigationMeasurements
+from phygs.skills.navigation.execution.known_map import BoxGeometry, KnownBoxMap
+from phygs.skills.navigation.execution.map import RectangleFootprint
+from phygs.skills.navigation.execution.metrics import NavigationMeasurements
 
 
 def test_swept_hull_includes_motion_and_enclosing_radius():
@@ -115,8 +115,8 @@ def test_navigation_rejects_settings_outside_calibration():
 
     from fakes import SPOT, TRANSIT
 
-    from phygs.execution.navigation.footprint import validate_transit
-    from phygs.execution.navigation.types import NavigationConfig
+    from phygs.skills.navigation.execution.footprint import validate_transit
+    from phygs.skills.navigation.execution.types import NavigationConfig
 
     profile = json.loads(SPOT.navigation.footprint_profile.read_text())
     config = NavigationConfig(**SPOT.navigation.limits, arm_posture=TRANSIT)

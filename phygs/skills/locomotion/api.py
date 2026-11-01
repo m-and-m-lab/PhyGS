@@ -17,7 +17,7 @@ from phygs.runtime.episode import EpisodeRuntime
 from phygs.runtime.timing import duration_ticks
 
 if TYPE_CHECKING:
-    from phygs.execution.locomotion.base import BaseController
+    from phygs.skills.locomotion.execution.base import BaseController
     from phygs.skills.navigation.api import NavigationClient
 
 __all__ = ["LocomotionClient", "CommandFeedback"]
@@ -53,16 +53,22 @@ class LocomotionClient(CommandClient):
         self._navigation = navigation
 
     def command_velocity(self, v_x: float, v_y: float, v_rot: float, *, duration: float = 0.5) -> int:
-        """Command body velocity [m/s, m/s, rad/s] for duration [s].
+        """Command body velocity [m/s, m/s, rad/s] for duration [s]; all three 0 stops the base.
 
-        Updates preserve policy memory. Expiry decelerates before releasing the base. The robot's
-        command dead band applies per axis (``command_dead_band`` in its base settings): a small
-        command is sent as 0 and the robot stands; one below the lowest walking speed in its direction
-        is raised to that speed. A differential base refuses ``v_y`` other than 0.
+        Updates preserve policy memory. Expiry decelerates before releasing the base. A command of
+        all zeros starts that stop at once: the base slows to zero, stands, and is released; the
+        command ends when it stands (``duration`` is not used). The robot's command dead band
+        applies per axis (``command_dead_band`` in its base settings): a small command is sent as 0
+        and the robot stands; one below the lowest walking speed in its direction is raised to that
+        speed. A differential base refuses ``v_y`` other than 0.
         """
         if not self._enabled:
             raise PermissionError("Direct motion is not permitted by this task.")
         self._require_direct_control()
+        if (v_x, v_y, v_rot) == (0.0, 0.0, 0.0):
+            STEPS.info("command_velocity: 0, stopping")
+            self._announced = None
+            return self._stop()
         command_id = self._command_velocity(v_x, v_y, v_rot, duration=duration)
         command = (float(v_x), float(v_y), float(v_rot))
         if command != self._announced:  # Repeated updates of one velocity are not news.
@@ -85,20 +91,12 @@ class LocomotionClient(CommandClient):
         self._controller.command = command
         return command_id
 
-    def stop(self) -> int:
-        """Request controlled stopping and return its command ID."""
-        if not self._enabled:
-            raise PermissionError("Direct motion is not permitted by this task.")
-        self._require_direct_control()
-        STEPS.info("stop: controlled stop requested")
-        self._announced = None
-        return self._stop()
-
     def _require_direct_control(self) -> None:
         if self._navigation is not None and self._navigation.active:
             raise RuntimeError("Cancel navigation and wait for its controlled stop before direct motion.")
 
     def _stop(self) -> int:
+        """Zero velocity, then the controlled stop (navigation's and the World's stop, too)."""
         command_id = self._command_velocity(0.0, 0.0, 0.0, duration=0.5)
         self._runtime.request_stop(self._name)
         return command_id

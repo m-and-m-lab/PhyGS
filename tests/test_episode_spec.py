@@ -18,7 +18,7 @@ from phygs.world.spec import ACTION_SETS, ACTIONS, EpisodeSpec, load_agent
 
 PROJECT = Path(__file__).resolve().parents[1]
 EPISODES = PROJECT / "tests" / "robot_tests" / "configs" / "episodes"
-SPECS = sorted(EPISODES.glob("*.yaml")) + sorted((PROJECT / "phygs" / "configs" / "ui").glob("*_drawer.yaml"))
+SPECS = sorted(EPISODES.glob("*.yaml")) + sorted((PROJECT / "phygs" / "ui" / "configs").glob("*_drawer.yaml"))
 
 
 def spec_data(**changes) -> dict:
@@ -82,8 +82,11 @@ def test_a_spec_maps_a_named_action_set_to_actions_and_keeps_its_public_summary(
     summary = spec.summary()
     assert summary["scene_id"] == "grid_storage" and "goal" not in summary  # The task block is the task's.
     assert spec.task == dict(goal="retrieve", description="the small green box", target="target")
-    custom = EpisodeSpec.from_dict(spec_data(actions=["motion", "arm"]))
-    assert custom.actions == ("motion", "arm") and ACTION_SETS["skills"] == spec.actions
+    custom = EpisodeSpec.from_dict(spec_data(actions=["motion"]))
+    assert custom.actions == ("motion",) and ACTION_SETS["skills"] == spec.actions
+    for removed in ("joints", ["motion", "arm"]):  # The joint-target tier is gone (0.10.0).
+        with pytest.raises(ValueError, match="action set|subset"):
+            EpisodeSpec.from_dict(spec_data(actions=removed))
     house = EpisodeSpec.from_dict(spec_data(scene=dict(id="bear_loop_house", name="house", ground=False)))
     assert house.scene.name == "house"
 

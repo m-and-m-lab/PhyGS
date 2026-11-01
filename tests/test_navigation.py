@@ -13,10 +13,10 @@ import pytest
 import torch
 from phygs_robot_tests.tasks.point_navigation import PhysicalSample, PointNavigationEvaluator, PointNavigationTask
 
-from phygs.execution.locomotion.base import DeadBand
-from phygs.execution.navigation.known_map import BoxGeometry, KnownBoxMap
-from phygs.execution.navigation.map import GridMap, RectangleFootprint
+from phygs.skills.locomotion.execution.base import DeadBand
 from phygs.skills.navigation.api import NavigationConfig, NavigationGoal
+from phygs.skills.navigation.execution.known_map import BoxGeometry, KnownBoxMap
+from phygs.skills.navigation.execution.map import GridMap, RectangleFootprint
 
 
 def test_segments_are_blocked_by_diagonal_corners_and_subcell_intersections():
@@ -69,7 +69,7 @@ def advance(runtime, motion, client, count=1):
 
 
 def test_fine_approach_turns_first_then_moves_along_the_larger_body_axis():
-    from phygs.execution.navigation.fine_approach import FineApproach
+    from phygs.skills.navigation.execution.fine_approach import FineApproach
 
     band = DeadBand((0.04, 0.04, 0.05), (0.05, 0.05, 0.10), (0.07, 0.05, 0.10))
     # The test's own measured moves at the lowest speed (not the calibration file's): 0.7 s and 1 s.
@@ -130,16 +130,12 @@ def test_a_robot_that_cannot_fall_is_judged_without_a_height():
 
 
 def test_task_action_permissions_reject_commands_before_backend_access():
-    from phygs.robots.control import ArmClient
     from phygs.skills.locomotion.api import LocomotionClient
 
     controller = SimpleNamespace(declaration=SimpleNamespace(name="test"))
     motion = LocomotionClient(None, controller, enabled=False)
     with pytest.raises(PermissionError, match="Direct motion"):
         motion.command_velocity(0.1, 0, 0)
-    arm = ArmClient(None, controller, None, {}, enabled=False)
-    with pytest.raises(PermissionError, match="Arm commands"):
-        arm.command_joint_positions({"arm_sh0": 0.1})
 
 
 def test_the_navigation_course_refuses_its_goals_for_the_stated_reason():
@@ -210,7 +206,7 @@ def test_base_standing_within_the_padding_may_leave():
 
 
 def test_fine_moves_are_checked_at_the_base_heading():
-    from phygs.execution.navigation.fine_approach import FineApproach, FineMove
+    from phygs.skills.navigation.execution.fine_approach import FineApproach, FineMove
 
     grid = corridor_grid(11)
     sideways = FineMove((0.0, 0.08, 0.0), 0.5, "sideways")
@@ -222,7 +218,7 @@ def test_fine_moves_are_checked_at_the_base_heading():
 
 
 def test_move_coverage_interpolates_measured_short_moves():
-    from phygs.execution.navigation.fine_approach import FineApproach
+    from phygs.skills.navigation.execution.fine_approach import FineApproach
 
     coverage = FineApproach.Coverage(
         (0.3, 0.5, 1.0), {"forward": (0.03, 0.05, 0.1), "backward": (0.02, 0.03, 0.07), "left": (0.04, 0.06, 0.1),

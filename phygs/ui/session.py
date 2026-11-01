@@ -30,11 +30,11 @@ from typing import Any
 
 import numpy as np
 
-from phygs.execution.manipulation.planning import EndEffectorTrajectory, JointTrajectory
-from phygs.execution.manipulation.skills.types import HeldObject
-from phygs.execution.navigation.types import NavigationGoal
 from phygs.observations.front_view import camera_frame
 from phygs.session import EpisodeEnded
+from phygs.skills.manipulation.execution.planning import EndEffectorTrajectory, JointTrajectory
+from phygs.skills.manipulation.execution.types import HeldObject
+from phygs.skills.navigation.execution.types import NavigationGoal
 from phygs.ui import translate
 from phygs.ui.bridge import Bridge, MapImage
 
@@ -291,7 +291,7 @@ class UiSession:
                     for r in self._commands.values()
                     if r["client"] == "manipulation" and ui_state(r["status"] or "") == "executing"
                 ]
-            steps = [("stop the base", lambda: session.locomotion.stop())]
+            steps = [("stop the base", lambda: session.locomotion.command_velocity(0.0, 0.0, 0.0))]
             steps += [("cancel an arm command", lambda c=c: session.manipulation.cancel(c)) for c in arm]
             for label, step in steps:  # Each on its own: one failing must not keep the episode running.
                 try:
@@ -427,7 +427,7 @@ class UiSession:
             )
             self.track("navigation", skill, command, call, session)
         elif skill == "stop":
-            self.track("locomotion", skill, session.locomotion.stop(), session=session)
+            self.track("locomotion", skill, session.locomotion.command_velocity(0.0, 0.0, 0.0), session=session)
         elif skill == "move_joints":
             positions = {name: float(inputs["positions"][name]) for name in self._arm_joints}
             duration = inputs.get("duration")
@@ -475,9 +475,8 @@ class UiSession:
             call = dict(target=dict(point=list(point.position), view=target.get("view"), pixel=target.get("pixel")))
             if skill == "look_at":
                 call.update(distance_m=float(inputs["distance_m"]), elevation_deg=float(inputs["elevation_deg"]))
-                command = manipulation.look_at(
-                    point, distance_m=call["distance_m"], elevation_deg=call["elevation_deg"], held=self._held(session)
-                )
+                view = (call["distance_m"], call["elevation_deg"])
+                command = manipulation.look_at(point, views=[view], held=self._held(session))
             else:
                 call["pose"] = self._wrist_pose(target, inputs, yaw)
                 command = manipulation.move_to_pose(call["pose"], tool="wrist", held=self._held(session))
@@ -615,7 +614,7 @@ class UiSession:
         if record is None:
             raise ValueError(f"No command {uid!r}")
         if record["client"] == "locomotion":
-            self.track("locomotion", "stop", session.locomotion.stop(), session=session)
+            self.track("locomotion", "stop", session.locomotion.command_velocity(0.0, 0.0, 0.0), session=session)
         else:
             getattr(session, record["client"]).cancel(record["command_id"])
 

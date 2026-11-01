@@ -33,11 +33,11 @@ from isaaclab.scene import InteractiveScene  # noqa: E402
 from PIL import Image  # noqa: E402
 
 from phygs.observations.types import CameraPermission, ObservationConfig  # noqa: E402
-from phygs.robots.control import RobotControl  # noqa: E402
-from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import RunMode  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
 from phygs.sim.base import BaseLink  # noqa: E402
+from phygs.sim.robot_scene import make_scene_cfg, simulation_cfg  # noqa: E402
+from phygs.world.robot import RobotControl  # noqa: E402
 
 CAMERA_PERIOD = 0.032  # [s]
 DRIVE_SECONDS, STOP_SECONDS = 2.0, 5.0  # A drive command [s] and the most a stop may take after it [s].
@@ -64,7 +64,7 @@ def run(report):
         robot,
         mode=RunMode.AUTONOMOUS,
         manipulation=True,
-        allowed_actions=("motion", "manipulation", "arm"),
+        allowed_actions=("motion", "manipulation"),
         observations=ObservationConfig(
             joint_state=True,
             imu=True,

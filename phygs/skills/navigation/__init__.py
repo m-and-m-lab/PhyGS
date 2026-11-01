@@ -3,4 +3,4 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Public navigation skill interface; import commands from api.py."""
+"""Public navigation skill interface; import commands from api.py, the machinery is in execution/."""

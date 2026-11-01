@@ -99,7 +99,7 @@ localization. Outcomes in the world come back as feedback.
 ### Targets
 
 `SkillTarget = PixelTarget | PointTarget | ObjectTarget`, defined in
-`phygs/execution/manipulation/skills/types.py` and re-exported by the API.
+`phygs/skills/manipulation/execution/types.py` and re-exported by the API.
 
 | Type | Fields | Resolution | Information |
 |---|---|---|---|
@@ -141,11 +141,16 @@ forces and object poses go only to the evaluator.
 
 ## Composing grasps, placements and straight motions
 
-The composite skills are the reference compositions (`phygs.composite`: `CompositeSkills` in
-`skills.py`, its numbers in `tuning.py`); they import the session only, so any agent may use them,
-do the same or do something else. Each takes an explicit affordance (a box, a drawer part, a
-point), tries its listed options in order and returns an `Outcome` with the option that worked and
-what the robot measured:
+The composite skills are the skills that use two clients: they walk (`navigate_to`, stowing the
+arm first), then move the arm (`phygs.composite`: `CompositeSkills` in `skills.py`, its numbers in
+`tuning.py`): `pick`, `place`, `place_upright`, `open_drawer` and `close_drawer`. They import the
+session only, so any agent may use them, do the same or do something else. Each takes an explicit
+affordance (a box, a drawer part, a point), walks to a stance computed from it (`reach_stances`:
+the point `reach_ahead_m` ahead, facing it: square to an open drawer given as `part`, else keeping
+the base's heading when the point is within `keep_heading_deg` (45) of it, else along the line of
+sight; turned about the point when navigation refuses the stance; nothing without navigation), tries its listed
+options in order and returns an `Outcome` with the option that worked and what the robot
+measured. Their steps:
 
 - **Straight approach** (`approach_straight`): `move_to_pose` (planned, `tool="wrist"`,
   with `held` while carrying) to the pose a distance back from the end pose along an axis, then
@@ -163,8 +168,9 @@ what the robot measured:
   in the middle of the jaw gap at 0.029 m; an option refused before moving tries the next); close;
   record the held object (`held_object`: the box in the measured wrist frame, resting on the
   `fixed_jaw` tool's pad, Spot's at -0.036 m, where the closing moving jaw pushes it, or centred
-  when both jaws close); lift straight back out; succeed if `holding`. The `HeldObject` is the
-  skills' `held`, which later stows, looks and places carry.
+  when both jaws close), measured after the close (closing moves the wrist, 2.8 cm on Spot); lift
+  straight back out; succeed if `holding`. The `HeldObject` is the skills' `held`, which their
+  later stows, looks and places carry; pass it to the session's `stow` (`held=skills.held`).
 - **Place** (`place`): keep the wrist orientation (the object keeps its yaw), a straight
   approach down along the gripper axis to where the object's bottom is `place_clearance_m`
   (0.04 m) above the point (the planner keeps 1 cm clearance and a 2 cm map cell can hold the
@@ -229,19 +235,23 @@ at the pre-stow and the trajectory begins with the straight move, since 2026-10-
 stay inside the robot's folded volume above its body. `stow` closes an empty gripper;
 a held object stays held and is carried in the stow (2026-10-09). The planned part avoids
 obstacles with `held`; the final straight move into the stow and the navigation footprint do
-not account for it, so a large object can hit the body or furniture: the agent decides.
+not account for it, so a large object can hit the body or furniture: the agent decides. When no
+stow plan starts from where the arm is (a hand by a surface the depth map holds, 2026-10-30), the
+hand rises 0.10 m straight up and the stow is tried once more.
 
-`look_at(target, distance_m=0.5, elevation_deg=45.0, held=None)` moves the hand camera
-(`look_camera`) to one view of a point and aims it there: an object target's center, a
-pixel's depth return or a point. The camera is `distance_m` from the target, on the
-robot's side of it, `elevation_deg` above the horizontal, upright; the wrist pose follows
-from the measured wrist-to-camera transform. Library IK must reach the view
-(`out_of_reach`); the planner backend plans to it (`PosePlanner`, with `held`; refused:
-`planning_failed`), `direct` moves straight. The skill succeeds when the arm has settled
-at the view. It does not check what the camera sees and does not try other views: the
-agent observes afterwards and chooses another view if it wants one. Example: from 1.4 m,
-a 0.7 m view into the open drawer shows its front (depth 0.26 m); a 0.5 m view shows its
-bottom.
+`look_at(target, views=None, held=None)` moves the hand camera (`look_camera`) to a view of a
+point and aims it there: an object target's center, a pixel's depth return or a point. Each
+view is (distance [m], elevation [deg]): the camera that far from the target, on the robot's
+side of it, that high above the horizontal, upright; the wrist pose follows from the measured
+wrist-to-camera transform. The views are tried in order until one is reachable: library IK must
+reach it, and the planner backend must plan to it (`PosePlanner`, with `held`) and move there
+without the scene changing; `direct` moves straight. `views` None is the skill settings'
+`look_views` (`(0.5, 60), (0.5, 45), (0.6, 60), (0.6, 75), (0.6, 30)`, measured on Spot); one view is
+`[(0.5, 45.0)]`. When none is reachable it fails `out_of_reach` ("No view of the target is
+reachable ... move the base"); a failure while the arm moves ends it at once. The skill succeeds
+when the arm has settled at a view, and `SkillFeedback.step` names it. It does not check what the
+camera sees: the agent observes afterwards. Example: from 1.4 m, a 0.7 m view into the open
+drawer shows its front (depth 0.26 m); a 0.5 m view shows its bottom.
 
 ## Step narration
 
@@ -249,7 +259,7 @@ Every skill says what it does now, one line per step, on the logger
 `phygs.skills.<kind>`: `manipulation` (for example `look_at: point (world)
 (1.25, 0.20, 0.47) m; view 0.60 m, 60 deg up`, then `look_at: planning and moving to the
 view`), `navigation` (goal, route, replans, turning to the heading, each status change) and
-`locomotion` (each new velocity command, `stop`). The current manipulation step is also
+`locomotion` (each new velocity command, `command_velocity: 0, stopping`). The current manipulation step is also
 `SkillFeedback.step`. `RobotControl.create` attaches a collector (`control.narration`,
 `phygs.recording.narration.Narration`) that prints each line with the episode
 time, keeps the latest line per kind (`lines()`), and keeps them all (`log`, which the videos'
@@ -285,7 +295,7 @@ joint planner and a pose planner from the environment (`JointPlanner`, `PosePlan
 process and the map.
 
 Configuration in the robot's `robot.yaml` (Spot's: `phygs/robots/spot/robot.yaml`;
-the skill backend is `skills.backend` in `phygs/configs/environment.yaml`). The tool frames are the
+the skill backend is `skills.backend` in `phygs/world/environment.yaml`). The tool frames are the
 gripper geometry the skills, the UI and the composite skills read; every tool but `wrist` has
 the gripper's axes (x the approach, z the jaws' closing axis). The composite skills' line speed and
 clearances are their tuning (`phygs/composite/tuning.py`):
@@ -309,21 +319,20 @@ camera_roles:
 | Path | Content |
 |---|---|
 | `phygs/skills/manipulation/api.py` | Public skill methods, `SkillFeedback`, re-exported targets |
-| `phygs/execution/manipulation/skills/types.py` | Targets, `SkillFailure`, `SkillError`, `SkillConfig`, `HeldObject` |
-| `phygs/execution/manipulation/skills/runner.py` | Runs a skill sequence one low-level command at a time |
-| `phygs/execution/manipulation/skills/backends.py` | `DirectSkills`, `CollisionAvoidancePlannerSkills`, `create_skills` |
-| `phygs/composite/` | Reference compositions: stances, pick, place, drawer strokes (`skills.py`), their tuning (`tuning.py`) |
+| `phygs/skills/manipulation/execution/types.py` | Targets, `SkillFailure`, `SkillError`, `SkillConfig`, `HeldObject` |
+| `phygs/skills/manipulation/execution/runner.py` | Runs a skill sequence one low-level command at a time |
+| `phygs/skills/manipulation/execution/backends.py` | `DirectSkills`, `CollisionAvoidancePlannerSkills`, `create_skills` |
+| `phygs/composite/` | The skills that walk, then move the arm: pick, place, drawer strokes (`skills.py`), their tuning (`tuning.py`) |
 
 ## Example: orchestrating agent
 
 ```python
 skills = CompositeSkills(session)  # phygs.composite
 target = session.hints.target()  # Privileged; a perceiving agent finds it in its images.
-skills.pick(target.center, target.size)  # Or compose it: move_to_pose, a line in, close, a line out.
-held = skills.held
-session.wait(session.manipulation.stow(held=held))
-result = session.wait(session.manipulation.look_at(PointTarget(spot), held=held))
-if result.failure == SkillFailure.OUT_OF_REACH:
+skills.pick(target.center, target.size)  # Walks into reach; or compose it: move_to_pose, a line in, close, a line out.
+session.wait(session.manipulation.stow(held=skills.held))  # Carries the picked object.
+result = session.wait(session.manipulation.look_at(PointTarget(spot), held=skills.held))
+if result.failure == SkillFailure.OUT_OF_REACH:  # No view was reachable.
     session.wait(session.navigation.navigate_to(x, y))  # move closer, then retry
 ```
 

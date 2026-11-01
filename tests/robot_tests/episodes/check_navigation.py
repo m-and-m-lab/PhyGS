@@ -5,13 +5,13 @@
 
 """Navigation on the known map, as an agent drives it: ``navigate_to`` goals that must be reached,
 refused or cancelled, and one goal reached with body velocities alone. The cases per spec are in
-``phygs/configs/navigation.yaml``: the course (``nav_course``: around a wall, to a heading, into the wall,
+``tests/robot_tests/configs/navigation.yaml``: the course (``nav_course``: around a wall, to a heading, into the wall,
 into a closed pen) and the house (``nav_house``: into the kitchen island, two goals, a cancel).
 
 The test side judges arrival from ground truth (the robot within the goal's tolerance and stopped,
 ``PointNavigationEvaluator``), checks that the robot stopped after every walk, that its footprint
 never overlapped a box, and that a velocity command is refused while navigation drives. Nav2 runs
-as the episode harness starts it (``phygs/configs/environment.yaml``, ``phygs/configs/navigation/``).
+as the episode harness starts it (``phygs/world/environment.yaml``, ``phygs/skills/navigation/execution/launch/``).
 
     ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_course.yaml \
@@ -46,7 +46,7 @@ def drive(session, goal, tolerance) -> str:
         dx, dy = goal[0] - x, goal[1] - y
         distance = math.hypot(dx, dy)
         if distance <= tolerance[0]:
-            session.wait(session.locomotion.stop())
+            session.wait(session.locomotion.command_velocity(0.0, 0.0, 0.0))
             return "succeeded"
         speed = min(limits["max_speed_mps"], distance)
         vx, vy = speed * dx / distance, speed * dy / distance  # World frame.
@@ -54,7 +54,7 @@ def drive(session, goal, tolerance) -> str:
         turn = max(-limits["max_yaw_radps"], min(limits["max_yaw_radps"], heading_error(goal[2], yaw)))
         session.locomotion.command_velocity(c * vx + s * vy, -s * vx + c * vy, turn, duration=2 * limits["period_s"])
         session.sleep(limits["period_s"])
-    session.wait(session.locomotion.stop())
+    session.wait(session.locomotion.command_velocity(0.0, 0.0, 0.0))
     return "timed_out"
 
 
@@ -93,7 +93,7 @@ def plan(session, steps: episode.Steps, cases: list[dict], start, returns: bool)
 def main() -> None:
     check, args, spec = episode.start(__doc__, "nav_course")
     if spec.id not in SETTINGS["cases"]:
-        raise SystemExit(f"phygs/configs/navigation.yaml has no cases for {spec.id}")
+        raise SystemExit(f"tests/robot_tests/configs/navigation.yaml has no cases for {spec.id}")
     cases, returns = SETTINGS["cases"][spec.id], spec.id in SETTINGS["return_to_start"]
     check.data.update(cases=cases)
 

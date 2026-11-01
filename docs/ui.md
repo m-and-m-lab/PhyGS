@@ -10,7 +10,7 @@ every action is an audited session call within the spec's actions and grants, li
 
 Open the printed link (it carries a token). From another computer, forward the port first:
 `ssh -L 8765:127.0.0.1:8765 <host>`. One browser at a time; a second connection is refused.
-`phygs/configs/ui/house_drawer.yaml` runs the Bear house; `--robot` overrides the spec's robot;
+`phygs/ui/configs/house_drawer.yaml` runs the Bear house; `--robot` overrides the spec's robot;
 `--demo tour` drives a short route by itself so there is something to watch.
 
 ## How it works

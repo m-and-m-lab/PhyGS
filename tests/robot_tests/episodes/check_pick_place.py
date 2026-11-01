@@ -94,7 +94,7 @@ def plan(session, steps: episode.Steps, known_map: bool) -> None:
     steps.enter("placed")
     session.sleep(SETTINGS["hold_seconds"])  # The released object settles.
     steps.enter("settled")
-    skills.stow()
+    episode.stow(session)
 
 
 def gap(a, b) -> float:

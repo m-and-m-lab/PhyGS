@@ -3,20 +3,20 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The composite skills over one session: walking to stances, the arm's moves, picks, places and
-drawer strokes, composed from the robot's commands.
+"""The composite skills over one session: pick, place, place_upright, open_drawer and close_drawer.
+Each walks to where the arm reaches (``navigate_to``, after ``stow``), then moves the arm.
 
-The moves are planned moves (``move_to_pose``) to where a straight motion starts, straight
-end-effector lines (``execute_trajectory``), the gripper, and the ``look_at`` and ``stow`` skills.
-They place the robot's tool frames (``grasp``, ``handle``, ``fixed_jaw``), which share the
-gripper's axes: x the approach, z the jaws' closing axis.
+The arm's moves are planned moves (``move_to_pose``) to where a straight motion starts, straight
+end-effector lines (``execute_trajectory``), the gripper, and ``look_at``. They place the robot's
+tool frames (``grasp``, ``handle``, ``fixed_jaw``), which share the gripper's axes: x the approach,
+z the jaws' closing axis.
 """
 
 from __future__ import annotations
 
 import functools
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
@@ -39,7 +39,6 @@ from phygs.session import (
 
 # Failures refused before the arm moved: the next option may work.
 REFUSED = frozenset({SkillFailure.OUT_OF_REACH, SkillFailure.PLANNING_FAILED})
-LOOK_REFUSED = REFUSED | {SkillFailure.OBSTACLE_CHANGED, SkillFailure.PATH_UNOBSERVED}
 DOWN = np.array([0.0, 0.0, -1.0])
 UP = -DOWN
 # The gripper's axes pointing straight down at heading 0: x (the approach) down, z (the jaws' closing
@@ -50,9 +49,8 @@ TOP_DOWN = np.array([[0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]])
 @dataclass(frozen=True)
 class Outcome:
     """What a composite skill did: the option that worked (``option``) and what the robot measured
-    after it (``measured``), and how many options were refused before it (``refused``). Only
-    :meth:`CompositeSkills.look_at` returns ``succeeded`` False (no view was reachable); the others
-    raise :class:`~phygs.session.AgentFailed` when every option failed."""
+    after it (``measured``), and how many options were refused before it (``refused``). A skill
+    raises :class:`~phygs.session.AgentFailed` when every option failed."""
 
     skill: str
     succeeded: bool = True
@@ -70,7 +68,7 @@ class Motion(NamedTuple):
     refused: bool = False
 
 
-class Unreachable(AgentFailed):
+class _Unreachable(AgentFailed):
     """navigate_to refused a stance before walking: no path to it, or the robot does not fit there."""
 
 
@@ -99,8 +97,8 @@ class CompositeSkills:
     """Composite skills for the robot of ``session`` (an ``AgentSession``), with ``tuning``.
 
     Robot facts come from ``session.robot``; the base pose from the observed localization
-    (``gt_localization``). :attr:`held` is the object the last pick grasped; the arm's later plans
-    carry it while the gripper holds it.
+    (``gt_localization``). :attr:`held` is the object the last pick grasped; the skills' later
+    plans carry it while the gripper holds it, and a caller passes it to the session's ``stow``.
     """
 
     def __init__(self, session, tuning: Tuning = TUNING) -> None:
@@ -141,14 +139,14 @@ class CompositeSkills:
         joints = self.session.observe().joints
         return {} if joints is None else dict(zip(joints.names, joints.positions.tolist(), strict=True))
 
-    def stowed(self) -> bool:
+    def _stowed(self) -> bool:
         """Whether every arm joint is within ``stow_tolerance_rad`` of the stow posture."""
         robot, measured = self.session.robot, self.joints()
         if not measured:
             return False
         return max(abs(measured[j] - v) for j, v in zip(robot.arm_joints, robot.stow)) <= self.tuning.stow_tolerance_rad
 
-    def _held(self) -> HeldObject | None:
+    def _carried(self) -> HeldObject | None:
         """The picked object while the gripper holds it: the arm's plans carry it."""
         return self.held if self.session.manipulation.holding else None
 
@@ -182,7 +180,9 @@ class CompositeSkills:
     ) -> list[tuple[float, float, float]]:
         """Where to stand to reach ``point`` [m]: facing it with the point ``reach_ahead_m`` ahead of
         the base centre. ``facing`` (a horizontal direction) is the direction the robot faces; in an
-        open drawer ``part``, square to it; else along the line from where the base stands.
+        open drawer ``part``, square to it; else the base's own heading when the point lies within
+        ``keep_heading_deg`` of it (square to a drawer it stands at), else along the line from where
+        the base stands.
         ``turn_deg`` turns the stance about the point (counterclockwise from above) [deg]. In a
         drawer, when the stance puts the body over it (its handle nearer than ``reach_in_clear_m``), a
         clear stance with the handle that far ahead comes first, on the same line."""
@@ -191,9 +191,11 @@ class CompositeSkills:
             facing = -outward(part)
         elif facing is None:
             pose = self.base_pose()
-            facing = point - pose[:2, 3]
-            if np.linalg.norm(facing) < 1e-6:
-                facing = pose[:2, 0]
+            facing, forward = point - pose[:2, 3], pose[:2, 0] / np.linalg.norm(pose[:2, 0])
+            distance = float(np.linalg.norm(facing))
+            keep = math.cos(math.radians(self.tuning.keep_heading_deg))
+            if distance < 1e-6 or float(facing @ forward) >= distance * keep:
+                facing = forward
         facing = np.asarray(facing, dtype=float)[:2]
         facing = rotate_z(math.radians(turn_deg))[:2, :2] @ (facing / np.linalg.norm(facing))
         heading = math.atan2(facing[1], facing[0])
@@ -208,60 +210,44 @@ class CompositeSkills:
 
     # Walking.
 
-    @_step("walk")
-    def walk(self, stance: tuple[float, float, float], settle: bool = True) -> Outcome:
-        """Stow the arm if it is out (the base walks with the arm folded), navigate_to ``stance``
-        (x, y, heading) [m, m, rad] within ``goal_tolerance``, then stand while the legs settle.
-
-        Each attempt has its own time limit (``walk_timeout_s``); a timed-out attempt is issued again,
-        up to ``walk_tries`` attempts (near a goal the follower can stand still just outside the
-        tolerance, 2026-10-15). Any other failure ends the skill.
-        """
-        if not self.stowed():
-            self.stow()
+    def _navigate(self, stance: tuple[float, float, float]) -> list[float]:
+        """Stow the arm if it is out (the base walks with the arm folded), then navigate_to ``stance``
+        (x, y, heading) [m, m, rad] within ``goal_tolerance``. Returns where the base stopped."""
+        if self.session.navigation is None:
+            raise AgentFailed("The composite skills walk with navigation; this tier has none.")
+        if not self._stowed():
+            self._stow()
         position_tolerance, heading_tolerance = self.tuning.goal_tolerance
-        for attempt in range(1, self.tuning.walk_tries + 1):
-            feedback = self.session.wait(
-                self.session.navigation.navigate_to(
-                    *stance,
-                    position_tolerance=position_tolerance,
-                    heading_tolerance=heading_tolerance,
-                    timeout=self.tuning.walk_timeout_s,
-                )
+        feedback = self.session.wait(
+            self.session.navigation.navigate_to(
+                *stance, position_tolerance=position_tolerance, heading_tolerance=heading_tolerance
             )
-            if feedback.status == "succeeded":
-                break
-            if feedback.status != "timed_out":
-                error = Unreachable if feedback.status == "unreachable" else AgentFailed
-                raise error(f"navigate_to {stance}: {feedback.status}: {feedback.reason}")
-            print(f"composite: navigate_to {stance} timed out ({feedback.reason}); trying again", flush=True)
-        else:
-            raise AgentFailed(f"navigate_to {stance}: {feedback.status}: {feedback.reason}")
-        if settle:
-            self.session.sleep(self.tuning.settle_seconds)
+        )
+        if feedback.status != "succeeded":
+            error = _Unreachable if feedback.status == "unreachable" else AgentFailed
+            raise error(f"navigate_to {tuple(round(v, 3) for v in stance)}: {feedback.status}: {feedback.reason}")
         pose = self.base_pose()
-        base = [float(pose[0, 3]), float(pose[1, 3]), math.atan2(pose[1, 0], pose[0, 0])]
-        return Outcome("walk", option=dict(stance=list(stance), attempt=attempt), measured=dict(base=base))
+        return [float(pose[0, 3]), float(pose[1, 3]), math.atan2(pose[1, 0], pose[0, 0])]
 
-    @_step("go_to_reach")
-    def go_to_reach(self, point, facing=None, part: ArticulatedPart | None = None) -> Outcome:
+    def _go_to_reach(self, point, part: ArticulatedPart | None = None) -> dict[str, Any]:
         """Walk to where the arm reaches ``point`` [m] (:meth:`reach_stances`), through the clear
-        stance when there is one. While navigate_to refuses the stance as unreachable, it turns about
-        the point by the next of ``reach_turns_deg`` (square to a drawer ``part`` it does not turn)."""
+        stance when there is one; nothing without navigation (the arm works from where the base
+        stands). While navigate_to refuses the stance as unreachable, it turns about the point by the
+        next of ``reach_turns_deg`` (square to a drawer ``part`` it does not turn). Returns the option."""
+        if self.session.navigation is None:
+            return {}
         turns = self.tuning.reach_turns_deg if part is None else (0.0,)
         for refused, turn in enumerate(turns):
-            stances = self.reach_stances(point, facing, part, turn)
+            stances = self.reach_stances(point, None, part, turn)
             try:
-                for stance in stances[:-1]:
-                    self.walk(stance, settle=False)
-                walked = self.walk(stances[-1])
+                for stance in stances:
+                    base = self._navigate(stance)
                 break
-            except Unreachable as error:
+            except _Unreachable as error:
                 if refused + 1 == len(turns):
                     raise
                 print(f"composite: {error}; turning the stance", flush=True)
-        option = dict(stances=[list(s) for s in stances], turn_deg=turn)
-        return Outcome("go_to_reach", option=option, measured=walked.measured, refused=refused)
+        return dict(stance=[round(v, 4) for v in stances[-1]], turn_deg=turn, base=[round(v, 4) for v in base])
 
     # The arm.
 
@@ -285,57 +271,29 @@ class CompositeSkills:
         if feedback.status != "succeeded":
             raise AgentFailed(f"gripper: {feedback.reason}")
 
-    @_step("stow")
-    def stow(self) -> Outcome:
-        """Stow the arm, carrying the held object so the planned part avoids obstacles with it. When
-        no stow plan starts from where the arm is, lift the hand ``unstick_m`` and stow once more."""
-        manipulation, option = self.session.manipulation, "stow"
-        feedback = self.session.wait(manipulation.stow(held=self._held()))
-        if feedback.status != "succeeded" and getattr(feedback, "failure", None) in REFUSED:
-            if self.move_straight(UP, self.tuning.unstick_m).status == "succeeded":
-                option = "lift, then stow"
-                feedback = self.session.wait(manipulation.stow(held=self._held()))
+    def _stow(self) -> None:
+        """``stow`` and wait, carrying the held object."""
+        feedback = self.session.wait(self.session.manipulation.stow(held=self._carried()))
         if feedback.status != "succeeded":
             raise AgentFailed(f"stow: {feedback.reason}")
-        return Outcome("stow", option=dict(how=option), measured=dict(holding=manipulation.holding))
 
-    def leave_stow(self) -> None:
-        """From the stow, move straight to the pre-stow posture: planners reject the stow as a start."""
-        if not self.stowed():
-            return
-        robot = self.session.robot
-        prestow = dict(zip(robot.arm_joints, robot.prestow))
-        feedback = self.session.wait(self.session.manipulation.move_joints(prestow, duration=robot.move_seconds))
-        if feedback.status != "succeeded":
-            raise AgentFailed(f"leaving the stow: {feedback.reason}")
-
-    @_step(lambda point, views="target": f"look_at({views if isinstance(views, str) else 'views'})")
-    def look_at(self, point, views: str | Sequence[tuple[float, float]] = "target") -> Outcome:
-        """Aim the look camera at ``point`` [m] from each view (distance [m], elevation [deg]) in turn:
-        ``look_views[views]``, or the views given. Not succeeded when every view was refused; a
-        failure while moving ends the skill."""
-        listed = self.tuning.look_views[views] if isinstance(views, str) else views
+    def _look(self, point, views: str | None = None) -> bool:
+        """``look_at`` ``point`` [m] from the ``look_views[views]`` in turn (None: look_at's own views);
+        False when no view was reachable (the skill goes on without the look), an error when the arm
+        failed while moving."""
         target = PointTarget(tuple(map(float, point)))
-        last = "no view"
-        for refused, (distance_m, elevation_deg) in enumerate(listed):
-            feedback = self.session.wait(
-                self.session.manipulation.look_at(
-                    target, distance_m=distance_m, elevation_deg=elevation_deg, held=self._held()
-                )
-            )
-            if feedback.status == "succeeded":
-                view = dict(distance_m=distance_m, elevation_deg=elevation_deg)
-                return Outcome("look_at", option=view, refused=refused)
-            if feedback.failure not in LOOK_REFUSED:
-                raise AgentFailed(f"look_at: {feedback.reason}")
-            last = feedback.reason
-        print(f"composite: no view of {tuple(np.round(target.position, 3))} was reachable", flush=True)
-        return Outcome("look_at", succeeded=False, reason=f"no view was reachable ({last})", refused=len(listed))
+        listed = None if views is None else self.tuning.look_views[views]
+        feedback = self.session.wait(self.session.manipulation.look_at(target, views=listed, held=self._carried()))
+        if feedback.status == "succeeded":
+            return True
+        if feedback.failure != SkillFailure.OUT_OF_REACH:
+            raise AgentFailed(f"look_at: {feedback.reason}")
+        print(f"composite: {feedback.reason}", flush=True)
+        return False
 
     def approach_straight(self, end: np.ndarray, axis, distance: float, held: HeldObject | None = None) -> Motion:
         """A planned move to ``distance`` [m] back from the wrist pose ``end`` (4x4, world) along the
         world unit ``axis``, then straight to ``end``; the straight part may end in contact."""
-        self.leave_stow()
         start = end.copy()
         start[:3, 3] = end[:3, 3] - np.asarray(axis, dtype=float) * distance
         manipulation = self.session.manipulation
@@ -361,17 +319,21 @@ class CompositeSkills:
         return self.run(lambda: manipulation.execute_trajectory(line))
 
     @_step(lambda center, size, name=None, **options: f"pick({name})" if name else "pick")
-    def pick(self, center, size, name: str | None = None, approaches=None, look: bool = True) -> Outcome:
-        """Grasp the object box (``center``, ``size`` [m], world-aligned) from where the base stands:
-        look at it (``look``), then for each pick approach and each grasp yaw in turn, a planned move
-        to the pre-grasp, straight in, close, straight back out. An option refused before moving tries
-        the next one. :attr:`held` is then the object; ``name`` the scene object's, if known.
+    def pick(
+        self, center, size, name: str | None = None, part: ArticulatedPart | None = None, approaches=None, look=True
+    ) -> Outcome:
+        """Grasp the object box (``center``, ``size`` [m], world-aligned): walk to where the arm reaches
+        it (square to the open drawer ``part`` it lies in, if given), look at it (``look``), then for
+        each pick approach and each grasp yaw in turn, a planned move to the pre-grasp, straight in,
+        close, straight back out. An option refused before moving tries the next one. :attr:`held` is
+        then the object; ``name`` the scene object's, if known.
 
         ``approaches``: world unit vectors (None: straight down), else ``pick_approaches`` (robot frame).
         """
         tuning, manipulation = self.tuning, self.session.manipulation
+        stance = self._go_to_reach(center, part)
         if look:
-            self.look_at(center, "target")
+            self._look(center)
         if approaches is None:
             turn = rotate_z(self.heading())
             approaches = [a if a is None else tuple(turn @ np.asarray(a)) for a in tuning.pick_approaches]
@@ -393,7 +355,8 @@ class CompositeSkills:
                 continue
             self.gripper(close=True)
             gripped = manipulation.holding
-            held = self.held_object(name, center, size)  # The wrist measured at the grasp.
+            # The wrist measured after the close: the closing jaw moves it (2.8 cm, 2026-11-01).
+            held = self.held_object(name, center, size)
             lifted = self.move_straight(-direction, tuning.approach_m)
             if lifted.status != "succeeded":
                 raise AgentFailed(f"pick lift: {lifted.reason}")
@@ -404,20 +367,30 @@ class CompositeSkills:
             self.session.sleep(tuning.hold_seconds)
             self.held = held
             option = dict(approach=None if approach is None else [round(float(v), 4) for v in direction], yaw_deg=yaw)
+            option.update(stance)
             gripper = self.joints().get(self.session.robot.gripper_joints[0])
             measured = dict(holding=manipulation.holding, gripper=gripper)
             return Outcome("pick", option=option, measured=measured, refused=refused)
         raise AgentFailed(f"pick: every approach was refused ({refused} options); last: {last}")
 
     @_step("place")
-    def place(self, point) -> Outcome:
-        """Set the held object down with its bottom center at a world point [m]: a planned move above
-        it, straight down along the gripper axis (the wrist keeps its orientation, so the object keeps
-        its yaw), release ``place_clearance_m`` above the surface, straight back up, close the
-        gripper. The gripper must not hold the object afterwards."""
-        held, manipulation = self.held, self.session.manipulation
-        if held is None:
+    def place(self, point, part: ArticulatedPart | None = None) -> Outcome:
+        """Set the held object down with its bottom center at a world point [m]: walk to where the arm
+        reaches it (square to the open drawer ``part``, if given), a planned move above it, straight
+        down along the gripper axis (the wrist keeps its orientation, so the object keeps its yaw),
+        release ``place_clearance_m`` above the surface, straight back up, close the gripper. The
+        gripper must not hold the object afterwards."""
+        self._require_held()
+        stance = self._go_to_reach(point, part)
+        return self._place(point, stance)
+
+    def _require_held(self) -> None:
+        if self.held is None:
             raise AgentFailed("place: no picked object")
+
+    def _place(self, point, stance: dict[str, Any]) -> Outcome:
+        """:meth:`place` from where the base stands."""
+        held, manipulation = self.held, self.session.manipulation
         wrist = matrix(manipulation.tool_pose("wrist"))
         bottom = (wrist @ held.wrist_from_object @ [0.0, 0.0, -held.size[2] / 2, 1.0])[:3]
         end = wrist.copy()
@@ -437,15 +410,17 @@ class CompositeSkills:
         if manipulation.holding:
             raise AgentFailed("place: the gripper still holds the object")
         self.held = None
-        return Outcome("place", measured=dict(released_at=[round(float(v), 4) for v in there[:3]]))
+        return Outcome("place", option=stance, measured=dict(released_at=[round(float(v), 4) for v in there[:3]]))
 
     @_step("place_upright")
-    def place_upright(self, point) -> Outcome:
-        """Place an object picked straight down so it stands upright: look at the point (this also
-        leaves the stow), turn the gripper top-down with the wrist ``place_wrist_height_m`` above it
-        (after a stow the object lies sideways, and place keeps the wrist's orientation), then
-        :meth:`place`."""
-        if not self.look_at(point, "place").succeeded:
+    def place_upright(self, point, part: ArticulatedPart | None = None) -> Outcome:
+        """Place an object picked straight down so it stands upright: walk to where the arm reaches the
+        point (square to the open drawer ``part``, if given), look at it (this also leaves the stow),
+        turn the gripper top-down with the wrist ``place_wrist_height_m`` above it (after a stow the
+        object lies sideways, and place keeps the wrist's orientation), then place."""
+        self._require_held()
+        stance = self._go_to_reach(point, part)
+        if not self._look(point, "place"):
             raise AgentFailed("place: no view of the place spot was reachable")
         upright = rotate_z(self.heading()) @ TOP_DOWN @ self.tool("grasp")[:3, :3].T  # The wrist's rotation.
         above = np.eye(4)
@@ -454,7 +429,7 @@ class CompositeSkills:
         moved = self.session.wait(self.session.manipulation.move_to_pose(xyzw(above), held=self.held, tool="wrist"))
         if moved.status != "succeeded":
             raise AgentFailed(f"move_to_pose above the place spot: {moved.reason}")
-        return self.place(point)
+        return self._place(point, stance)
 
     def place_spot(self, part: ArticulatedPart, size) -> np.ndarray:
         """Where to set an object of ``size`` [m] down in the open drawer ``part`` [m]: on the exposed
@@ -526,8 +501,8 @@ class CompositeSkills:
         the base stopped), until a stroke is not refused before moving."""
         refused = 0
         for attempt in range(self.tuning.stance_tries):
-            self.walk(stance(attempt))
-            self.look_at(part.handle_center, "handle")
+            self._navigate(stance(attempt))
+            self._look(part.handle_center, "handle")
             distance = planned()
             if distance <= 0:
                 raise AgentFailed(f"{kind}_drawer: nothing to move from here ({distance:.3f} m).")

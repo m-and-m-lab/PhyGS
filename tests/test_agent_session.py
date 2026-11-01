@@ -101,7 +101,7 @@ def make_session(tmp_path, grants=("object_targets", "scene_hints")):
         task=PublicTask("retrieve", "the small green box"),
         robot=SPOT.info(),
         grants=grants,
-        clients=dict(navigation=navigation, manipulation=manipulation, locomotion=None, arm=None),
+        clients=dict(navigation=navigation, manipulation=manipulation, locomotion=None),
         hints=PrivilegedHints(FakeScene(), "target", grants, boxes=fake_boxes),
         observe=lambda: dict(time=world.time),
         time_seconds=lambda: world.time,
@@ -184,7 +184,7 @@ def test_agents_see_only_public_client_members(tmp_path):
 
     def agent():
         assert session.navigation.active is False  # Plain data is readable.
-        assert session.locomotion is None and session.arm is None  # Not in the tier.
+        assert session.locomotion is None  # Not in the tier.
         for member in (
             "update",
             "navigation",

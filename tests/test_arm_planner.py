@@ -15,7 +15,7 @@ import torch
 from fakes import SPOT
 from scipy.spatial.transform import Rotation
 
-from phygs.execution.manipulation import arm_planner
+from phygs.skills.manipulation.execution import arm_planner
 
 SETTINGS = dict(
     backend="curobo",

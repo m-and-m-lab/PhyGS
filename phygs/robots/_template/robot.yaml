@@ -25,7 +25,7 @@ base:
   # legged_policy (a walking policy: base.policy names its wrapper class, base.config its settings,
   # as Spot's), planar_joints (velocity-driven x, y, yaw joints: base.joints {x, y, yaw}, as the
   # Ridgeback's), or your own controller class as module:Class / file.py:Class
-  # (execution/locomotion/base.py: BaseController).
+  # (skills/locomotion/execution/base.py: BaseController).
   kind: planar_joints
   kinematics: holonomic  # holonomic (v_x, v_y, v_rot) or differential (no v_y; navigation not yet).
   joints: {x: base_x_joint, y: base_y_joint, yaw: base_yaw_joint}

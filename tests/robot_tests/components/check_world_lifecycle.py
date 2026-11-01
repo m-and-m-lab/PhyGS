@@ -39,9 +39,9 @@ import torch  # noqa: E402
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg  # noqa: E402
 from isaaclab.scene import InteractiveScene  # noqa: E402
 
-from phygs.robots.scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.runtime.episode import ControllerDeclaration, EpisodeRuntime, RunMode  # noqa: E402
 from phygs.runtime.timing import duration_ticks  # noqa: E402
+from phygs.sim.robot_scene import make_scene_cfg, simulation_cfg  # noqa: E402
 from phygs.sim.state import IsaacLabWorld  # noqa: E402
 
 require = common.require

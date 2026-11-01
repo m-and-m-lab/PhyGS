@@ -7,7 +7,7 @@ were removed on 2026-10-25. Episodes and the robot UI build it with
 see [navigation](navigation.md#public-api)); diagnostics can bind the factory directly:
 
 ```python
-from phygs.execution.navigation.backends.nav2 import Nav2BackendFactory, Nav2Config
+from phygs.skills.navigation.execution.backends.nav2 import Nav2BackendFactory, Nav2Config
 
 # Add this argument to the existing RobotControl.create(...) call:
 navigation_backend_factory = Nav2BackendFactory(Nav2Config(namespace="spot_navigation"), maps=maps)
@@ -203,7 +203,7 @@ ROS 2 Jazzy environment in both terminals; `rclpy`, `nav2_msgs`, `tf2_ros`,
 `rosgraph_msgs`, `nav2_common`, navigation2 and nav2_bringup must be available.
 Use a dedicated `ROS_DOMAIN_ID` and only one simulator/clock publisher per domain.
 
-The episode harness starts the servers itself (`execution/navigation/backends/nav2_stack.py`) and
+The episode harness starts the servers itself (`skills/navigation/execution/backends/nav2_stack.py`) and
 writes the experiment it launched them from to `nav2_experiment.yaml` in the run folder. To launch
 them by hand from such a file:
 
@@ -211,13 +211,13 @@ them by hand from such a file:
 cd /workspace/isaaclab
 source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=47
-ros2 launch scripts/PhyGS/phygs/execution/navigation/launch/nav2.launch.py \
+ros2 launch scripts/PhyGS/phygs/skills/navigation/execution/launch/nav2.launch.py \
   experiment:=/absolute/path/to/nav2_experiment.yaml sensor_mode:=pointcloud
 ```
 
 The launch file reads the experiment YAML and footprint profile (`experiment` is required;
 `sensor_mode` is `occupancy_grid` for known maps, `pointcloud` for camera maps).
-It configures Smac Lattice and MPPI (`phygs/configs/navigation/nav2.yaml`), two costmaps with the
+It configures Smac Lattice and MPPI (`phygs/skills/navigation/execution/launch/nav2.yaml`), two costmaps with the
 measured footprint, matching speed limits, and simulation time. MPPI's `model_dt` is the
 navigation period (0.04 s) and its horizon 2 s (`time_steps` = 2 s / period), so MPPI's model
 step matches the command period. The adapter checks costmap geometry
@@ -342,7 +342,7 @@ voxel. Nav2 velocity command expiry and the runtime's physical stopping checks s
 Field of view decides what the costmap holds. The two front cameras see a box beside the route
 only from the front, so its back stays unmarked; MPPI checks the footprint against lethal cells only,
 and the robot's rear corner touched the box in 3 of 6 runs (`output_check/20261026-13*_dynamic_rep*`).
-With Spot's five body cameras (`left`, `right`, `rear` are in `phygs/configs/environment.yaml`) the whole
+With Spot's five body cameras (`left`, `right`, `rear` are in `phygs/world/environment.yaml`) the whole
 box was marked and 6 of 6 runs kept 0.10–0.12 m (`output_check/20261027-12*_dyn5cam_b*`, video
 `20261027-1211_camera_view_5cam`), at an episode real-time factor of 0.63–0.74 instead of 0.82–1.03.
 Episodes still send only `frontleft` and `frontright` (`point_cloud.cameras`); the change waits on
@@ -387,7 +387,7 @@ explore_lite's output goes to `explore.log` in the run folder.
 ### Inspect the ROS side in RViz2
 
 The diagnostic normally opens only Isaac Sim. Add `--rviz` to start RViz2 with
-`phygs/configs/navigation/spot_nav2.rviz` on the same ROS domain:
+`phygs/skills/navigation/execution/launch/spot_nav2.rviz` on the same ROS domain:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -405,7 +405,7 @@ is still running:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-ROS_DOMAIN_ID=47 rviz2 -d scripts/PhyGS/configs/navigation/spot_nav2.rviz \
+ROS_DOMAIN_ID=47 rviz2 -d scripts/PhyGS/phygs/skills/navigation/execution/launch/spot_nav2.rviz \
   --ros-args -p use_sim_time:=true
 ```
 

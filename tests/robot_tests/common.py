@@ -31,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parents[1]  # The PhyGS checkout (tests/robot_tests is the package phygs_robot_tests).
 CONFIGS = ROOT / "configs"
-ENVIRONMENT_CONFIG = PROJECT / "phygs" / "configs" / "environment.yaml"
+ENVIRONMENT_CONFIG = PROJECT / "phygs" / "world" / "environment.yaml"
 sys.path[:0] = [str(ROOT), str(PROJECT)]  # Runs from a checkout without pip install.
 
 
@@ -69,9 +69,9 @@ def robot_scene(robot, position=None, cameras: tuple[str, ...] = (), imu: bool =
     """``robots.scene.make_scene_cfg`` arguments for a component test, as episodes build the scene:
     ``robot`` (a description) at ``position`` [m] (default: its spawn height at the origin), its
     ``cameras`` by name (RGB and depth), the IMU with ``imu``, the dome light of
-    ``phygs/configs/environment.yaml`` and the project's physics step. A test adds only its own props and
+    ``phygs/world/environment.yaml`` and the project's physics step. A test adds only its own props and
     test sensors (e.g. an inspection camera, to ``cameras``)."""
-    from phygs.robots.scene import robot_cameras
+    from phygs.sim.robot_scene import robot_cameras
 
     return dict(
         robot=robot,
@@ -203,12 +203,12 @@ class Check:
         import numpy as np
         import yaml
 
-        from phygs.execution.navigation.footprint import transit_footprint
         from phygs.recording.panels import PanelFeed
         from phygs.recording.trace import compose
         from phygs.recording.video import FOCAL_LENGTH, Video, live_axis
         from phygs.sim.base import BaseLink
         from phygs.sim.cameras import ViewCamera
+        from phygs.skills.navigation.execution.footprint import transit_footprint
 
         camera = ViewCamera(focal_length=FOCAL_LENGTH)
         outline = None  # A robot in bring-up has no footprint profile yet (check_footprint measures it).

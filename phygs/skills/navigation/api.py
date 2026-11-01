@@ -11,16 +11,16 @@ import math
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from phygs.execution.navigation.interfaces import (
+from phygs.runtime.episode import EpisodeStatus
+from phygs.skills.navigation.execution.interfaces import (
     NavigationBackend,
     NavigationBackendFactory,
     NavigationContext,
 )
-from phygs.execution.navigation.types import NavigationConfig as NavigationConfig
-from phygs.execution.navigation.types import NavigationFeedback as NavigationFeedback
-from phygs.execution.navigation.types import NavigationGoal as NavigationGoal
-from phygs.execution.navigation.types import angle_error as angle_error
-from phygs.runtime.episode import EpisodeStatus
+from phygs.skills.navigation.execution.types import NavigationConfig as NavigationConfig
+from phygs.skills.navigation.execution.types import NavigationFeedback as NavigationFeedback
+from phygs.skills.navigation.execution.types import NavigationGoal as NavigationGoal
+from phygs.skills.navigation.execution.types import angle_error as angle_error
 
 if TYPE_CHECKING:
     from phygs.observations.types import ObservationReader

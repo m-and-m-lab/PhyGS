@@ -12,7 +12,7 @@ import pytest
 from fakes import SPOT
 from ui_fakes import START, Manipulation, Ui, fake_control, run_requests
 
-from phygs.execution.manipulation.planning import JointTrajectory
+from phygs.skills.manipulation.execution.planning import JointTrajectory
 from phygs.ui import schema
 from phygs.ui.bridge import Bridge
 
