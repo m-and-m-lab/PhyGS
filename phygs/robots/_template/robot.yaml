@@ -63,7 +63,7 @@ gripper:
     wrist: {position: [0.0, 0.0, 0.0]}
     hand: {position: [0.0, 0.0, 0.1], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}  # The middle of the jaw gap.
     grasp: {position: [0.0, 0.0, 0.1], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}  # An object's grasp point.
-    # Optional, for the robot tests' scripted routines: where a bar handle goes in a pull grasp, and
+    # Optional, for the composite skills (phygs.composite): where a bar handle goes in a pull grasp, and
     # for a gripper with one fixed jaw, its inner pad (a held object rests on it).
     handle: {position: [0.0, 0.0, 0.1], rotation_xyzw: [-0.5, -0.5, -0.5, 0.5]}
 cameras:  # Depth cameras: an existing prim below the robot prim, or a spawned pinhole (pinhole + offset).

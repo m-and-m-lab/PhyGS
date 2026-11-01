@@ -18,29 +18,29 @@ from __future__ import annotations
 
 import numpy as np
 from phygs_robot_tests.episodes import episode
-from phygs_robot_tests.routines import arm, base, drawer
+
+from phygs.composite import CompositeSkills
 
 
 def plan(session, name: str, seen: dict) -> None:
     """Put the target into the drawer ``name`` (the task names it) and close it; ``seen`` keeps the
     place spot [m]."""
+    skills = CompositeSkills(session)
     target = session.hints.target()
-    arm.stow(session)
-    base.go_to(session, name, "open")
-    arm.look_at(session, session.hints.part(name).handle_center, "handle")
-    drawer.open_drawer(session, name)
-    arm.stow(session)
-    base.go_to(session, target.on, "reach")
-    held = arm.pick(session, target)
-    arm.stow(session, held)
-    spot = seen["spot"] = tuple(drawer.place_spot(session, name, target.size).tolist())
-    base.go_to(session, name, "reach_in", spot)
-    arm.place_upright(session, spot, held)
+    skills.stow()
+    skills.open_drawer(session.hints.part(name))
+    skills.stow()
+    skills.go_to_reach(target.center)
+    skills.pick(target.center, target.size, name=target.name)
+    skills.stow()
+    part = session.hints.part(name)
+    spot = seen["spot"] = tuple(skills.place_spot(part, target.size).tolist())
+    skills.go_to_reach(spot, part=part)
+    skills.place_upright(spot)
     session.sleep(1.0)  # The released target settles.
-    arm.stow(session)
-    base.go_to(session, name, "close")
-    drawer.close_drawer(session, name)
-    arm.stow(session)
+    skills.stow()
+    skills.close_drawer(session.hints.part(name))
+    skills.stow()
 
 
 def main() -> None:

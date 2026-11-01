@@ -9,18 +9,15 @@ references (no Isaac Sim)."""
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
 import pytest
-import yaml
 from phygs_robot_tests.tasks import load_task
 
 from phygs.world.spec import ACTION_SETS, ACTIONS, EpisodeSpec, load_agent
 
 PROJECT = Path(__file__).resolve().parents[1]
 EPISODES = PROJECT / "tests" / "robot_tests" / "configs" / "episodes"
-STANCES = PROJECT / "tests" / "robot_tests" / "configs" / "stances"
 SPECS = sorted(EPISODES.glob("*.yaml")) + sorted((PROJECT / "phygs" / "configs" / "ui").glob("*_drawer.yaml"))
 
 
@@ -151,21 +148,6 @@ def test_load_names_the_file_in_errors(tmp_path):
     path.write_text("schema: 0\nid: x\n")
     with pytest.raises(ValueError, match="broken.yaml"):
         EpisodeSpec.load(path)
-
-
-def test_the_routines_have_stances_for_every_episode_scene():
-    """The robot tests' scripted plans stand where configs/stances/<scene>.yaml says (their own data,
-    not served to agents); every retrieve episode's scene has a file, every file a scene, and every
-    stance is (x, y, heading). The navigation courses need none: their plans walk to given goals."""
-    specs = [EpisodeSpec.load(path) for path in sorted(EPISODES.glob("*.yaml"))]
-    files = {path.stem for path in STANCES.glob("*.yaml")}
-    assert {spec.scene.name for spec in specs if spec.task["goal"] == "retrieve"} <= files
-    assert files <= {spec.scene.name for spec in specs}
-    for path in STANCES.glob("*.yaml"):
-        for place, uses in yaml.safe_load(path.read_text())["stances"].items():
-            assert "open" not in uses, place  # The open stance is derived from the drawer (routines).
-            for stance in uses.values():  # (x, y, heading) [m, m, rad].
-                assert len(stance) == 3 and all(math.isfinite(value) for value in stance), (place, stance)
 
 
 @pytest.mark.parametrize(

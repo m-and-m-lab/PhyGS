@@ -3,7 +3,8 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Rotations and poses with numpy only (the routines may not import scipy)."""
+"""Rotations and poses with numpy only (agent-side code imports the session, numpy and the standard
+library)."""
 
 from __future__ import annotations
 

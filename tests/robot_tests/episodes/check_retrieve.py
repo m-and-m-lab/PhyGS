@@ -5,8 +5,9 @@
 
 """Retrieve: at the end the target is in the hand and the arm stowed.
 
-The plan: stow; if the target is in a drawer, walk to the drawer, open it and walk to where the
-robot reaches into it, otherwise walk to the furniture it rests on; pick it and stow holding it.
+The plan, with the framework's composite skills: stow; if the target is in a drawer, open it and
+walk to where the robot reaches into it, otherwise walk to where it reaches the target; pick it and
+stow holding it.
 
     ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_drawer.yaml \
@@ -22,26 +23,25 @@ from __future__ import annotations
 import time
 
 from phygs_robot_tests.episodes import episode
-from phygs_robot_tests.routines import arm, base, drawer
 
+from phygs.composite import CompositeSkills
 from phygs.session import AgentFailed
 
 
 def plan(session) -> None:
     """Hold the target in the gripper with the arm stowed."""
-    arm.stow(session)
+    skills = CompositeSkills(session)
+    skills.stow()
     target = session.hints.target()
     if target.inside is not None:
-        base.go_to(session, target.inside, "open")
-        arm.look_at(session, session.hints.part(target.inside).handle_center, "handle")
-        drawer.open_drawer(session, target.inside)
-        arm.stow(session)
+        skills.open_drawer(session.hints.part(target.inside))
+        skills.stow()
         target = session.hints.target()  # The open drawer moved it.
-        base.go_to(session, target.inside, "reach_in", target.center)
+        skills.go_to_reach(target.center, part=session.hints.part(target.inside))
     else:
-        base.go_to(session, target.on, "reach")
-    held = arm.pick(session, target)
-    arm.stow(session, held)
+        skills.go_to_reach(target.center)
+    skills.pick(target.center, target.size, name=target.name)
+    skills.stow()
     if not session.manipulation.holding:
         raise AgentFailed("The target dropped in the stow.")
 

@@ -22,7 +22,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 PACKAGE = PROJECT / "phygs"
 LAYERS = (
     ("ui",),
-    ("world",),
+    ("world", "composite"),
     ("session",),
     ("robots",),
     ("skills",),

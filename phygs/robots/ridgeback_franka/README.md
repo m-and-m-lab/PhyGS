@@ -38,7 +38,7 @@ python3 scripts/PhyGS/phygs/robots/ridgeback_franka/fetch.py
 | 11 drawer_house | Fails (same run): opened 0.259 m of 0.284 m planned; the bar slipped 2.5 cm in the fingers (the `handle` frame is not measured yet); the 30 deg pull was refused at the 0.225 m handle, 45 deg pulled. |
 | 14 retrieve_grid | Fails (same run): opened, reached in and picked; the stow with the box stalled, a finger pressed on the open drawer (141 N): the Franka's stow folds the hand down in front of the base. |
 | 14 retrieve_house | Error (same run): on the walk in to the open drawer the base camera saw nothing in range and the Nav2 bridge raised "Nav2 camera has no valid points". |
-| other rungs | Not run yet with `--robot ridgeback_franka`. The routines' stances are Spot's; a design for robot-specific stances is proposed (not in this repository). |
+| other rungs | Not run yet with `--robot ridgeback_franka`. These results predate the composite skills (2026-11-01), whose stances are computed from the grip range in their tuning, measured on Spot. |
 
 Known open points: the camera mounts are first guesses; the `handle` tool frame sits between the
-fingertips until the drawer rungs measure it; the routines' stances per scene are Spot's.
+fingertips until the drawer rungs measure it; the composite skills' tuning (grip range, reach) is Spot's.

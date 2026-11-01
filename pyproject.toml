@@ -23,6 +23,7 @@ Repository = "https://github.com/m-and-m-lab/PhyGS"
 # phygs at the root; the robot tests are the package phygs_robot_tests, kept under tests/robot_tests.
 packages = [
     "phygs",
+    "phygs.composite",
     "phygs.execution",
     "phygs.execution.locomotion",
     "phygs.execution.manipulation",
@@ -50,7 +51,6 @@ packages = [
     "phygs_robot_tests",
     "phygs_robot_tests.components",
     "phygs_robot_tests.episodes",
-    "phygs_robot_tests.routines",
     "phygs_robot_tests.tasks",
 ]
 
@@ -66,7 +66,7 @@ packages = [
 "phygs.ui" = ["web/*.html", "web/*.js", "web/*.css"]
 "phygs.scene" = ["builtin/*/scene.usda"]
 "phygs.execution.navigation.launch" = ["*.py"]
-"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "routines/*.yaml", "tasks/*.yaml", "*.npz"]
+"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "tasks/*.yaml", "*.npz"]
 
 [tool.ruff]
 line-length = 120

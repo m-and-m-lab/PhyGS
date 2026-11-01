@@ -11,6 +11,47 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.10.0 (not tagged yet)
+
+The composite skills are part of the framework (2026-11-01): whole steps an agent asks for, given
+explicit affordances, over the agent session only. They replace the robot tests' routines, which
+were test code that a benchmark imported.
+
+Added (2026-11-01):
+
+- `phygs.composite`: `CompositeSkills(session, tuning=TUNING)` with `walk`, `go_to_reach`, `stow`,
+  `look_at`, `pick`, `place`, `place_upright`, `place_spot`, `open_drawer` and `close_drawer`, and the
+  stances they compute (`open_stance`, `close_stance`, `reach_stances`) from a drawer part or a point
+  and the grip range. Each skill tries its listed options in order (`Tuning`, tuned on Spot) and
+  returns an `Outcome`: the option that worked, how many were refused, and what the robot measured
+  (the hand's travel along a slide, the hold reading, the base pose). The package imports the
+  session only (`tests/test_agent_imports.py`); `tests/test_public_surface.py` lists its names.
+- `MotionConfig.hold_tolerance` (robot.yaml `arm.motion.hold_tolerance`, optional; default a fifth
+  of `grip_squeeze`): how far short of its squeeze setpoint the gripper must stay to read as holding.
+
+Changed (2026-11-01):
+
+- The robot tests' episode plans (`check_retrieve`, `check_drawer_stroke`, `check_drawer_place`,
+  `check_pick_place`) use `phygs.composite`. The close stance centres the push in the grip range and
+  the table stance faces the target along the line from the base, both computed: the per-scene
+  stance files are gone. A table stance that navigation refuses (the robot does not fit there)
+  turns about the target (`reach_turns_deg`). A refused drawer stroke stands again one walk
+  tolerance nearer. A drawer place spot keeps 0.08 m from the drawer front (was 0.02 m; the planned
+  move above it was refused at 0.05 m), so an opening under 0.27 m moves it toward the carcass.
+
+Removed (2026-11-01):
+
+- `phygs_robot_tests.routines` (`arm`, `base`, `drawer`, `geometry`, `params.yaml`) and
+  `tests/robot_tests/configs/stances/`. Use `phygs.composite.CompositeSkills` (the same moves, with
+  explicit affordances instead of part names) and `phygs.composite.geometry` (the same functions);
+  `params.yaml` is `phygs.composite.Tuning` (`reach_in_ahead_m` is `reach_ahead_m`).
+
+Fixed (2026-11-01):
+
+- `ManipulationClient.holding` read a held box as dropped when the jaws crept 0.021 rad of the
+  0.05 rad squeeze on a tilted grasp (2026-10-30, house drawer, the box lifted 0.159 m): holding now
+  compares with `hold_tolerance` (0.01 rad on Spot) instead of the gripper tolerance (0.03 rad).
+
 ### 0.9.0 (2026-11-01)
 
 The recording and the replay share one look and one code path (2026-10-30). Older state logs

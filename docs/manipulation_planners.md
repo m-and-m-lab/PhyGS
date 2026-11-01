@@ -39,7 +39,7 @@ Use a fresh output directory for every run.
 `check_arm_planning.py` looks at the target, moves the hand over the clutter and over a free spot,
 cancels a planned move, stows and walks with the cameras and the planner resident; it also checks
 that the planner's robot model sits on the physical links and that it refuses a start inside an
-obstacle. `check_pick_place.py` picks the target with the routines' pick (a planned `move_to_pose` to
+obstacle. `check_pick_place.py` picks the target with the composite pick (a planned `move_to_pose` to
 the pre-grasp, a straight end-effector line in, close, a line out), refuses a carry goal only the
 held object would hit (known boxes only: on depth the clutter's top is unseen while holding, see
 below), carries it over the clutter and back, places it on a free spot and stows. Both read the
@@ -301,8 +301,8 @@ The current pick sequence follows this pattern in the reference agent. Object-le
 skills, attached-object planning and opening are not implemented yet.
 Note 2026-10-16: there is no `open`/`close` skill (removed). Since 2026-10-18 there is no
 `pick`, `place` or `move_along_axis` either: agents compose them from `move_to_pose`,
-end-effector trajectories and the gripper commands (see the robot tests' routines,
-`tests/robot_tests/routines/`).
+end-effector trajectories and the gripper commands (see the composite skills,
+`phygs/composite/`).
 
 ## Limits that matter
 

@@ -43,13 +43,13 @@ ROLES = ("navigation", "planning", "look", "front")
 # Gripper tool frames (gripper.tools): poses in the wrist link. "wrist" is the wrist link itself; every
 # other tool has the gripper's axes: x the approach (out of the palm, toward the object), z the axis
 # the jaws close along, y = z x x. Required: "hand" (the middle of the jaw gap) and "grasp" (where an
-# object's grasp point goes). Optional, for the robot tests' scripted routines: "handle" (where a bar
+# object's grasp point goes). Optional, for the composite skills (phygs.composite): "handle" (where a bar
 # handle goes in a pull grasp) and "fixed_jaw" (a gripper with one fixed jaw: its inner pad, which a
 # held object rests against; without it the jaws centre the object).
 REQUIRED_TOOLS = ("wrist", "hand", "grasp")
 # arm.motion (ManipulationController's MotionConfig): the limits and tolerances in joint units [m or
-# rad] depend on the robot's joints and are required; the Cartesian tolerances and the waits may keep
-# MotionConfig's defaults.
+# rad] depend on the robot's joints and are required; the Cartesian tolerances, the waits and the hold
+# tolerance (a fifth of grip_squeeze) may keep MotionConfig's defaults.
 JOINT_MOTION = (
     "max_velocity",
     "max_acceleration",
@@ -69,6 +69,7 @@ OTHER_MOTION = (
     "timeout_seconds",
     "stop_timeout_seconds",
     "motion_window_seconds",
+    "hold_tolerance",
 )
 
 

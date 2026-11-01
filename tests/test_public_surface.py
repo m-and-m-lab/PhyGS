@@ -3,16 +3,18 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The two public surfaces (ARCHITECTURE.md, Boundaries) and the package's independence.
+"""The public surfaces (ARCHITECTURE.md, Boundaries) and the package's independence.
 
-``phygs.session`` is what agents use; ``phygs.world`` is what benchmarks use. A name added to or
-removed from either is an API change: edit the list here and bump the version (minor) with a
-CHANGELOG line. The package itself never imports the robot tests or reads the repository around it.
+``phygs.session`` is what agents use, ``phygs.composite`` the composite skills over it;
+``phygs.world`` is what benchmarks use. A name added to or removed from any is an API change: edit
+the list here and bump the version (minor) with a CHANGELOG line. The package itself never imports
+the robot tests or reads the repository around it.
 """
 
 import ast
 from pathlib import Path
 
+import phygs.composite
 import phygs.session
 import phygs.world
 
@@ -39,6 +41,7 @@ SESSION = [
     "motion_failure",
     "unit_approach",
 ]
+COMPOSITE = ["TUNING", "CompositeSkills", "Outcome", "Tuning"]
 WORLD = [
     "REPORT_SCHEMA",
     "SCHEMA",
@@ -63,6 +66,10 @@ WORLD = [
 
 def test_the_agent_surface_is_the_listed_names():
     assert sorted(phygs.session.__all__) == sorted(SESSION)
+
+
+def test_the_composite_surface_is_the_listed_names():
+    assert sorted(phygs.composite.__all__) == sorted(COMPOSITE)
 
 
 def test_the_benchmark_surface_is_the_listed_names_and_each_is_exported():

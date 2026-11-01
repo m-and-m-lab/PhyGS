@@ -4,4 +4,4 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """The robot tests: scripted plans and checks that prove the framework on the robot, in build
-order (``run_suite.py``). Importable so a benchmark can reuse the routines and test tasks."""
+order (``run_suite.py``). Importable so a benchmark can reuse the test tasks."""

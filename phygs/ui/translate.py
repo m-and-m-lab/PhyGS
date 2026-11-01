@@ -65,7 +65,7 @@ def gripper_rotation(pointing: np.ndarray, yaw: float) -> Rotation:
     approach along ``pointing``, upright where possible.
 
     The y axis is horizontal (left of the pointing direction); pointing straight up or down, it is
-    the robot's left. Top-down at heading 0 the jaws close along the heading, as the routines grasp.
+    the robot's left. Top-down at heading 0 the jaws close along the heading, as the composite picks grasp.
     """
     x = np.asarray(pointing, dtype=float) / np.linalg.norm(pointing)
     y = np.cross(UP, x)

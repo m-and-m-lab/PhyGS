@@ -4,7 +4,7 @@ Status: interface approved 2026-10-06. Two skills remain: `stow` and `look_at`. 
 were removed on 2026-10-16, and `pick`, `place` and `move_along_axis` on 2026-10-18 (the
 manipulation contract, [manipulation_contract/index.html](manipulation_contract/index.html)):
 agents compose grasps, placements and drawer strokes from `move_to_pose`, end-effector
-trajectories and the gripper commands, as the robot tests' routines do (`tests/robot_tests/routines/`).
+trajectories and the gripper commands, as the composite skills do (`phygs.composite`).
 This guide stays the source of truth for the skills; the contract is the source of truth for
 the low-level commands.
 
@@ -134,34 +134,38 @@ class SkillFeedback(MotionFeedback):
 
 The other values (`holding_object`, `not_holding`, `no_grasp`, `no_place`, `grasp_empty`,
 `grasp_lost`) stay in the enum but no skill reports them since `pick` and `place` were removed;
-`motion_failure(reason)` maps a low-level command's failure reason to a value, as the routines
-do. The feedback contains only what a real robot can sense: joint and gripper positions,
+`motion_failure(reason)` maps a low-level command's failure reason to a value, as the composite
+skills do. The feedback contains only what a real robot can sense: joint and gripper positions,
 tracking error, planner and map results from permitted observations. Ground-truth contact
 forces and object poses go only to the evaluator.
 
 ## Composing grasps, placements and straight motions
 
-The robot tests' routines are the reference compositions (`tests/robot_tests/routines/arm.py`,
-numbers in `routines/params.yaml`); any agent may do the same or something else:
+The composite skills are the reference compositions (`phygs.composite`: `CompositeSkills` in
+`skills.py`, its numbers in `tuning.py`); they import the session only, so any agent may use them,
+do the same or do something else. Each takes an explicit affordance (a box, a drawer part, a
+point), tries its listed options in order and returns an `Outcome` with the option that worked and
+what the robot measured:
 
-- **Straight approach** (`arm.approach_straight`): `move_to_pose` (planned, `tool="wrist"`,
+- **Straight approach** (`approach_straight`): `move_to_pose` (planned, `tool="wrist"`,
   with `held` while carrying) to the pose a distance back from the end pose along an axis, then
   a straight `execute_trajectory(EndEffectorTrajectory(...))` from the measured tool pose
   (`tool_pose`) to the end pose. The straight part is not checked against obstacles: it may end
   in contact, as a grasp or a push does.
-- **Straight line** (`arm.move_straight`): an end-effector line from `tool_pose()` along a
+- **Straight line** (`move_straight`): an end-effector line from `tool_pose()` along a
   world axis, keeping the orientation, at `line_speed_m_s` (0.1 m/s): lift, pull, back out.
   Execution refuses it before moving when it leaves the arm's reach or needs another arm
   configuration (`TrajectoryRefused`), and fails it while moving when the tool leaves its path by
   more than 2 cm or 0.05 rad. How far a pull got is the agent's to measure: a drawer may stop it.
-- **Pick** (`arm.pick`): open; for each approach and grasp yaw, a straight approach to the
+- **Pick** (`pick`): open; for each approach and grasp yaw, a straight approach to the
   grasp wrist pose (`grasp_wrist_pose`: the robot's `grasp` tool frame on the point where the
   approach line enters the object, its x along the approach; Spot's is 0.183 m along the wrist x,
   in the middle of the jaw gap at 0.029 m; an option refused before moving tries the next); close;
-  record the held object (`arm.held_object`: the box in the measured wrist frame, resting on the
+  record the held object (`held_object`: the box in the measured wrist frame, resting on the
   `fixed_jaw` tool's pad, Spot's at -0.036 m, where the closing moving jaw pushes it, or centred
-  when both jaws close); lift straight back out; succeed if `holding`. Returns the `HeldObject`.
-- **Place** (`arm.place`): keep the wrist orientation (the object keeps its yaw), a straight
+  when both jaws close); lift straight back out; succeed if `holding`. The `HeldObject` is the
+  skills' `held`, which later stows, looks and places carry.
+- **Place** (`place`): keep the wrist orientation (the object keeps its yaw), a straight
   approach down along the gripper axis to where the object's bottom is `place_clearance_m`
   (0.04 m) above the point (the planner keeps 1 cm clearance and a 2 cm map cell can hold the
   surface), open, straight back up, close the empty gripper. The object drops the rest; the
@@ -175,10 +179,11 @@ slide axis builds force (on the kitchen island the jaws wedged at ~320 N).
 
 ## Drawers
 
-There is no drawer skill. The routines compose a stroke in `drawer.open_drawer` and
-`drawer.close_drawer` (`tests/robot_tests/routines/drawer.py`): open the gripper; a straight approach into the part to the handle grasp
-pose; close; a straight line along the slide by the stroke; open; move the fixed jaw off the bar
-and back out with straight lines. `tests/robot_tests/episodes/check_drawer_stroke.py` checks it.
+There is no drawer skill on the client. The composite skills compose a stroke in `open_drawer`
+and `close_drawer` (`phygs/composite/skills.py`): stand at a stance computed from the part and the
+grip range, look at the handle, open the gripper; a straight approach into the part to the handle
+grasp pose; close; a straight line along the slide by the stroke; open; move the fixed jaw off the
+bar and back out with straight lines. `tests/robot_tests/episodes/check_drawer_stroke.py` checks it.
 
 Handle grasp pose: the bar along the gripper's y (Spot: the jaw hinge), the approach into the
 part, at the robot's `handle` tool frame: with a fixed jaw the bar rests on it (its axis a radius
@@ -281,9 +286,9 @@ process and the map.
 
 Configuration in the robot's `robot.yaml` (Spot's: `phygs/robots/spot/robot.yaml`;
 the skill backend is `skills.backend` in `phygs/configs/environment.yaml`). The tool frames are the
-gripper geometry the skills, the UI and the robot tests' routines read; every tool but `wrist` has
-the gripper's axes (x the approach, z the jaws' closing axis). The routines' line speed and
-clearances are in `tests/robot_tests/routines/params.yaml`:
+gripper geometry the skills, the UI and the composite skills read; every tool but `wrist` has
+the gripper's axes (x the approach, z the jaws' closing axis). The composite skills' line speed and
+clearances are their tuning (`phygs/composite/tuning.py`):
 
 ```yaml
 arm:
@@ -307,13 +312,15 @@ camera_roles:
 | `phygs/execution/manipulation/skills/types.py` | Targets, `SkillFailure`, `SkillError`, `SkillConfig`, `HeldObject` |
 | `phygs/execution/manipulation/skills/runner.py` | Runs a skill sequence one low-level command at a time |
 | `phygs/execution/manipulation/skills/backends.py` | `DirectSkills`, `CollisionAvoidancePlannerSkills`, `create_skills` |
-| `tests/robot_tests/routines/` | Reference compositions: pick, place (`arm.py`), drawer strokes (`drawer.py`) |
+| `phygs/composite/` | Reference compositions: stances, pick, place, drawer strokes (`skills.py`), their tuning (`tuning.py`) |
 
 ## Example: orchestrating agent
 
 ```python
+skills = CompositeSkills(session)  # phygs.composite
 target = session.hints.target()  # Privileged; a perceiving agent finds it in its images.
-held = arm.pick(session, target)  # routines.arm; or compose it: move_to_pose, a line in, close, a line out.
+skills.pick(target.center, target.size)  # Or compose it: move_to_pose, a line in, close, a line out.
+held = skills.held
 session.wait(session.manipulation.stow(held=held))
 result = session.wait(session.manipulation.look_at(PointTarget(spot), held=held))
 if result.failure == SkillFailure.OUT_OF_REACH:

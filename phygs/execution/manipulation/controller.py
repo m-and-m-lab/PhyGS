@@ -40,7 +40,11 @@ class MotionConfig:
     must come (else it closed on an object), and ``gripper_stopped_velocity`` [m/s or rad/s] when the
     gripper joints count as still (a prismatic gripper on a revolute arm needs its own). ``grip_squeeze``
     [m or rad] is how far past the contact position a gripper that stopped on an object keeps pressing;
-    it bounds the holding force instead of crushing.
+    it bounds the holding force instead of crushing. ``hold_tolerance`` [m or rad]: the gripper holds
+    the object while it stays more than this short of that setpoint (None: a fifth of the squeeze). A
+    held object can yield, so the jaws creep part of the squeeze (0.021 of Spot's 0.05 rad on a box
+    pinched at its edge, which the 0.03 rad gripper tolerance read as dropped, 2026-10-30); an empty
+    gripper reaches the setpoint (within 0.004 rad).
     ``motion_window_seconds`` [s]: joint motion is the net position change over this window;
     a jaw squeezing a handle fixed to the world chatters in place, which per-tick changes
     would read as motion.
@@ -61,14 +65,19 @@ class MotionConfig:
     timeout_seconds: float = 2.0
     stop_timeout_seconds: float = 2.0
     grip_squeeze: float = 0.05
+    hold_tolerance: float | None = None
     motion_window_seconds: float = 0.05
 
     def __post_init__(self) -> None:
+        if self.hold_tolerance is None:
+            object.__setattr__(self, "hold_tolerance", self.grip_squeeze / 5)
         if any(not math.isfinite(value) or value <= 0 for value in vars(self).values()):
             raise ValueError("Motion limits, tolerances and durations must be positive and finite.")
         if self.grip_squeeze <= self.gripper_tolerance:
             # Holding is detected as the gripper staying short of its squeeze setpoint.
             raise ValueError("grip_squeeze must exceed gripper_tolerance, or a held object cannot be detected.")
+        if self.hold_tolerance >= self.grip_squeeze:
+            raise ValueError("hold_tolerance must be less than grip_squeeze, or a held object reads as dropped.")
 
 
 class ManipulationController:
@@ -163,14 +172,15 @@ class ManipulationController:
 
     @property
     def holding(self) -> bool:
-        """Whether the gripper closed on an object and is still held short of its squeeze setpoint.
+        """Whether the gripper closed on an object and is still held more than ``hold_tolerance``
+        short of its squeeze setpoint.
 
         A lost object lets the jaws reach the setpoint, so this becomes false.
         """
         if not self.object_held:
             return False
         error = abs(self.reader.positions()[self.gripper] - self.gripper_setpoint)
-        return error > self.config.gripper_tolerance
+        return error > self.config.hold_tolerance
 
     def validate(self, target: dict[str, float]) -> None:
         if not target or not set(target).issubset(self.declaration.joints):

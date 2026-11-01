@@ -19,8 +19,8 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest scripts/PhyGS/tests 
 | `test_manipulation_skills.py` | The `stow` and `look_at` skills and the skill lifecycle, with fake arms and planners. |
 | `test_lowering.py`, `test_end_effector_execution.py` | End-effector trajectories: IK lowering, refusals, tool tracking. |
 | `test_manipulation_planning.py` | Planner trajectory contracts and the shared 3D collision map. |
-| `test_routines.py` | The robot tests' routines and the retrieve plan on a fake session. |
-| `test_agent_imports.py` | Agents, routines and episode plans import only the session, the standard library, numpy and yaml. |
+| `test_composite.py` | The composite skills (`phygs.composite`) and the retrieve plan on a fake session. |
+| `test_agent_imports.py` | Agents and the composite skills import only the session, the standard library and numpy (agents also yaml); episode plans add the composite skills. |
 | `test_episode_spec.py`, `test_agent_session.py` | Episode specs and the agent session (grants, audit, threads). |
 | `test_parts.py` | Sliding-part (drawer) information from an authored prismatic joint. |
 | `test_navigation.py`, `test_navigation_backends.py` | Planning, command lifecycle, backends without ROS, independent evaluation. |
@@ -45,7 +45,6 @@ robot_tests/
   common.py        shared start and result of every robot test; the robot as episodes build it
   physical.py      the robot's ground-truth state for the navigation evaluators
   run_suite.py     runs the ladder or a group of it, with a summary and the first failing rung
-  routines/        session-only building blocks of the agent tests' plans (params.yaml: their strategy)
   episodes/        agent tests: an episode spec and a plan through the agent session (episode.py: their test side)
   components/      component tests: the machinery under the agent session (RobotControl or the runtime)
   configs/         test settings and episode specs; the robot is --robot (default: the spec's)
@@ -94,8 +93,8 @@ them. Component tests show the cameras the control observes, and the planner whe
 An agent test's folder also holds the harness's `report.json` (spec, how the episode ended, the
 evaluator's result (`evaluation`), call totals and privileged reads, commands with their final feedback, arm
 contacts, narration) and `audit.jsonl` (one line per agent call). Thresholds:
-`configs/<test>.yaml` and `configs/episodes.yaml` (in `phygs_robot_tests`); the plans' strategy:
-`routines/params.yaml`.
+`configs/<test>.yaml` and `configs/episodes.yaml` (in `phygs_robot_tests`); the plans' strategy: the
+composite skills' tuning (`phygs/composite/tuning.py`).
 
 Notes kept from validation:
 

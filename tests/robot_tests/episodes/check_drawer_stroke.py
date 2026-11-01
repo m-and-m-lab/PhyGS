@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Drawer strokes: open the drawer the target starts in by its handle from one stance, as far as
-the grip range allows (until the handle is 0.80 m ahead), and push it shut from another.
+the grip range allows (until the handle is 0.80 m ahead), and push it shut from another (the
+composite skills' stances, computed from the drawer).
 
 The opening after the pull is read through the part hint the spec grants (the plan runs on, so
 ground truth cannot be read then); the closed drawer is judged with ground truth.
@@ -16,22 +17,21 @@ ground truth cannot be read then); the closed drawer is judged with ground truth
 from __future__ import annotations
 
 from phygs_robot_tests.episodes import episode
-from phygs_robot_tests.routines import arm, base, drawer
+
+from phygs.composite import CompositeSkills
 
 
 def plan(session, seen: dict) -> None:
     """Open, then close, the target's drawer; ``seen`` keeps the drawer, the planned pull and the
     opening after it [m]."""
+    skills = CompositeSkills(session)
     name = seen["drawer"] = session.hints.target().inside
-    arm.stow(session)
-    base.go_to(session, name, "open")
-    arm.look_at(session, session.hints.part(name).handle_center, "handle")
-    seen["planned_m"] = drawer.open_drawer(session, name)
+    skills.stow()
+    seen["planned_m"] = skills.open_drawer(session.hints.part(name)).option["stroke_m"]
     seen["opened_m"] = session.hints.part(name).opening
-    arm.stow(session)
-    base.go_to(session, name, "close")
-    drawer.close_drawer(session, name)
-    arm.stow(session)
+    skills.stow()
+    skills.close_drawer(session.hints.part(name))
+    skills.stow()
 
 
 def main() -> None:

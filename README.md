@@ -52,6 +52,7 @@ PhyGS/
 │   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, replay_cli.py)
 │   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth
 │   ├── session/                 # What an agent gets: AgentSession, target types, hints
+│   ├── composite/               # Composite skills over the session: stances, pick, place, drawers
 │   ├── robots/                  # spot/ (robot.yaml, policy, assets/, spot_description submodule), ridgeback_franka/, _template/
 │   ├── skills/                  # Public clients: locomotion, navigation, manipulation
 │   ├── execution/               # locomotion/, navigation/ (Nav2, known map, launch file), manipulation/ (arm, skills, planners)
@@ -60,7 +61,7 @@ PhyGS/
 │   ├── observations/            # Observation packets, localization, front view, colour detectors
 │   ├── configs/                 # environment.yaml (physics, cameras, Nav2, planner, timing), navigation/, ui/
 │   └── __main__.py              # The phygs command: run, ui, scenes, tests, version
-├── tests/robot_tests/           # The robot tests (importable): 15 rungs, routines, test tasks, fixture scenes, run_suite.py
+├── tests/robot_tests/           # The robot tests (importable): 15 rungs, test tasks, fixture scenes, run_suite.py
 ├── tests/                       # Unit tests (no simulator) and the import guards
 ├── examples/                    # run_world.py (one episode spec with an agent); agents/ (template, depth example)
 ├── docker/                      # Isaac Lab container patch (cuRobo)
@@ -133,6 +134,8 @@ def run(session):
 | `navigation`, `manipulation`, `locomotion`, `arm` | The clients the spec's `actions` allow (`skills`, `motion`, `joints` or a list). Each command: an id, `feedback(id)` with status and reason, `cancel(id)`. |
 | `grants` and `hints` | Privileged channels the spec grants (`gt_localization`, `known_map`, `object_targets`, `scene_hints`); every use is audited and listed in the report. |
 | `finish(reason)` | Ends the episode. The World then cancels everything, keeps the grip, settles and evaluates. |
+
+Whole steps are composed over the same session by the composite skills (`phygs.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.go_to_reach(point)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.stow()`. Each tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
 
 Everything the agent does goes into `audit.jsonl`; the report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
 

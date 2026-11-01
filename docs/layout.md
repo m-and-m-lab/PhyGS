@@ -6,6 +6,7 @@ phygs/
 ├── world/         What a benchmark drives: World (build, run, stop, evaluate, report), EpisodeSpec, the Task
 │                  seam, Truth, the report schema, recorder, provenance, the Nav2 assembly, the viewer protocol,
 │                  the replay
+├── composite/     Composite skills over the session: walk to stances, pick, place, open and close drawers
 ├── session/       What an agent gets: AgentSession, its target types and errors, privileged hints
 ├── robots/        One folder per robot (robot.yaml), the description that loads it, its scene, its assembly (control.py)
 ├── skills/        The public clients: locomotion, navigation, manipulation (api.py each)
@@ -32,7 +33,7 @@ in a lower layer, never one beside or above it:
 | Layer | Packages | Imports |
 | --- | --- | --- |
 | 1 | `ui` | everything below |
-| 2 | `world` | the session, robots, skills, execution, and the bottom layers |
+| 2 | `world`, `composite` | `world`: the session, robots, skills, execution, and the bottom layers; `composite`: the session only (agent-side code) |
 | 3 | `session` | robots (`RobotInfo`), execution (the target types it re-exports) |
 | 4 | `robots` | skills (the clients it assembles), execution, sim, recording, runtime, observations |
 | 5 | `skills` | execution, runtime |
@@ -55,7 +56,8 @@ read, tested and replaced without them. A new package gets a row here and in `LA
 ## Three audiences, three surfaces
 
 - **Agent authors:** `phygs.session` only (`tests/test_agent_imports.py`), with the standard
-  library, NumPy and PyYAML. [The agent contract](../README.md#-the-agent-contract);
+  library, NumPy and PyYAML, and optionally the composite skills over it (`phygs.composite`, which
+  imports the session only). [The agent contract](../README.md#-the-agent-contract);
   `examples/agents/template.py`.
 - **Benchmark authors:** `phygs.world` and `phygs.scene` (scenes by id). [world.md](world.md).
 - **Framework developers:** a robot is a folder ([adding_a_robot.md](adding_a_robot.md)); a

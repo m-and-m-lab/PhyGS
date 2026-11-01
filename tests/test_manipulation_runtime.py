@@ -442,6 +442,28 @@ def test_a_yielding_object_does_not_ratchet_the_squeeze_past_the_first_contact()
     assert controller.gripper_setpoint == first  # Set once, 0.05 rad past the first contact.
 
 
+def test_a_held_object_that_yields_part_of_the_squeeze_still_reads_as_held():
+    """A box pinched at its edge let Spot's jaws creep 0.021 of the 0.05 rad squeeze and rest there
+    while it was lifted; the gripper tolerance (0.03 rad) read that as dropped (2026-10-30)."""
+    world, controller, runtime, client = setup(object_at=-0.4)
+    client.open_gripper()
+    advance(runtime, client, 2.3)
+    client.close_gripper()
+    advance(runtime, client, 2.5)
+    setpoint = controller.gripper_setpoint
+    world.object_at = setpoint - 0.029  # It yields and the jaws rest 0.029 rad short of the setpoint.
+    advance(runtime, client, 0.5)
+    assert client.holding
+    world.object_at = None  # It falls out: the jaws reach the setpoint.
+    advance(runtime, client, 0.5)
+    assert not client.holding
+
+
+def test_hold_tolerance_must_be_less_than_the_squeeze():
+    with pytest.raises(ValueError, match="hold_tolerance"):
+        MotionConfig(hold_tolerance=0.05)
+
+
 def test_the_squeeze_stays_within_the_gripper_limits():
     """Contact just short of the end stop: the squeeze target is clamped, not a target the joint cannot reach."""
     world, controller, runtime, client = setup(object_at=-0.04)

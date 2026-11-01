@@ -10,8 +10,8 @@ items keep are in [ARCHITECTURE.md](ARCHITECTURE.md#boundaries).
 | Object placement and drawer openings in the spec, and placing them again between episodes in one process | The benchmark's episode generator |
 | Scene requirements and their checker (what a scene must name and contain) | The benchmark's episode generator |
 | The start check split: the framework checks that the environment works; the episode declares its initial state (drawer openings) and the benchmark checks it | With drawer openings in the spec |
-| A public layer of composed skills (pick, place, open and close) | Once it is settled what a skill should include; until then composed behaviour is agent-side code over `phygs.session`, as the robot tests' routines are |
-| Stances computed from a robot's reach, for a second robot | When a second robot needs the drawer and retrieve rungs |
+| A second robot's measured `phygs.composite.Tuning` (grip range, reach, option lists) | When a second robot needs the drawer and retrieve rungs |
+| Framework fixes found in model runs (2026-10-30/31): a `PixelTarget` resolved once to a world point (not only from the latest capture); depth at an object's edge from the nearest surface around the pixel; `stow` backing off before planning for every caller (the composite skills lift and retry); `navigate_to` stowing or refusing with the arm out (the composite skills stow first); the gripper still moving at the stop check and its tracking error | Before the next model runs that hit them |
 | Estimated localization (the agent does not get its true pose) | A benchmark's onboard track |
 | Base and arm moving together; a force-limited pull | Doors and fridges |
 | An agent in its own process (a client over a wire); `fork` of the world state for dry runs | Agents that write code; agents run by others |

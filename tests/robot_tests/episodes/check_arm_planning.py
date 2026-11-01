@@ -127,7 +127,7 @@ def hand_view(world) -> dict:
 
 def wrist_goal(world, hand_goal) -> tuple[float, ...]:
     """The wrist pose [x, y, z, qx, qy, qz, qw] that puts the robot's hand tool at ``hand_goal``."""
-    from phygs_robot_tests.routines.geometry import matrix, xyzw
+    from phygs.composite.geometry import matrix, xyzw
 
     return xyzw(matrix(hand_goal) @ np.linalg.inv(world.robot.tool("hand")))
 

@@ -93,9 +93,10 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
 
 8. **Arm tasks.** The rest of the robot-test ladder takes `--robot` too
    ([tests/robot_tests/README.md](../tests/robot_tests/README.md); `run_suite.py ladder`): arm
-   planning, pick and place, drawers, retrieve. Their scripted routines place your
-   [tool frames](#tool-frames); where the robot stands in a scene (`configs/stances/<scene>.yaml`)
-   and the routines' strategy (`routines/params.yaml`) were tuned for Spot.
+   planning, pick and place, drawers, retrieve. Their plans use the composite skills
+   (`phygs.composite`), which place your [tool frames](#tool-frames) and compute where to stand from
+   the drawer or object and the grip range; their tuning (`phygs/composite/tuning.py`: the grip
+   range, the option lists) was measured on Spot, and another robot passes its own `Tuning`.
 
 9. **Write down what passed**, with dates and output folders, in the robot folder's `README.md`
    (see `ridgeback_franka/README.md`).
@@ -104,7 +105,7 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
 
 `gripper.tools` names frames on the gripper, as poses in the wrist link (`position` [m],
 `rotation_xyzw`). The skills (`move_to_pose(tool=...)`, `tool_pose`), the UI's Move to pose and the
-robot tests' routines place these frames, so no code assumes how a gripper is mounted.
+composite skills place these frames, so no code assumes how a gripper is mounted.
 
 `wrist` is the wrist link itself. Every other tool has the **gripper's axes**, one rotation for all
 of them (the description check enforces it):
@@ -116,8 +117,8 @@ of them (the description check enforces it):
 | Tool | Required | What goes there |
 | --- | --- | --- |
 | `hand` | yes | The middle of the jaw gap: the default of `move_to_pose(tool=)`. |
-| `grasp` | yes | An object's grasp point: the routines' picks and the UI's Move to pose put the clicked or chosen point here. |
-| `handle` | for drawer routines | A bar handle in a pull grasp: its axis, or, with a fixed jaw, its underside. |
+| `grasp` | yes | An object's grasp point: the composite picks and the UI's Move to pose put the clicked or chosen point here. |
+| `handle` | for the drawer skills | A bar handle in a pull grasp: its axis, or, with a fixed jaw, its underside. |
 | `fixed_jaw` | if the gripper has one | The fixed jaw's inner pad: a held object rests on it. Without it the jaws centre the object. |
 
 The same convention, two grippers:
@@ -169,5 +170,5 @@ cameras, the look camera and the stow.
 - A differential base: `command_velocity` refuses `v_y`, and navigation refuses to start (the fine
   approach moves sideways; Nav2's DiffDrive model is ready in the launcher).
 - More than one arm or gripper, and whole-body controllers that move the base for the arm.
-- The routines' stances per scene and their strategy were tuned for Spot; another robot may need
-  its own stances to reach the drawers and tables.
+- The composite skills' tuning (grip range, reach, option lists) was measured on Spot; another robot
+  needs its own measured `Tuning` to reach the drawers and tables.

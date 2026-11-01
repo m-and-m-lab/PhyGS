@@ -10,8 +10,8 @@ refused first; on depth (``table_reach_depth``) the clutter's top is unseen whil
 front cameras sit below it and the held box hides it from the hand camera), so that refusal is not
 asked. ``--planner`` picks cuRobo or MoveIt.
 
-The plan is the routines' pick and place (``routines/arm.py``): the starting point for a scripted
-manipulation agent. The test side checks the grasp, the lift, that neither the arm nor the held
+The plan is the framework's composite pick and place (``phygs.composite``): the starting point for
+a scripted manipulation agent. The test side checks the grasp, the lift, that neither the arm nor the held
 object touched the furniture, where the object rests and the stow. Thresholds: ``configs/pick_place.yaml``.
 
     ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
@@ -27,9 +27,9 @@ from dataclasses import asdict
 import numpy as np
 import yaml
 from phygs_robot_tests.episodes import episode
-from phygs_robot_tests.routines import PARAMS, arm
-from phygs_robot_tests.routines.geometry import matrix, xyzw
 
+from phygs.composite import TUNING, CompositeSkills
+from phygs.composite.geometry import matrix, xyzw
 from phygs.session import AgentFailed
 
 SETTINGS = yaml.safe_load((episode.CONFIGS / "pick_place.yaml").read_text())
@@ -43,9 +43,12 @@ def box_of(boxes: dict, name: str):
 
 def plan(session, steps: episode.Steps, known_map: bool) -> None:
     """Pick, hold, (refuse,) carry, place, stow; feedback goes to ``steps.results``."""
+    skills = CompositeSkills(session)
     target = session.hints.target()
     steps.enter("pick")
-    held = arm.pick(session, target, [None], look=not known_map)  # On depth, look first: the plan maps what it saw.
+    # On depth, look first: the plan maps what it saw.
+    skills.pick(target.center, target.size, name=target.name, approaches=[None], look=not known_map)
+    held = skills.held
     steps.enter("picked")
     session.sleep(SETTINGS["hold_seconds"])
     steps.enter("held")
@@ -87,11 +90,11 @@ def plan(session, steps: episode.Steps, known_map: bool) -> None:
     steps.enter("place")
     spot = (*SETTINGS["place_xy"], table_top)
     steps.results["place_spot"] = spot
-    arm.place(session, spot, held)
+    skills.place(spot)
     steps.enter("placed")
     session.sleep(SETTINGS["hold_seconds"])  # The released object settles.
     steps.enter("settled")
-    arm.stow(session)
+    skills.stow()
 
 
 def gap(a, b) -> float:
@@ -145,11 +148,11 @@ def main() -> None:
             # own gripper axes. After the grasp the wrist sits where the closing jaw left it; the grasp
             # is judged by the object below the jaws and lifted.
             arrival = episode.first_tool_pose(args.output)
-            grasp = arm.tool("grasp")
+            grasp = world.robot.tool("grasp")
             along, sideways, across = grasp[:3, :3].T @ grasp[:3, 3]  # In the gripper's axes.
-            axes = arm.gripper_axes(arrival)
-            pregrasp = start_center + [0.0, 0.0, size[2] / 2 + PARAMS["approach_m"]]
-            wrist_there = pregrasp - arm.DOWN * along - axes[:, 1] * sideways - axes[:, 2] * across
+            axes = arrival[:3, :3] @ grasp[:3, :3]
+            pregrasp = start_center + [0.0, 0.0, size[2] / 2 + TUNING.approach_m]
+            wrist_there = pregrasp + [0.0, 0.0, along] - axes[:, 1] * sideways - axes[:, 2] * across
             error = float(np.linalg.norm(arrival[:3, 3] - wrist_there))
             check.measure("pregrasp_error_m", round(error, 4), error <= SETTINGS["pregrasp_tolerance_m"])
             hang = snaps["picked"]["gripper_bottom"] - (snaps["picked"]["target_center"][2] - size[2] / 2)

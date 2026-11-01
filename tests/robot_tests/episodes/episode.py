@@ -22,7 +22,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # phygs from the checkout.
 
-from phygs_robot_tests import routines  # noqa: E402
 from phygs_robot_tests.common import CONFIGS, Check, parser, robot  # noqa: E402
 
 SETTINGS = yaml.safe_load((CONFIGS / "episodes.yaml").read_text())
@@ -43,8 +42,6 @@ def start(description: str, default_spec: str, extra=None):
     spec = EpisodeSpec.load(args.spec)
     args.robot = robot(args, default=spec.robot.model)  # The spec's robot, or --robot.
     spec = spec.with_robot(args.robot.name)  # Its start for this robot, as the World uses it.
-    routines.use_scene(spec.scene.name)  # The plans' stances for this scene.
-    routines.use_robot(args.robot.info())  # The plans' gripper geometry and arm postures for this robot.
     return Check(f"{Path(sys.argv[0]).stem} {spec.id}", args), args, spec
 
 
@@ -244,7 +241,7 @@ def first_tool_pose(folder: Path) -> np.ndarray:
     ``folder/audit.jsonl``), as a world 4x4 [m]."""
     import json
 
-    from phygs_robot_tests.routines.geometry import matrix
+    from phygs.composite.geometry import matrix
 
     with (folder / "audit.jsonl").open() as audit:
         for line in audit:
