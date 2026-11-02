@@ -94,6 +94,7 @@ class Replay:
             objects=meta["objects"],
             navigation_map=settings["map"],
             robot_start=meta["start"],
+            parts=meta.get("parts"),  # Logs written before PhyGS 0.11.0 have none: every drawer started closed.
         )
         self.scene_def.open_stage()
         self.sim = sim_utils.SimulationContext(simulation_cfg(dt=self.dt, render_interval=1, device=device))

@@ -156,6 +156,7 @@ class World:
             objects=spec.objects,
             navigation_map=settings["map"],
             robot_start=spec.robot.start,
+            parts=spec.parts,
         )
         dt, period = settings["physics_dt"], settings["camera_period"]
         self.render_ticks = round(period / dt)
@@ -261,6 +262,7 @@ class World:
                     ground=spec.scene.ground,
                 ),
                 objects=spec.objects,
+                parts=spec.parts,
                 start=list(spec.robot.start),
                 light=settings["light"],
                 record_view=[list(map(float, point)) for point in view],
@@ -395,7 +397,8 @@ class World:
                 )
             )
         self._services_ready = True
-        self.start_check = check_start(self.truth(), self.robot.fallen_height, self.settings["start_check"])
+        openings = {name: float(part["opening"]) for name, part in self.spec.parts.items()}
+        self.start_check = check_start(self.truth(), self.robot.fallen_height, self.settings["start_check"], openings)
         if not self.start_check["passed"]:
             print("Start check failed: " + "; ".join(self.start_check["problems"]), flush=True)
         self._reset_done = True

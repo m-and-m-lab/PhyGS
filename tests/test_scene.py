@@ -52,6 +52,28 @@ def test_where_an_object_starts_is_found_and_an_initial_state_moves_it():
     assert (np.linalg.inv(drawer) @ [*center, 1.0])[:3] == pytest.approx([0.0, -0.134, 0.0725], abs=1e-6)
 
 
+def test_a_spec_opens_a_drawer_and_what_lies_inside_rides_along():
+    stage = Usd.Stage.Open(str(GRID))
+    found, named = scene.drawers(stage), bodies(stage)
+    scene.apply_initial_state(stage, named, GRID_DRAWER.objects)  # The target in the top drawer.
+    before = {name: scene.body_box(stage, named[name])[0] for name in ("target", "table", "corner_nightstand_drawer")}
+    top = found["corner_nightstand_tier_2_drawer"]
+    part = scene.sliding_part(stage, top.slide, top.handle, lambda path: scene.world_pose(stage, path))
+    assert part.opening == pytest.approx(0.0, abs=1e-6)
+    scene.apply_openings(stage, named, found, {"corner_nightstand_tier_2_drawer": {"opening": 0.25}})
+    opened = scene.sliding_part(stage, top.slide, top.handle, lambda path: scene.world_pose(stage, path))
+    assert opened.opening == pytest.approx(0.25, abs=1e-6)
+    shift = 0.25 * np.asarray(part.direction)
+    assert scene.body_box(stage, named["target"])[0] == pytest.approx(before["target"] + shift, abs=1e-6)
+    for still in ("table", "corner_nightstand_drawer"):  # Not inside it: they stay.
+        assert scene.body_box(stage, named[still])[0] == pytest.approx(before[still], abs=1e-6)
+    assert scene.placement(stage, named["target"], found) == ("corner_nightstand_tier_2_drawer", None)
+    with pytest.raises(ValueError, match="opens from 0.000 to 0.380 m"):
+        scene.apply_openings(stage, named, found, {"corner_nightstand_drawer": {"opening": 0.5}})
+    with pytest.raises(ValueError, match="No drawer 'table'"):
+        scene.apply_openings(stage, named, found, {"table": {"opening": 0.1}})
+
+
 def test_a_drawer_interior_has_a_ceiling():
     """An object in the top drawer is not inside the bottom drawer below it."""
     stage = Usd.Stage.Open(str(GRID))

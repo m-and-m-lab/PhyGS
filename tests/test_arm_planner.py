@@ -16,6 +16,7 @@ from fakes import SPOT
 from scipy.spatial.transform import Rotation
 
 from phygs.skills.manipulation.execution import arm_planner
+from phygs.skills.manipulation.execution.kinematics import LIMIT_INSET_RAD
 
 SETTINGS = dict(
     backend="curobo",
@@ -44,6 +45,7 @@ class Robot:
 
     def __init__(self):
         self.x, self.knee, self.stamp, self.gripper = 0.0, 0.0, 0.0, -0.05
+        self.arm = [0.0, -3.1, 3.1, 0.0, 0.0, 0.0]
         self.depth = np.full((24, 32), 1.0)
 
     def observe(self):
@@ -60,7 +62,7 @@ class Robot:
             intrinsics=torch.tensor(K),
             extrinsics=SimpleNamespace(matrix=body_from_camera),
         )
-        positions = torch.tensor([0.0, -3.1, 3.1, 0.0, 0.0, 0.0, self.gripper, self.knee])
+        positions = torch.tensor([*self.arm, self.gripper, self.knee], dtype=torch.float64)
         return SimpleNamespace(
             cameras={"hand": camera},
             localization=SimpleNamespace(valid=True, pose=SimpleNamespace(matrix=pose)),
@@ -225,6 +227,19 @@ def test_a_plan_from_the_stow_starts_at_the_prestow_and_its_trajectory_unfolds_s
     robot_unfolded.request(goal=[0.1] * 6)
     robot_unfolded.poll()
     assert Worker.started[-1].requests[0].start == pytest.approx([0.0, -3.1, 3.1, 0.0, 0.0, 0.0])
+
+
+def test_a_joint_read_a_hair_past_its_limit_plans_from_the_limit(host):
+    """The wrist pitch at its stop read 1.8325994 rad of a 1.8325957 rad limit, and cuRobo refused every
+    stow from there ("start or end state in collision"; Qwen3.8, grid_drawer, 2026-11-01)."""
+    make, robot, _ = host
+    planner = make(boxes=lambda exclude: {})
+    lower, upper = ROBOT.joint_limits["arm_wr0"]
+    robot.arm = [0.0, -0.85, 0.59, 0.0, upper + 4e-6, 0.0]
+    planner.request(goal=[0.0, -2.83, 2.83, 0.0, 0.0, 0.0])
+    planner.poll()
+    start = Worker.started[0].requests[0].start
+    assert start == pytest.approx([0.0, -0.85, 0.59, 0.0, upper - LIMIT_INSET_RAD, 0.0], abs=1e-9)
 
 
 def test_warm_up_plans_once_per_gripper_angle_before_the_episode(host):

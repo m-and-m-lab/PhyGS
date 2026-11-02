@@ -11,6 +11,29 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.11.0 (not tagged yet)
+
+Added (2026-11-01):
+
+- Episode spec `parts: {name: {opening: m}}`: drawers open at the start, within the slide's limits;
+  the bodies inside a drawer ride along, and `objects` placed in a drawer's frame are placed in the
+  open drawer (`phygs.scene.reader.apply_openings`). The state log records `parts`, so a replay
+  opens the same drawers.
+
+Fixed (2026-11-01):
+
+- The arm planner plans from just inside a joint's limit when the measured joint reads at or a hair
+  past it (a joint resting on its stop; `LIMIT_INSET_RAD`, as the IK keeps its solutions). cuRobo
+  refused such a start as "start or end state in collision": after a top-down pick far over a
+  nightstand the wrist pitch read 1.8325994 of its 1.8325957 rad limit, and no stow could be planned
+  for the rest of the episode (Qwen3.8, grid_drawer, 2026-11-01).
+
+Changed (2026-11-01):
+
+- The start check compares each drawer with the spec's opening (closed unless `parts` opens it):
+  `phygs.world.start.check(..., openings=...)`; `start_check.drawer_open_max_m` is now how far a
+  drawer may be from its opening. A drawer the spec opens is a problem only when it is off.
+
 ### 0.10.0 (2026-11-01)
 
 The composite skills are part of the framework (2026-11-01): the skills that walk and then move

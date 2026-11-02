@@ -69,6 +69,16 @@ def test_each_unsettled_world_is_a_setup_problem(truth, words):
     assert not result["passed"] and len(result["problems"]) == 1 and words in result["problems"][0]
 
 
+def test_a_drawer_the_spec_opens_must_start_at_its_opening():
+    opened = FakeTruth(openings={"drawer_0": 0.2, "drawer_1": 0.0})
+    assert check(opened, fallen_height=0.25, limits=LIMITS_NOW, openings={"drawer_0": 0.21})["passed"]
+    (problem,) = check(opened, fallen_height=0.25, limits=LIMITS_NOW, openings={"drawer_0": 0.3})["problems"]
+    assert problem.startswith("1 drawers are not at the spec's opening") and "drawer_0" in problem
+    problems = check(opened, fallen_height=0.25, limits=LIMITS_NOW, openings={"drawer_1": 0.2})["problems"]
+    assert len(problems) == 2 and "drawers are open" in problems[0] and "drawer_0" in problems[0]  # Not the spec's.
+    assert "not at the spec's opening" in problems[1] and "drawer_1" in problems[1]  # The spec's, still closed.
+
+
 def test_a_robot_that_cannot_fall_and_drawers_allowed_open_are_not_checked():
     limits = dict(LIMITS_NOW, drawer_open_max_m=None)
     assert check(FakeTruth(height=0.0, openings={"drawer_0": 0.3}), fallen_height=None, limits=limits)["passed"]

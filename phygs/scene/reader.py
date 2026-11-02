@@ -11,10 +11,11 @@ path; drawers are bodies on a prismatic joint with a ``handle`` cylinder; obstac
 colliders; the navigation map covers the colliders (and the robot's start) with a margin; where an
 object starts (inside a drawer, or on a support) is found from its authored pose.
 
-:func:`drawers`, :func:`collider_boxes`, :func:`placement` and :func:`apply_initial_state` read a stage
-only (testable without Isaac Sim). :class:`UsdScene` uses them in a running app: ``open_stage``
-before the simulation context exists, ``define`` before the InteractiveScene exists, ``bind``
-after the simulation reset, then ground-truth reads.
+:func:`drawers`, :func:`collider_boxes`, :func:`placement`, :func:`apply_openings` and
+:func:`apply_initial_state` read and author a stage only (testable without Isaac Sim).
+:class:`UsdScene` uses them in a running app: ``open_stage`` before the simulation context exists,
+``define`` before the InteractiveScene exists, ``bind`` after the simulation reset, then
+ground-truth reads.
 """
 
 from __future__ import annotations
@@ -190,6 +191,42 @@ def _has_colliders(stage: Usd.Stage, body: str) -> bool:
     return any(prim.HasAPI(UsdPhysics.CollisionAPI) for prim in Usd.PrimRange(stage.GetPrimAtPath(body)))
 
 
+def apply_openings(stage: Usd.Stage, bodies: dict[str, str], found: dict[str, Drawer], parts: dict) -> None:
+    """Open drawers before the episode: ``{name: {opening: m}}``, within the slide's limits. A drawer
+    moves along its slide, and the bodies inside it move with it (a drawer without panels has no
+    known inside: nothing rides along)."""
+    for name, state in parts.items():
+        if name not in found:
+            raise ValueError(f"No drawer {name!r} in the scene; it has {sorted(found)}.")
+        drawer = found[name]
+        part = sliding_part(stage, drawer.slide, drawer.handle, lambda path: world_pose(stage, path))
+        opening, (low, high) = float(state["opening"]), part.limits
+        if not low <= opening <= high:
+            raise ValueError(f"Drawer {name!r} opens from {low:.3f} to {high:.3f} m; the spec asks for {opening} m.")
+        riders = []
+        if _panelled(stage, drawer):
+            interior, frame = drawer_interior(stage, drawer), np.linalg.inv(world_pose(stage, drawer.body))
+            for path in bodies.values():
+                if path != drawer.body and _has_colliders(stage, path):
+                    local = (frame @ [*body_box(stage, path)[0], 1.0])[:3]
+                    if inside_interior(interior, local):
+                        riders.append(path)
+        shift = (opening - part.opening) * np.asarray(part.direction)
+        for path in (drawer.body, *riders):
+            _translate(stage, path, shift)
+
+
+def _translate(stage: Usd.Stage, path: str, shift) -> None:
+    """Move a prim by a world vector [m] (its authored translation, in its parent's frame)."""
+    prim = stage.GetPrimAtPath(path)
+    attribute = prim.GetAttribute("xformOp:translate")
+    if not attribute.IsValid():
+        raise ValueError(f"{path} has no xformOp:translate to move")
+    parent = world_pose(stage, str(prim.GetParent().GetPath()))
+    local = np.asarray(attribute.Get(), dtype=float) + np.linalg.inv(parent)[:3, :3] @ np.asarray(shift, dtype=float)
+    attribute.Set(Gf.Vec3d(*map(float, local)))
+
+
 def apply_initial_state(stage: Usd.Stage, bodies: dict[str, str], state: dict) -> None:
     """Move bodies to an initial state's positions [m]: ``{name: {position: [x, y, z], frame: name?}}``,
     in the world or in another body's authored frame. Only the translation is authored."""
@@ -229,14 +266,26 @@ def map_bounds(
 class UsdScene:
     """A scene USD with an episode's object placements; ground truth by name once the simulation runs.
 
-    ``objects``: bodies moved before the episode (:func:`apply_initial_state`). ``navigation_map``:
+    ``objects``: bodies moved before the episode (:func:`apply_initial_state`); ``parts``: drawers
+    open at the start (:func:`apply_openings`; applied first, so an object placed in a drawer's frame
+    is placed in the open drawer). ``navigation_map``:
     the map's ``resolution`` [m], ``clearance`` [m], collider ``height`` band [m] and ``margin`` [m]
     around the colliders and ``robot_start`` (x, y, ...) [m]; its bounds are read from the stage
     (:attr:`map`, after :meth:`define`).
     """
 
-    def __init__(self, name: str, usd: Path, *, ground: bool, objects: dict, navigation_map: dict, robot_start) -> None:
-        self.name, self.ground, self.objects = name, ground, dict(objects)
+    def __init__(
+        self,
+        name: str,
+        usd: Path,
+        *,
+        ground: bool,
+        objects: dict,
+        navigation_map: dict,
+        robot_start,
+        parts: dict | None = None,
+    ) -> None:
+        self.name, self.ground, self.objects, self.parts = name, ground, dict(objects), dict(parts or {})
         self.usd = str(Path(usd).resolve(strict=True))
         self._map_settings, self._robot_start = dict(navigation_map), tuple(robot_start[:2])
         self.map_height = tuple(navigation_map["height"])
@@ -251,8 +300,9 @@ class UsdScene:
         sim_utils.open_stage(self.usd)
 
     def define(self, stage: Usd.Stage, cfg, dt: float, *, contact_links: tuple[str, ...]) -> None:
-        """Apply the initial state, register the scene's bodies, read what is where, add the contact
-        sensor on the robot's ``contact_links`` (its arm and gripper links)."""
+        """Apply the initial state (drawer openings, then object placements), register the scene's
+        bodies, read what is where, add the contact sensor on the robot's ``contact_links`` (its arm
+        and gripper links)."""
         from isaaclab.sensors import ContactSensorCfg
 
         from phygs.scene.assets import register_scene_bodies
@@ -267,6 +317,8 @@ class UsdScene:
             if name_of(path) in self.bodies:
                 raise ValueError(f"Two scene bodies are named {name_of(path)!r}: {self.bodies[name_of(path)]}, {path}")
             self.bodies[name_of(path)] = path
+        self.drawers = drawers(stage)
+        apply_openings(stage, self.bodies, self.drawers, self.parts)
         apply_initial_state(stage, self.bodies, self.objects)
         settings = self._map_settings
         self.map = dict(
@@ -275,7 +327,6 @@ class UsdScene:
             clearance=settings["clearance"],
         )
         register_scene_bodies(stage, cfg)
-        self.drawers = drawers(stage)
         self.part_names = tuple(self.drawers)
         self._interiors = {
             name: drawer_interior(stage, drawer) for name, drawer in self.drawers.items() if _panelled(stage, drawer)

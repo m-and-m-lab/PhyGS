@@ -1,5 +1,5 @@
-# Robot-test episode: retrieve the box from the kitchen island's bottom drawer (closed at the start; the
-# file has the box there).
+# Robot-test episode: retrieve the bottle from the kitchen island's bottom drawer (closed at the start;
+# the file has the bottle there, beside a flat printed box).
 schema: 3
 id: dev_house_drawer
 scene:
@@ -13,7 +13,7 @@ robot:
 record_view: {eye: [13.5, 4.6, 2.3], target: [11.2, 6.3, 0.6]}  # Clear line of sight to the island.
 task:
   goal: retrieve
-  description: the small cardboard box
+  description: the dark bottle
   target: kitchen_island_compartment_0_item_1  # Scene name; agents see it only with object_targets.
 actions: skills
 observations:

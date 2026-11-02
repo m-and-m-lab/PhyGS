@@ -1,5 +1,5 @@
 # Robot UI episode in the Bear house (an episode spec, docs/world.md): retrieve
-# the small cardboard box from the kitchen island's bottom drawer, as dev_house_drawer, but with
+# the dark bottle from the kitchen island's bottom drawer, as dev_house_drawer, but with
 # the UI's tier and grants: tier motion (Drive to look around) and only gt_localization (the page
 # shows the true pose and maps the cameras' depth with it).
 schema: 3
@@ -14,7 +14,7 @@ robot:
   start: [10.2, 6.0, 0.0]  # x, y, heading [m, m, rad]; the arm starts stowed.
 task:
   goal: retrieve
-  description: the small cardboard box
+  description: the dark bottle
   target: kitchen_island_compartment_0_item_1  # Scene name, for the evaluator; never shown on the page.
 actions: motion
 observations:

@@ -24,7 +24,7 @@ start_check:
   body_speed_max_mps: 0.1  # Every scene body slower than this [m/s] ...
   body_shift_max_m: 0.05  # ... and its centre within this [m] of where the episode placed it.
   upright_min_cos: 0.966  # The robot's base within 15 degrees of vertical (cos 15°), above its fallen height.
-  drawer_open_max_m: 0.03  # Every drawer open less than this [m]; null lets drawers start open.
+  drawer_open_max_m: 0.03  # Every drawer this close to its opening [m] (the spec's parts, else closed); null: unchecked.
 # Arm contacts are read every this many physics ticks (5: every 20 ms). A read costs ~0.16 ms
 # wall, so reading every tick cost ~0.03 RTF; a contact shorter than this can be missed.
 contact_read_ticks: 5

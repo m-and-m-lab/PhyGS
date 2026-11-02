@@ -76,7 +76,10 @@ def test_a_spec_maps_a_named_action_set_to_actions_and_keeps_its_public_summary(
         spec_data(robot=dict(model="robots/mine/robot.yaml", start=[0, 0, 0])), base=Path("/specs")
     )
     assert mine.robot.model == "/specs/robots/mine/robot.yaml"  # A robot.yaml path: resolved against the spec.
-    assert spec.objects == {} and spec.record_view is None
+    assert spec.objects == {} and spec.parts == {} and spec.record_view is None
+    opened = EpisodeSpec.from_dict(spec_data(parts={"corner_nightstand_tier_2_drawer": {"opening": 0.2}}))
+    assert opened.parts == {"corner_nightstand_tier_2_drawer": {"opening": 0.2}}
+    assert opened.summary()["parts"] == opened.parts
     assert spec.actions == ("navigation", "manipulation") and spec.observations.cameras == ("hand",)
     assert spec.with_seed(9).seed == 9
     summary = spec.summary()
@@ -133,6 +136,10 @@ def test_a_missing_scene_names_the_roots_searched(tmp_path, monkeypatch):
         (dict(robot=dict(model="", start=[0, 0, 0])), "a model and a start"),
         (dict(robot=dict(start=[0, 0, 0], height=0.5)), "model, start"),  # Schema 1's spawn height.
         (dict(objects=dict(target=dict(position=[0, 0]))), "position"),
+        (dict(parts=dict(drawer=0.2)), "is {opening: m}"),
+        (dict(parts=dict(drawer=dict(opening=0.2, locked=True))), "is {opening: m}"),
+        (dict(parts=dict(drawer=dict(opening="wide"))), "is {opening: m}"),
+        (dict(parts=dict(drawer=dict(opening=-0.1))), "0 m or more"),
         (dict(record_view=dict(eye=[0, 0, 1])), "record view"),
         (dict(initial_state="target_on_moon"), "Unknown spec fields"),
         (dict(budget=dict(sim_seconds=0)), "budget"),

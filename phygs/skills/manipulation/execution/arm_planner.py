@@ -36,6 +36,7 @@ from scipy.spatial.transform import Rotation
 from phygs.recording.panels import PlannerView
 from phygs.sim.gpu import render_gpu
 from phygs.skills.manipulation.execution.collision_map import boxes_in_body
+from phygs.skills.manipulation.execution.kinematics import LIMIT_INSET_RAD
 from phygs.skills.manipulation.execution.planners.interface import DepthImage, HeldShape, PlanRequest
 from phygs.skills.manipulation.execution.planners.model import (
     gripper_positions,
@@ -100,6 +101,8 @@ class ArmPlanner:
         self._image_shape = list(shapes.pop()) if shapes else [1, 1]
         self._lower = np.array(robot.planning.workspace_lower)
         self._upper = np.array(robot.planning.workspace_upper)
+        lower, upper = np.array([robot.joint_limits[name] for name in robot.arm.joints]).T
+        self._arm_limits = lower + LIMIT_INSET_RAD, upper - LIMIT_INSET_RAD  # [rad], inset as the IK keeps them.
         self._stow = stow
         self.model: dict = {}  # Shared with the skills (IK reads its URDF); filled by start.
         self.worker: PlannerProcess | None = None
@@ -318,7 +321,11 @@ class ArmPlanner:
         if self._settings["backend"] == "curobo" and self._cameras:
             world = str(self._output / "planner" / "world" / f"{self._plans:06d}.npy")
         self._plans += 1
-        start, lead = [joints[name] for name in self._robot.arm.joints], None
+        # A joint resting on its stop reads at or a hair past its limit (1.8325994 of Spot's 1.8325957
+        # rad wrist pitch, 2026-11-01), and cuRobo refuses a start that is not inside every limit ("start
+        # or end state in collision"): it plans from just inside the limit.
+        start = np.clip([joints[name] for name in self._robot.arm.joints], *self._arm_limits).tolist()
+        lead = None
         stow = self._stow
         if (
             stow is not None

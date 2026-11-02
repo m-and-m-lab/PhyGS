@@ -6,7 +6,8 @@
 """The check before the agent starts: the settled world is the one the spec describes.
 
 After the reset's settle the robot must stand (its base upright, above its fallen height), every
-scene body must be at rest where the episode placed it, and every drawer closed. A failed check is
+scene body must be at rest where the episode placed it, and every drawer at the opening the spec
+declares (closed unless the spec's ``parts`` open it). A failed check is
 a setup error: the World reports it (``status: setup_error``) and never starts the agent, so a broken
 scene or episode is fixed, not scored. The limits are the ``start_check`` settings
 (``world/environment.yaml``).
@@ -18,17 +19,18 @@ LIMITS = ("body_speed_max_mps", "body_shift_max_m", "upright_min_cos", "drawer_o
 NAMED = 5  # Bodies named in a problem line; the rest are counted.
 
 
-def check(truth, fallen_height: float | None, limits: dict) -> dict:
+def check(truth, fallen_height: float | None, limits: dict, openings: dict[str, float] | None = None) -> dict:
     """``{passed, problems, measured}`` for the settled world. ``truth`` is the World's ``Truth``;
-    ``fallen_height`` the robot's [m] (None: it cannot fall); a ``drawer_open_max_m`` of None lets
-    drawers start open."""
+    ``fallen_height`` the robot's [m] (None: it cannot fall); ``openings`` the drawers the spec
+    opens [m]. A drawer may be ``drawer_open_max_m`` [m] from its opening (0 for the others); None
+    leaves drawers unchecked."""
     missing = set(LIMITS) - set(limits)
     if missing:
         raise ValueError(f"start_check lacks {sorted(missing)} (world/environment.yaml).")
     base = truth.base_pose()
     height, up = float(base[2, 3]), float(base[2, 2])
     motion = truth.body_motion()
-    openings = truth.part_openings()
+    declared, openings = dict(openings or {}), truth.part_openings()  # The spec's openings, and the ones now.
     problems = []
     if up < limits["upright_min_cos"]:
         problems.append(f"the robot is tilted: its base's up axis has cos {up:.3f} < {limits['upright_min_cos']}")
@@ -41,9 +43,13 @@ def check(truth, fallen_height: float | None, limits: dict) -> dict:
     if moved:
         problems.append(f"{len(moved)} bodies left their places (over {limits['body_shift_max_m']} m): {_names(moved)}")
     if limits["drawer_open_max_m"] is not None:
-        open_ = sorted(name for name, opening in openings.items() if opening > limits["drawer_open_max_m"])
+        limit = limits["drawer_open_max_m"]
+        open_ = sorted(name for name, opening in openings.items() if name not in declared and opening > limit)
         if open_:
-            problems.append(f"{len(open_)} drawers are open (over {limits['drawer_open_max_m']} m): {_names(open_)}")
+            problems.append(f"{len(open_)} drawers are open (over {limit} m): {_names(open_)}")
+        off = sorted(name for name, opening in declared.items() if abs(openings.get(name, 0.0) - opening) > limit)
+        if off:
+            problems.append(f"{len(off)} drawers are not at the spec's opening (off by over {limit} m): {_names(off)}")
     fastest = max(motion, key=lambda name: motion[name][0], default=None)
     farthest = max(motion, key=lambda name: motion[name][1], default=None)
     widest = max(openings, key=openings.get, default=None)

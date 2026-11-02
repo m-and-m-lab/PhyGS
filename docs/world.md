@@ -27,7 +27,7 @@ starts and only `World` (with `Truth` and `run_episode`) needs it.
 
 | Piece | Module | What it is |
 | --- | --- | --- |
-| Spec | `world/spec.py` (`EpisodeSpec`, `SCHEMA = 3`, `load_agent`) | Scene by id and version, robot and start, objects, an opaque `task` block, actions, observations, grants, budget, seed. A benchmark adds its own blocks beside these and strips them before `from_dict`. |
+| Spec | `world/spec.py` (`EpisodeSpec`, `SCHEMA = 3`, `load_agent`) | Scene by id and version, robot and start, objects (`{name: {position, frame?}}`), drawers open at the start (`parts: {name: {opening: m}}`; what lies inside rides along), an opaque `task` block, actions, observations, grants, budget, seed. A benchmark adds its own blocks beside these and strips them before `from_dict`. |
 | Task | `world/task.py` (`Task` protocol, `NoTask`, `load_task(block, loader)`) | `goal`, `description` (public), `brief()`, `reset(truth)` (the settled world, before the agent starts), `update(truth)` (every `evaluation_period_seconds` while the agent runs), `result(truth, end)` (once, after the stop and settle; `end` is an `EpisodeEnd`: how it ended, the simulated time, the arm contacts labelled unintended and the grasp's squeeze, for the benchmark's own conduct rules), `provenance()`. The framework never imports a task; it takes the object, and never reads the task's answer: the caller passes `World(target=...)`, the object the hints, the known map and the arm planner treat as the target; the grants decide what the agent learns. |
 | World | `world/world.py` (`World`, `run_episode`) | Builds the scene, robot, runtime, backends; checks the settled world before the agent starts (`world/start.py`); runs the agent in a thread; audits; stops; evaluates; writes the report. `overrides` pins settings over `world/environment.yaml` (`world/build.py`, `SETTINGS`). |
 | Ground truth | `World.truth()` → `Truth` (`world/truth.py`) | Object poses and boxes, `held`, `pinched` (every jaw pressing on a body), arm contacts, the drawer a body started in, how far bodies moved from where they were placed, drawer openings, base pose, arm joints, stow error. Only the task's evaluator and robot tests read it. |
@@ -71,7 +71,7 @@ records them in its own rules file, never a copy of the settings:
 | `contact_record_n` | Arm contacts above this force go into the report [N]. |
 | `evaluation_period_seconds` | How often the task samples ground truth while the agent runs (`Task.update`) [s]. |
 | `agent_wall_seconds` | The episode ends as `agent_timeout` (the agent's failure) after this much wall time [s]; `null` for no limit. Thinking costs no simulated time on the charged clock, so this bounds a hung agent. |
-| `start_check` | The limits of the check before the agent starts: bodies at rest and in place, the robot upright, drawers closed (`drawer_open_max_m: null` lets them start open). |
+| `start_check` | The limits of the check before the agent starts: bodies at rest and in place, the robot upright, each drawer within `drawer_open_max_m` of the spec's opening (closed unless `parts` opens it; `null` leaves drawers unchecked). |
 | `skills.backend` | `collision_avoidance_planner` or `direct`. |
 | `planner.backend` | `curobo` or `moveit`. |
 
@@ -88,7 +88,7 @@ snapshot of the settled scene), clears Nav2's costmaps and goals, settles and ru
 exactly as the first episode did; the arm planner and Nav2 stay up, so a repeat skips Isaac Sim's
 start-up (about 40-60 s per episode on 2026-10-29). Each repeat writes its own report, audit, state
 log, video and plan requests; the planner's model and log and Nav2's logs stay in the first episode's
-folder. A different spec (another scene, robot or object placement) still needs a new World. The robot
+folder. A different spec (another scene, robot, object placement or drawer opening) still needs a new World. The robot
 test `retrieve_repeat` checks that three repeats in one World start from the same checked state and
 succeed as the first does.
 

@@ -5,11 +5,11 @@
 
 """Episode specs and agent references; no Isaac Sim imports.
 
-An episode is one self-contained file: the scene (by id, :mod:`phygs.scene.registry`), where the robot starts and
-where objects start, the task block (opaque to the framework; the caller's task loader builds a task
-object from it), which actions the agent may use, what it observes,
-which privileged channels it is granted, a simulated-time budget and a seed. The robot tests'
-episodes are ``tests/robot_tests/configs/episodes/*.yaml``.
+An episode is one self-contained file: the scene (by id, :mod:`phygs.scene.registry`), where the robot
+starts, where objects start and how far drawers start open, the task block (opaque to the framework;
+the caller's task loader builds a task object from it), which actions the agent may use, what it
+observes, which privileged channels it is granted, a simulated-time budget and a seed. The robot
+tests' episodes are ``tests/robot_tests/configs/episodes/*.yaml``.
 """
 
 from __future__ import annotations
@@ -118,6 +118,8 @@ class EpisodeSpec:
     # Bodies moved before the episode: {name: {position: [x, y, z], frame: body?}} [m], in the world
     # or in another body's authored frame; empty: as the USD file has them.
     objects: dict
+    # Drawers open at the start: {name: {opening: m}}; what lies inside rides along. Others start closed.
+    parts: dict
     # The third-person video camera {eye, target} [m] (--record), or None.
     record_view: dict | None
     # The task block as written; the framework does not read it (the caller's task loader does).
@@ -138,6 +140,12 @@ class EpisodeSpec:
         for name, where in self.objects.items():
             if set(where) - {"position", "frame"} or len(where.get("position", ())) != 3:
                 raise ValueError(f"Object {name!r} needs a position [x, y, z] and at most a frame.")
+        for name, state in self.parts.items():
+            opening = state["opening"] if isinstance(state, dict) and set(state) == {"opening"} else None
+            if isinstance(opening, bool) or not isinstance(opening, (int, float)):
+                raise ValueError(f"Part {name!r} is {{opening: m}}.")
+            if not (math.isfinite(opening) and opening >= 0):
+                raise ValueError(f"Part {name!r} needs an opening of 0 m or more; got {opening}.")
         if self.record_view is not None and set(self.record_view) != {"eye", "target"}:
             raise ValueError("The record view is {eye, target}.")
         if not self.actions or not set(self.actions) <= set(ACTIONS):
@@ -164,13 +172,14 @@ class EpisodeSpec:
     @classmethod
     def from_dict(cls, data: dict, base: Path | None = None) -> EpisodeSpec:
         """Validate a parsed spec (a relative robot.yaml path is resolved against ``base``, default the
-        working folder). ``actions`` is a named set (``skills``, ``motion``, ``joints``) or a list."""
+        working folder). ``actions`` is a named set (``skills``, ``motion``) or a list."""
         known = {
             "schema",
             "id",
             "scene",
             "robot",
             "objects",
+            "parts",
             "record_view",
             "task",
             "actions",
@@ -180,7 +189,7 @@ class EpisodeSpec:
             "seed",
         }
         if "tier" in data:
-            raise ValueError("The field tier was replaced by actions: write actions: skills (or motion, joints).")
+            raise ValueError("The field tier was replaced by actions: write actions: skills (or motion).")
         unknown = set(data) - known
         if unknown:
             raise ValueError(f"Unknown spec fields {sorted(unknown)}.")
@@ -219,6 +228,7 @@ class EpisodeSpec:
             ),
             robot=cls.Robot(model, tuple(robot["start"]), dict(robot.get("starts") or {})),
             objects=dict(data.get("objects") or {}),
+            parts=dict(data.get("parts") or {}),
             record_view=data.get("record_view"),
             task=data["task"],
             actions=actions,
@@ -250,6 +260,7 @@ class EpisodeSpec:
             robot=self.robot.model,
             robot_start=list(self.robot.start),
             objects=self.objects,
+            parts=self.parts,
             actions=list(self.actions),
             cameras=list(self.observations.cameras),
             camera_roles=list(self.observations.camera_roles),
