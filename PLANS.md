@@ -36,11 +36,6 @@ items keep are in [ARCHITECTURE.md](ARCHITECTURE.md#boundaries).
   first depends on the robot's heading: `grasp_yaws_deg` turns a gripper whose jaws close along
   world x, so facing y (the house drawer) the first tilted grasp closes sideways. A check needs a
   configuration query in both planners (cuRobo, MoveIt) with the jaws and the grasped box left out.
-- A tall bottle on the house's kitchen counter (7.5 x 22 cm, its top 1.12 m high, 0.24 m behind the
-  counter's front) is reached only from the stepped-back stance (1.05 m, turned 30 deg), and the
-  pick fails there (scripted from Qwen3.8's pose, 0 of 2, 2026-11-02): while the jaws closed the
-  wrist rose 8 cm and pushed the bottle 2.6 cm along the counter; then the bottle slipped on the
-  lift, or the lift left the arm's reach. Not looked into further.
 - The cuRobo adapter reports every failed plan as `no_plan_within_budget`, also when cuRobo found
   the start or the goal invalid ("start or end state in collision"): the feedback hides the cause
   (a wrist at its limit hid that way on 2026-11-01).
