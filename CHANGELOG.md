@@ -28,6 +28,15 @@ Fixed (2026-11-01):
   nightstand the wrist pitch read 1.8325994 of its 1.8325957 rad limit, and no stow could be planned
   for the rest of the episode (Qwen3.8, grid_drawer, 2026-11-01).
 
+Changed (2026-11-02):
+
+- The composite skills' reach stance (`pick`, `place`) steps back when navigate_to refuses it at
+  every turn: the turns are tried again `Tuning.reach_back_m` (0.10 m) farther from the point, within
+  the grip range (`reach_stances(..., back_m=)`; the option names `back_m`). Before the house's
+  kitchen counter, Spot's padded outline touched the costmap's lethal cells at 0.95 m from a bottle
+  0.24 m behind the counter's front at every turn, and fit from 1.00 m (Qwen3.8, house_drawer,
+  2026-11-01). A stance that fit before is unchanged; in a drawer it does not step back.
+
 Changed (2026-11-01):
 
 - The start check compares each drawer with the spec's opening (closed unless `parts` opens it):

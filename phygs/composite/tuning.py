@@ -49,6 +49,11 @@ class Tuning:
     # table's corner from the drawer, drawer_place 2026-11-01), the stance turns about the point by
     # the next of these [deg]. Square to a drawer it does not turn.
     reach_turns_deg: tuple[float, ...] = (0.0, 30.0, -30.0, 60.0, -60.0)
+    # When every turn is refused, the turns are tried again this much farther from the point [m],
+    # within the grip range. Before a kitchen counter, a bottle 0.24 m behind its front put the padded
+    # outline's front (0.66 m ahead of the base) on the costmap's lethal cells from 0.95 m at every
+    # turn; from 1.00 m it fit (Qwen3.8, house_drawer, 2026-11-01). In a drawer it does not step back.
+    reach_back_m: tuple[float, ...] = (0.0, 0.10)
     limit_margin_m: float = 0.01  # Stop this far [m] short of a slide's end.
     # Stand again when no handle pitch works from where the base stopped: an opening one walk
     # tolerance nearer each time (the base had stopped at the far edge, 2026-10-30).

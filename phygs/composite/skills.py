@@ -176,16 +176,17 @@ class CompositeSkills:
         return float(x), float(y), math.atan2(-out[1], -out[0])
 
     def reach_stances(
-        self, point, facing=None, part: ArticulatedPart | None = None, turn_deg: float = 0.0
+        self, point, facing=None, part: ArticulatedPart | None = None, turn_deg: float = 0.0, back_m: float = 0.0
     ) -> list[tuple[float, float, float]]:
         """Where to stand to reach ``point`` [m]: facing it with the point ``reach_ahead_m`` ahead of
         the base centre. ``facing`` (a horizontal direction) is the direction the robot faces; in an
         open drawer ``part``, square to it; else the base's own heading when the point lies within
         ``keep_heading_deg`` of it (square to a drawer it stands at), else along the line from where
         the base stands.
-        ``turn_deg`` turns the stance about the point (counterclockwise from above) [deg]. In a
-        drawer, when the stance puts the body over it (its handle nearer than ``reach_in_clear_m``), a
-        clear stance with the handle that far ahead comes first, on the same line."""
+        ``turn_deg`` turns the stance about the point (counterclockwise from above) [deg]; ``back_m``
+        stands that much farther from it [m]. In a drawer, when the stance puts the body over it (its
+        handle nearer than ``reach_in_clear_m``), a clear stance with the handle that far ahead comes
+        first, on the same line."""
         point = np.asarray(point, dtype=float)[:2]
         if part is not None:
             facing = -outward(part)
@@ -199,7 +200,7 @@ class CompositeSkills:
         facing = np.asarray(facing, dtype=float)[:2]
         facing = rotate_z(math.radians(turn_deg))[:2, :2] @ (facing / np.linalg.norm(facing))
         heading = math.atan2(facing[1], facing[0])
-        stance = point - facing * self.tuning.reach_ahead_m
+        stance = point - facing * (self.tuning.reach_ahead_m + back_m)
         stances = [(float(stance[0]), float(stance[1]), heading)]
         if part is not None:
             handle_ahead = float(np.dot(np.asarray(part.handle_center, dtype=float)[:2] - stance, facing))
@@ -233,21 +234,26 @@ class CompositeSkills:
         """Walk to where the arm reaches ``point`` [m] (:meth:`reach_stances`), through the clear
         stance when there is one; nothing without navigation (the arm works from where the base
         stands). While navigate_to refuses the stance as unreachable, it turns about the point by the
-        next of ``reach_turns_deg`` (square to a drawer ``part`` it does not turn). Returns the option."""
+        next of ``reach_turns_deg``, then tries the turns again each of ``reach_back_m`` farther back
+        (square to a drawer ``part`` it neither turns nor steps back). Returns the option."""
         if self.session.navigation is None:
             return {}
-        turns = self.tuning.reach_turns_deg if part is None else (0.0,)
-        for refused, turn in enumerate(turns):
-            stances = self.reach_stances(point, None, part, turn)
+        tuning = self.tuning
+        options = [(0.0, 0.0)]  # (back_m, turn_deg)
+        if part is None:
+            options = [(back, turn) for back in tuning.reach_back_m for turn in tuning.reach_turns_deg]
+        for refused, (back, turn) in enumerate(options):
+            stances = self.reach_stances(point, None, part, turn, back)
             try:
                 for stance in stances:
                     base = self._navigate(stance)
                 break
             except _Unreachable as error:
-                if refused + 1 == len(turns):
+                if refused + 1 == len(options):
                     raise
-                print(f"composite: {error}; turning the stance", flush=True)
-        return dict(stance=[round(v, 4) for v in stances[-1]], turn_deg=turn, base=[round(v, 4) for v in base])
+                print(f"composite: {error}; trying the next stance", flush=True)
+        stance = [round(v, 4) for v in stances[-1]]
+        return dict(stance=stance, turn_deg=turn, back_m=back, base=[round(v, 4) for v in base])
 
     # The arm.
 

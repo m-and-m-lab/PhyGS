@@ -220,6 +220,7 @@ def test_each_skill_reports_the_option_that_worked_and_what_it_measured():
         yaw_deg=0.0,
         stance=pytest.approx(stance, abs=1e-4),
         turn_deg=0.0,
+        back_m=0.0,
         base=pytest.approx(stance, abs=1e-4),
     )
     assert picked.refused == 0 and picked.measured["holding"] and skills.held.name == "target"
@@ -312,6 +313,22 @@ def test_a_reach_stance_the_robot_does_not_fit_turns_about_the_point():
     assert picked.option["turn_deg"] == TUNING.reach_turns_deg[1]
     with pytest.raises(AgentFailed, match="unreachable"):
         CompositeSkills(FakeSession(navigate_to=[unreachable])).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), part=DRAWER)
+
+
+def test_a_reach_stance_refused_at_every_turn_steps_back():
+    """Before a counter, the bottle's stance put the body's front on the costmap's lethal cells at every
+    turn (Qwen3.8, house_drawer, 2026-11-01): the turns are tried again reach_back_m farther back."""
+    unreachable = Feedback("unreachable", "Nav2 planner failed with code 206")
+    turns = TUNING.reach_turns_deg
+    session = FakeSession(inside=None, heading=0.0, navigate_to=[unreachable] * len(turns))
+    picked = CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    farther = TUNING.reach_ahead_m + TUNING.reach_back_m[1]
+    stances = [call[1] for call in session.calls if call[0] == "navigate_to"]
+    assert stances[len(turns)] == pytest.approx((0.0, 2.4 - farther, math.pi / 2))
+    assert picked.option["turn_deg"] == 0.0 and picked.option["back_m"] == TUNING.reach_back_m[1]
+    with pytest.raises(AgentFailed, match="unreachable"):
+        everywhere = FakeSession(inside=None, heading=0.0, navigate_to=[unreachable] * (len(turns) * 2))
+        CompositeSkills(everywhere).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
 
 
 def test_refused_options_move_on_in_order():
