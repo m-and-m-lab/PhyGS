@@ -30,6 +30,9 @@ arm:
   joints: [panda_joint1, panda_joint2, panda_joint3, panda_joint4, panda_joint5, panda_joint6, panda_joint7]
   root_link: panda_link0
   wrist_link: panda_hand
+  # Where the arm reaches out from: panda_joint2 (the shoulder pitch), in base_link at the zero
+  # posture [m] (the URDF: the mount 0.30 m ahead and 0.28 m up, panda_joint1 0.333 m above it).
+  shoulder: [0.3, 0.0, 0.613]
   # Isaac Lab's default posture, folded over the base; it held within 0.18 rad through the footprint drives.
   stow: [0.0, -0.569, 0.0, -2.810, 0.0, 2.0, 0.741]
   prestow: [0.0, -0.3, 0.0, -2.4, 0.0, 2.1, 0.741]  # A little unfolded; to tune on rung 07.

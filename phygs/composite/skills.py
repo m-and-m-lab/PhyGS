@@ -72,6 +72,10 @@ class _Unreachable(AgentFailed):
     """navigate_to refused a stance before walking: no path to it, or the robot does not fit there."""
 
 
+class _Refused(AgentFailed):
+    """The arm refused a drawer stroke's move before moving: standing again may help."""
+
+
 def _step(name: str | Callable[..., str]):
     """Run the decorated skill as one step of the agent's plan (``session.step``), named ``name`` or
     ``name(...)`` of the skill's arguments, so a run's timeline shows it beside the robot's commands."""
@@ -264,12 +268,14 @@ class CompositeSkills:
         refused = unmoved and motion_failure(feedback.reason or feedback.status).failure in REFUSED
         return Motion(feedback.status, feedback.reason, refused)
 
-    def gripper(self, close: bool) -> None:
-        """Close or open the gripper and wait."""
+    def gripper(self, close: bool) -> Any:
+        """Close or open the gripper and wait; returns the feedback (``gripper_aperture``: where the
+        gripper stopped [m or rad])."""
         manipulation = self.session.manipulation
         feedback = self.session.wait(manipulation.close_gripper() if close else manipulation.open_gripper())
         if feedback.status != "succeeded":
             raise AgentFailed(f"gripper: {feedback.reason}")
+        return feedback
 
     def _stow(self) -> None:
         """``stow`` and wait, carrying the held object."""
@@ -477,8 +483,9 @@ class CompositeSkills:
     def open_drawer(self, part: ArticulatedPart, distance: float | None = None) -> Outcome:
         """Stand at the open stance, look at the handle, grasp it and pull: ``distance`` [m], else as
         far as the part's travel allows (less the limit margin), and never past where the handle is at
-        the near end of ``grip_range_m`` from where the base stopped. When every way to take the
-        handle is refused, stand again one walk tolerance nearer, up to ``stance_tries`` stances."""
+        the near end of ``grip_range_m`` from where the base stopped. When the handle approach or the
+        pull is refused before the arm moves, stand again one walk tolerance nearer, up to
+        ``stance_tries`` stances."""
         tuning = self.tuning
         travel = part.limits[1] - part.opening - tuning.limit_margin_m
         wanted = travel if distance is None else min(distance, travel)
@@ -491,66 +498,88 @@ class CompositeSkills:
     @_step("close_drawer")
     def close_drawer(self, part: ArticulatedPart, distance: float | None = None) -> Outcome:
         """Stand at the close stance and push the drawer with the closed gripper: ``distance`` [m], else
-        to its closed end (less the limit margin). When every way to push is refused, stand there
-        again, up to ``stance_tries`` stances."""
+        to its closed end (less the limit margin). When the approach or the push is refused before the
+        arm moves, stand there again, up to ``stance_tries`` stances."""
         length = part.opening - part.limits[0] - self.tuning.limit_margin_m if distance is None else distance
         return self._stroke_from_stances(part, "close", lambda attempt: self.close_stance(part, length), lambda: length)
 
     def _stroke_from_stances(self, part: ArticulatedPart, kind: str, stance, planned) -> Outcome:
         """Walk to ``stance(attempt)``, look at the handle and stroke ``planned()`` [m] (asked from where
-        the base stopped), until a stroke is not refused before moving."""
-        refused = 0
+        the base stopped), until the stroke is not refused before moving."""
         for attempt in range(self.tuning.stance_tries):
             self._navigate(stance(attempt))
             self._look(part.handle_center, "handle")
             distance = planned()
             if distance <= 0:
                 raise AgentFailed(f"{kind}_drawer: nothing to move from here ({distance:.3f} m).")
-            stroked = self._stroke(part, kind, distance)
-            if stroked is not None:
+            try:
+                option, measured = self._stroke(part, kind, distance)
                 break
-            refused += len(self.tuning.handle_pitch_deg)
-            print(f"composite: no {kind} stroke from stance {attempt + 1}; standing again", flush=True)
-        else:
-            raise AgentFailed(f"{kind}_drawer: every handle pitch was refused from {self.tuning.stance_tries} stances.")
-        moved, option, measured = stroked
-        if moved.status != "succeeded":
-            raise AgentFailed(f"{kind}_drawer: the move along the slide: {moved.reason}")
+            except _Refused as error:
+                if attempt + 1 == self.tuning.stance_tries:
+                    raise AgentFailed(f"{str(error).rstrip('.')}, from {attempt + 1} stances.") from None
+                print(f"composite: {error} Standing again.", flush=True)
         self.session.sleep(self.tuning.settle_seconds)
         option = dict(stance=attempt, stroke_m=round(float(distance), 4), **option)
-        return Outcome(f"{kind}_drawer", option=option, measured=measured, refused=refused)
+        return Outcome(f"{kind}_drawer", option=option, measured=measured, refused=attempt)
 
-    def _stroke(self, part: ArticulatedPart, kind: str, distance: float):
-        """One stroke: ``open`` grasps the handle and pulls; ``close`` pushes with the closed gripper.
+    def _stroke(self, part: ArticulatedPart, kind: str, distance: float) -> tuple[dict, dict]:
+        """One stroke from where the base stands, at :meth:`handle_pitch`: ``open`` moves onto the
+        handle, closes the gripper on it and pulls; ``close`` pushes with the closed gripper,
+        ``push_back_m`` short of the bar. Then it lets go and backs off (the release moves).
 
-        Each handle pitch is tried in turn while the approach or the slide move is refused before
-        moving. Returns (the slide move, the option, the measurements), or None when every pitch was
-        refused. Measured: how far the hand moved along the slide [m] and, pulling, whether the
-        gripper still held the handle at the end.
+        Returns the option and the measurements: how far the hand moved along the slide [m] and,
+        pulling, the gripper's reading after the close [m or rad]. Raises ``_Refused`` when the
+        approach or the slide move is refused before the arm moves there; :class:`AgentFailed`, after
+        letting go and backing off, when the arm stops while moving or the gripper does not close on
+        the bar.
         """
         manipulation, push = self.session.manipulation, kind == "close"
-        motion = (-1.0 if push else 1.0) * np.asarray(part.direction, dtype=float)
-        for pitch in self.tuning.handle_pitch_deg:
-            self.gripper(close=push)
-            grasp = self._approach_handle(part, pitch, self.tuning.push_back_m if push else 0.0)
-            if grasp is None:
-                continue
-            axes, option = grasp
+        slide, motion = ("push", -1.0) if push else ("pull", 1.0)
+        motion = motion * np.asarray(part.direction, dtype=float)
+        release = self.tuning.push_release if push else self.tuning.handle_release
+        pitch = self.handle_pitch(part)
+        grasp = self.handle_grasp_pose(part, pitch)
+        grasp[:3, 3] -= grasp[:3, 0] * (self.tuning.push_back_m if push else 0.0)
+        axes = grasp[:3, :3]
+
+        def let_go() -> None:
             if not push:
-                self.gripper(close=True)
-                if not manipulation.holding:
-                    raise AgentFailed(f"{kind}_drawer: the gripper closed on nothing at the handle.")
-            start = np.asarray(manipulation.tool_pose("wrist"), dtype=float)[:3]
-            moved = self.move_straight(motion, distance)
-            end = np.asarray(manipulation.tool_pose("wrist"), dtype=float)[:3]
-            measured = dict(moved_m=round(float(np.dot(end - start, motion)), 4))
-            if not push:
-                measured["held_handle"] = manipulation.holding
                 self.gripper(close=False)
-            self._release(axes, self.tuning.push_release if push else self.tuning.handle_release)
-            if moved.status == "succeeded" or not moved.refused:
-                return moved, dict(pitch_deg=pitch, **option), measured  # Moved, or failed while moving.
-        return None
+            self._release(axes, release)
+
+        self.gripper(close=push)
+        reached = self.approach_straight(self.wrist_for("handle", grasp), axes[:, 0], self.tuning.handle_approach_m)
+        if reached.refused:
+            raise _Refused(f"{kind}_drawer: the handle approach was refused: {reached.reason}")
+        if reached.status != "succeeded":
+            let_go()
+            raise AgentFailed(f"{kind}_drawer: the handle approach stopped: {reached.reason}")
+        measured = {}
+        if not push:
+            robot = self.session.robot
+            aperture = self.gripper(close=True).gripper_aperture
+            closed = (aperture - robot.gripper_open) / (robot.gripper_closed - robot.gripper_open)
+            measured["gripper"] = round(float(aperture), 4)
+            holding = manipulation.holding
+            if not holding or closed < self.tuning.handle_grip_closed:
+                let_go()
+                if not holding:
+                    raise AgentFailed(f"{kind}_drawer: the gripper closed on nothing at the handle.")
+                raise AgentFailed(f"{kind}_drawer: the gripper stopped {closed:.0%} closed, not on the handle bar.")
+        # No holding check after the pull: on the house island's bottom handle the jaws crept 0.035-0.043
+        # rad of the 0.05 rad squeeze in the pull, so holding read the bar as lost twice in three runs
+        # with it held to the end and the drawer opened 0.26-0.29 m (2026-11-03).
+        start = np.asarray(manipulation.tool_pose("wrist"), dtype=float)[:3]
+        moved = self.move_straight(motion, distance)
+        end = np.asarray(manipulation.tool_pose("wrist"), dtype=float)[:3]
+        measured["moved_m"] = round(float(np.dot(end - start, motion)), 4)
+        let_go()
+        if moved.refused:
+            raise _Refused(f"{kind}_drawer: the {slide} was refused: {moved.reason}")
+        if moved.status != "succeeded":
+            raise AgentFailed(f"{kind}_drawer: the {slide} stopped after {measured['moved_m']:.2f} m: {moved.reason}")
+        return dict(pitch_deg=round(pitch, 1)), measured
 
     def _release(self, axes: np.ndarray, moves) -> None:
         """The release moves in order, each at its distance or else half of it; when a move is refused
@@ -565,33 +594,28 @@ class CompositeSkills:
                 print(f"composite: release move {move} refused ({outcome.reason}); skipping the rest", flush=True)
                 return
 
-    def _approach_handle(self, part: ArticulatedPart, pitch_deg: float, back_m: float):
-        """Move onto the handle at a pitch: each approach distance, each bar direction in turn. Returns
-        the gripper's axes (3x3, world) of the grasp reached and the option, or None when all were
-        refused."""
-        for distance in self.tuning.handle_approach_m:
-            for side in (1.0, -1.0):
-                grasp = self.handle_grasp_pose(part, side, pitch_deg)
-                grasp[:3, 3] -= grasp[:3, 0] * back_m
-                reached = self.approach_straight(self.wrist_for("handle", grasp), grasp[:3, 0], float(distance))
-                if reached.status == "succeeded":
-                    return grasp[:3, :3], dict(approach_m=distance, side=side)
-                if not reached.refused:
-                    raise AgentFailed(f"handle approach: {reached.reason}")
-        return None
+    def handle_pitch(self, part: ArticulatedPart) -> float:
+        """The handle grasp's pitch [deg]: down along the line from the arm's shoulder to the handle,
+        from where the base stands, from 0 (level) to ``handle_pitch_max_deg``."""
+        shoulder = (self.base_pose() @ [*self.session.robot.shoulder, 1.0])[:3]
+        to = np.asarray(part.handle_center, dtype=float) - shoulder
+        down = math.degrees(math.atan2(-to[2], math.hypot(to[0], to[1])))
+        return float(np.clip(down, 0.0, self.tuning.handle_pitch_max_deg))
 
-    def handle_grasp_pose(self, part: ArticulatedPart, side: float, pitch_deg: float) -> np.ndarray:
+    def handle_grasp_pose(self, part: ArticulatedPart, pitch_deg: float) -> np.ndarray:
         """World pose (4x4) of the robot's ``handle`` tool frame around a part's handle bar: the bar
-        along the gripper's y (``side`` picks its direction), the approach into the part, pitched down
-        by ``pitch_deg`` [deg] about the bar; the bar's axis on the frame, or, with a fixed jaw, the
-        bar resting on it (its axis a radius above the frame along the closing axis)."""
+        along the gripper's y, the jaws' closing axis z up, the approach into the part pitched down by
+        ``pitch_deg`` [deg] about the bar; the bar's axis on the frame, or, with a fixed jaw, the bar
+        resting on it (its axis a radius above the frame along the closing axis). With the closing
+        axis down (Spot's hand upside down, its wrist roll 0.1 rad from the limit) the pull was
+        refused at every handle height (2026-11-03)."""
         into = -np.asarray(part.direction, dtype=float)
-        bar = np.asarray(part.handle_axis, dtype=float) * side
+        bar = np.asarray(part.handle_axis, dtype=float)
         y = bar - into * np.dot(bar, into)
         y /= np.linalg.norm(y)
-        level_z = np.cross(into, y)
-        pitch = math.radians(pitch_deg) * (1.0 if level_z[2] >= 0 else -1.0)  # Down, whichever way y points.
-        approach = rotation_about(y, pitch) @ into
+        if np.cross(into, y)[2] < 0:  # The handle axis's sign is arbitrary: take the one that puts z up.
+            y = -y
+        approach = rotation_about(y, math.radians(pitch_deg)) @ into
         z = np.cross(approach, y)
         rest = part.handle_radius if "fixed_jaw" in self.tools else 0.0
         pose = np.eye(4)

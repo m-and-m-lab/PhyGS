@@ -50,13 +50,22 @@ class Tuning:
     # the next of these [deg]. Square to a drawer it does not turn.
     reach_turns_deg: tuple[float, ...] = (0.0, 30.0, -30.0, 60.0, -60.0)
     limit_margin_m: float = 0.01  # Stop this far [m] short of a slide's end.
-    # Stand again when no handle pitch works from where the base stopped: an opening one walk
-    # tolerance nearer each time (the base had stopped at the far edge, 2026-10-30).
+    # Stand again when the handle approach or the slide move is refused before moving from where the
+    # base stopped: an opening one walk tolerance nearer each time (the base had stopped at the far
+    # edge, 2026-10-30).
     stance_tries: int = 2
-    # Handle grasp pitches [deg] (gripper axis down about the bar), tried in order while the approach
-    # or the slide move is refused before moving; approach distances [m] along the gripper axis.
-    handle_pitch_deg: tuple[float, ...] = (30.0, 45.0, 15.0, 0.0)
-    handle_approach_m: tuple[float, ...] = (0.08, 0.06, 0.04)
+    # The handle grasp pitches the gripper axis down about the bar along the line from the arm's
+    # shoulder to the handle, from where the base stopped, at most this [deg] (level for a handle
+    # above the shoulder). Spot's arm reaches its highest handles (0.67-0.80 m) along the line from 9
+    # of 9 base poses at the stance, at a fixed 30 deg from 3-7 (the reach check, offline). At 36.7 deg
+    # on a 0.155 m handle the jaw stopped on the drawer front; at 30 deg every low handle opened
+    # (2026-11-03).
+    handle_pitch_max_deg: float = 30.0
+    handle_approach_m: float = 0.08  # The planned move ends this far before the handle [m]; then straight in.
+    # A grip on a handle bar closes the gripper at least this fraction of the way from open to closed.
+    # Spot on a 2 cm bar: 0.88 (-0.21 rad). With the jaw stopped on the drawer front: 0.05 (-1.33 rad),
+    # and holding was true there too (2026-11-03).
+    handle_grip_closed: float = 0.5
     # After letting go of the handle, the retreat: (move, distance [m]); wrist_down (wrist -z),
     # gripper_back (wrist -x), up (world z), forward (the gripper axis made horizontal). Off the bar
     # and back until the jaw tip (0.016 m past the bar's axis) and the planner's padding are clear;

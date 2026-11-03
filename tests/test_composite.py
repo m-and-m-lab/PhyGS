@@ -39,6 +39,7 @@ DRAWER = ArticulatedPart(
 STANCE_M = TUNING.grip_range_m[1] - TUNING.goal_tolerance[0]
 PULL_M = STANCE_M - TUNING.grip_range_m[0]
 OPEN = (0.0, 2.56 - STANCE_M, math.pi / 2)  # Facing the handle.
+BODY_Z = 0.541  # Spot's standing body height [m] (2026-11-02).
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,7 @@ class Feedback:
     failure: SkillFailure | None = None
     attempts: int = 1
     progress: float = 1.0
+    gripper_aperture: float | None = None
 
 
 REFUSED = Feedback("failed", "Arm planner failed: no plan", progress=0.0)  # A planned move refused before moving.
@@ -55,13 +57,15 @@ LINE_REFUSED = "refused"  # A line refused before moving (TrajectoryRefused).
 STALLED = Feedback("failed", "End-effector tracking error exceeded tolerance", progress=0.5)
 JOINTS = SPOT.arm.joints
 ROBOT = SPOT.info()
+ON_BAR = -0.21  # Spot's gripper closed on a 2 cm handle bar [rad] (2026-11-03).
 
 
 class FakeSession:
     """Clients return feedback as their command id; ``wait`` hands it back. Scripted results are
     consumed in order per kind (``approach``: planned moves, ``line``: end-effector lines,
-    ``navigate_to``, ``stow``, ``look_at``); the rest succeed. The tool pose follows the moves that
-    succeed; the arm joints are at the stow posture after a stow and out after any other arm move."""
+    ``navigate_to``, ``stow``, ``look_at``, ``close_gripper``); the rest succeed. The tool pose follows
+    the moves that succeed; the arm joints are at the stow posture after a stow and out after any other
+    arm move. A close at an object stops at ``ON_BAR``, else at the closed end."""
 
     def __init__(self, inside="storage_drawer", heading=math.pi / 2, navigation=True, **results):
         self.robot = ROBOT
@@ -113,7 +117,11 @@ class FakeSession:
 
     def _gripper(self, close):
         self.manipulation.holding = close and self._near
-        return self._call("close_gripper" if close else "open_gripper")
+        feedback = self._call("close_gripper" if close else "open_gripper")
+        if feedback.gripper_aperture is None:
+            stopped = (ON_BAR if self._near else ROBOT.gripper_closed) if close else ROBOT.gripper_open
+            feedback = replace(feedback, gripper_aperture=stopped)
+        return feedback
 
     _near = _fresh = False  # The jaws are at an object: after the first line from a planned move.
 
@@ -153,7 +161,7 @@ class FakeSession:
     def observe(self):
         c, s = math.cos(self.heading), math.sin(self.heading)
         x, y = self.position
-        pose = SimpleNamespace(matrix=np.array([[c, -s, 0, x], [s, c, 0, y], [0, 0, 1, 0], [0, 0, 0, 1.0]]))
+        pose = SimpleNamespace(matrix=np.array([[c, -s, 0, x], [s, c, 0, y], [0, 0, 1, BODY_Z], [0, 0, 0, 1.0]]))
         joints = SimpleNamespace(names=JOINTS, positions=self.arm.copy())
         return SimpleNamespace(localization=SimpleNamespace(valid=True, pose=pose), joints=joints)
 
@@ -182,7 +190,7 @@ def test_the_retrieve_plan_opens_the_drawer_then_reaches_in_picks_and_stows():
     handle_view, target_view = (call[1] for call in session.calls if call[0] == "look_at")
     assert handle_view == TUNING.look_views["handle"] and target_view is None  # look_at's own views.
     into, slide, *release = session.lines()[: 2 + len(TUNING.handle_release)]
-    assert into[2] == pytest.approx(TUNING.handle_approach_m[0])  # Straight onto the handle.
+    assert into[2] == pytest.approx(TUNING.handle_approach_m)  # Straight onto the handle.
     assert slide[1] == (0.0, -1.0, 0.0) and slide[2] == pytest.approx(PULL_M)  # Until the grip range's near end.
     assert [call[2] for call in release] == [distance for _, distance in TUNING.handle_release]
     approach = np.asarray(into[1])  # Into the part.
@@ -207,12 +215,23 @@ def test_the_retrieve_plan_names_its_steps_for_the_timeline():
     assert session.steps == [(0, "open_drawer"), (0, "pick(target)")]
 
 
+def shoulder_pitch(handle, stance) -> float:
+    """The pitch [deg] down along the line from Spot's shoulder to ``handle`` from the base at ``stance``."""
+    x, y, heading = stance
+    forward = np.array([math.cos(heading), math.sin(heading)])
+    shoulder, height = np.array([x, y]) + forward * ROBOT.shoulder[0], BODY_Z + ROBOT.shoulder[2]
+    return math.degrees(math.atan2(height - handle[2], float(np.linalg.norm(np.asarray(handle[:2]) - shoulder))))
+
+
 def test_each_skill_reports_the_option_that_worked_and_what_it_measured():
-    session = FakeSession(approach=[REFUSED, Feedback()])
+    session = FakeSession()
     skills = CompositeSkills(session)
     opened = skills.open_drawer(DRAWER)
-    assert opened.option == dict(stance=0, stroke_m=pytest.approx(PULL_M), pitch_deg=30.0, approach_m=0.08, side=-1.0)
-    assert opened.measured == dict(moved_m=pytest.approx(PULL_M), held_handle=True)
+    pitch = shoulder_pitch(DRAWER.handle_center, OPEN)
+    assert 0.0 < pitch < TUNING.handle_pitch_max_deg  # 18 deg: the grid's top drawer (18.5 deg in the sim).
+    assert opened.option == dict(stance=0, stroke_m=pytest.approx(PULL_M), pitch_deg=pytest.approx(pitch, abs=0.05))
+    assert opened.measured == dict(gripper=ON_BAR, moved_m=pytest.approx(PULL_M))
+    assert opened.refused == 0
     picked = skills.pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), name="target", part=DRAWER)
     stance = (0.0, 2.4 - TUNING.reach_ahead_m, math.pi / 2)
     assert picked.option == dict(
@@ -314,30 +333,101 @@ def test_a_reach_stance_the_robot_does_not_fit_turns_about_the_point():
         CompositeSkills(FakeSession(navigate_to=[unreachable])).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), part=DRAWER)
 
 
-def test_refused_options_move_on_in_order():
-    # The first handle approach (both bar directions at the first distance) is refused; the pick's
-    # straight-down approach is refused at every yaw, so it moves on to the first tilted approach,
-    # given in the robot's frame.
+def test_refused_pick_options_move_on_in_order():
+    # The pick's straight-down approach is refused at every yaw, so it moves on to the first tilted
+    # approach, given in the robot's frame.
     yaws = len(TUNING.grasp_yaws_deg)
-    session = FakeSession(approach=[REFUSED, REFUSED, Feedback(), *[REFUSED] * yaws])
+    session = FakeSession(approach=[Feedback(), *[REFUSED] * yaws])  # The handle approach, then the pick's.
     plan(session)
-    handle_in = session.lines()[0]
-    assert handle_in[2] == pytest.approx(TUNING.handle_approach_m[1])  # 0.06 m: the next distance.
     pick_in = session.lines()[-2]
     forward, side, down = TUNING.pick_approaches[1]  # In the robot's frame; the robot heads +y.
     assert pick_in[1] == pytest.approx((-side, forward, down), abs=1e-3)
 
 
-def test_when_every_pitch_is_refused_the_drawer_skill_stands_again_one_tolerance_nearer():
-    refusals = [REFUSED] * (2 * len(TUNING.handle_approach_m) * len(TUNING.handle_pitch_deg))
-    session = FakeSession(approach=refusals)
+def test_a_refused_handle_approach_stands_again_one_tolerance_nearer():
+    """The one handle grasp is refused before moving: the skill stands again, nearer."""
+    session = FakeSession(approach=[REFUSED])
     plan(session)
     walks = [call[1] for call in session.calls if call[0] == "navigate_to"]
-    assert len(walks) == 3  # Open stance, again after the refusals, reach-in stance.
+    assert len(walks) == 3  # Open stance, again after the refusal, reach-in stance.
     assert walks[1] == pytest.approx((0.0, OPEN[1] + TUNING.goal_tolerance[0], math.pi / 2))
     assert session.names()[session.names().index("navigate_to", 2) - 1] == "stow"  # The arm folds to walk.
-    with pytest.raises(AgentFailed, match="every handle pitch"):
-        plan(FakeSession(approach=refusals * TUNING.stance_tries))
+    with pytest.raises(AgentFailed, match=r"the handle approach was refused: .*, from 2 stances\."):
+        plan(FakeSession(approach=[REFUSED] * TUNING.stance_tries))
+
+
+def test_a_refused_pull_lets_go_backs_off_and_stands_again():
+    """The gripper holds the handle and the pull leaves the arm's reach (Spot's upside-down hand,
+    2026-11-03): it opens the gripper, backs off and stands again nearer."""
+    session = FakeSession(line=[Feedback(), LINE_REFUSED])  # In, then the pull is refused.
+    opened = CompositeSkills(session).open_drawer(DRAWER)
+    names = session.names()
+    second = names.index("navigate_to", names.index("navigate_to") + 1)
+    releases = ["line"] * len(TUNING.handle_release)
+    assert names[:second] == [
+        "stow", "navigate_to", "look_at", "open_gripper", "approach", "line", "close_gripper",
+        "line", "open_gripper", *releases, "stow",  # The refused pull; let go, back off, fold to walk.
+    ]  # fmt: skip
+    assert opened.option["stance"] == 1 and opened.refused == 1
+
+
+@pytest.mark.parametrize(
+    ("height", "expected"),
+    [
+        (0.155, TUNING.handle_pitch_max_deg),  # The grid's bottom drawer: 36.7 deg along the line, capped.
+        (0.465, None),  # The grid's top drawer: along the line.
+        (0.80, 0.0),  # Above the shoulder: level.
+    ],
+)
+def test_the_handle_pitch_follows_the_line_from_the_shoulder_within_its_bounds(height, expected):
+    session = FakeSession()
+    drawer = replace(DRAWER, handle_center=(0.0, 2.56, height))
+    opened = CompositeSkills(session).open_drawer(drawer)
+    line = shoulder_pitch(drawer.handle_center, OPEN)
+    assert opened.option["pitch_deg"] == pytest.approx(line if expected is None else expected, abs=0.05)
+    into = np.asarray(session.lines()[0][1])  # The line onto the handle runs along the gripper axis.
+    assert math.degrees(math.asin(-into[2])) == pytest.approx(opened.option["pitch_deg"], abs=0.1)
+
+
+def test_a_gripper_stopped_short_of_the_bar_lets_go_and_fails():
+    """Pitched 36.7 deg at a 0.155 m handle, Spot's jaw stopped on the drawer front at -1.33 rad
+    (open -1.40); holding was true and the skill pulled the hand back alone (2026-11-03)."""
+    session = FakeSession(close_gripper=[Feedback(gripper_aperture=-1.33)])
+    with pytest.raises(AgentFailed, match="stopped 5% closed, not on the handle bar"):
+        CompositeSkills(session).open_drawer(DRAWER)
+    releases = ["line"] * len(TUNING.handle_release)
+    assert session.names()[-2 - len(releases) :] == ["close_gripper", "open_gripper", *releases]  # No pull.
+
+
+def test_holding_read_as_lost_after_the_pull_still_opens():
+    """The jaws crept 0.039 rad of the 0.05 rad squeeze on the house island's bottom handle in the
+    pull: holding read false with the bar held to the end and the drawer opened 0.255 m (retrieve_house,
+    2026-11-03)."""
+    session = FakeSession()
+    line = session._line
+
+    def creeping(trajectory):
+        feedback = line(trajectory)
+        if len(session.lines()) == 2:  # The pull.
+            session.manipulation.holding = False
+        return feedback
+
+    session.manipulation.execute_trajectory = creeping
+    opened = CompositeSkills(session).open_drawer(DRAWER)
+    assert opened.measured["moved_m"] == pytest.approx(PULL_M)
+    releases = ["line"] * len(TUNING.handle_release)
+    assert session.names()[-2 - len(releases) :] == ["open_gripper", *releases, "sleep"]
+
+
+def test_a_handle_approach_stopped_while_moving_backs_off_and_fails():
+    """The approach's line stopped on contact (Spot's finger on the island's top drawer front, 154 N,
+    2026-11-03): it backs off and reports the stop; no other grasp is tried."""
+    session = FakeSession(line=[STALLED])
+    with pytest.raises(AgentFailed, match="the handle approach stopped: End-effector tracking error"):
+        CompositeSkills(session).open_drawer(DRAWER)
+    releases = ["line"] * len(TUNING.handle_release)
+    assert session.names()[-3 - len(releases) :] == ["approach", "line", "open_gripper", *releases]
+    assert session.names().count("approach") == 1
 
 
 def test_a_refused_release_move_is_tried_at_half_then_ends_the_release():
@@ -387,8 +477,10 @@ def test_a_skill_stows_an_arm_that_is_out_before_it_walks_and_without_navigation
 
 
 def test_a_failure_while_moving_ends_the_plan():
-    with pytest.raises(AgentFailed, match="slide"):
-        plan(FakeSession(line=[Feedback(), STALLED]))  # In, then the slide stalls.
+    session = FakeSession(line=[Feedback(), STALLED])  # In, then the pull stalls.
+    with pytest.raises(AgentFailed, match="the pull stopped after"):
+        plan(session)
+    assert session.names()[-1 - len(TUNING.handle_release)] == "open_gripper"  # It let go and backed off.
     before_lift = 2 + len(TUNING.handle_release) + 1  # Handle in, slide, releases, pick in.
     with pytest.raises(AgentFailed, match="pick lift"):
         plan(FakeSession(line=[Feedback()] * before_lift + [STALLED]))
@@ -441,15 +533,16 @@ def test_the_pick_grasp_pose_puts_the_grasp_frame_on_the_point_along_the_approac
 
 
 @pytest.mark.parametrize("side", [1.0, -1.0])
-@pytest.mark.parametrize("pitch", [0.0, 15.0, 30.0, 45.0])
-def test_the_handle_grasp_holds_the_bar_along_the_jaws_pitched_down_into_the_drawer(side, pitch):
+@pytest.mark.parametrize("pitch", [0.0, 15.0, 30.0])
+def test_the_handle_grasp_holds_the_bar_along_the_jaws_closing_axis_up_pitched_down_into_the_drawer(side, pitch):
     skills = CompositeSkills(SimpleNamespace(robot=ROBOT))
-    drawer = replace(DRAWER, direction=(0.6, -0.8, 0.0), handle_axis=(0.8, 0.6, 0.0))
-    pose = skills.handle_grasp_pose(drawer, side, pitch)
+    drawer = replace(DRAWER, direction=(0.6, -0.8, 0.0), handle_axis=(0.8 * side, 0.6 * side, 0.0))
+    pose = skills.handle_grasp_pose(drawer, pitch)
     rotation = pose[:3, :3]
     assert rotation.T @ rotation == pytest.approx(np.eye(3), abs=1e-12)
     assert np.linalg.det(rotation) == pytest.approx(1.0)
-    assert rotation[:, 1] == pytest.approx(np.multiply(drawer.handle_axis, side), abs=1e-12)  # The bar along y.
+    assert rotation[:, 1] == pytest.approx((-0.8, -0.6, 0.0), abs=1e-12)  # The bar along y, either sign given.
+    assert rotation[2, 2] > 0  # The closing axis up: Spot's hand upright.
     into, down = -np.asarray(drawer.direction), math.radians(pitch)
     expected_axis = math.cos(down) * into + [0.0, 0.0, -math.sin(down)]  # Into the drawer, pitched down.
     assert rotation[:, 0] == pytest.approx(expected_axis, abs=1e-12)

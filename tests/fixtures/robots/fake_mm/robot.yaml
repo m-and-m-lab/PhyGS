@@ -19,6 +19,7 @@ arm:
   joints: [lift, shoulder_yaw, shoulder_pitch, elbow, wrist_roll]
   root_link: torso
   wrist_link: wrist
+  shoulder: [0.1, 0.0, 0.6]  # shoulder_pitch at the zero posture.
   stow: [0.0, 0.0, -1.5, 2.4, 0.0]
   prestow: [0.0, 0.0, -1.2, 2.1, 0.0]
   move_seconds: 2.0

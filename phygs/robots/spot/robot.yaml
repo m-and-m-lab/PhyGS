@@ -40,6 +40,9 @@ arm:
   joints: [arm_sh0, arm_sh1, arm_el0, arm_el1, arm_wr0, arm_wr1]
   root_link: arm_link_sh0
   wrist_link: arm_link_wr1
+  # Where the arm reaches out from: arm_sh1 (the shoulder pitch; arm_sh0 at the same point), in the
+  # body at the zero posture [m] (the URDF). The drawer grasp pitches down along the line from it.
+  shoulder: [0.292, 0.0, 0.188]
   # Folded transit posture: navigation requires it and the transit footprint was measured in it.
   stow: [0.0, -3.13, 3.13, 0.0, 0.0, 0.0]
   # 0.3 rad less folded: >= 1.2 cm self-clearance in every cuRobo sphere fit (the stow: -2 to -3 cm).

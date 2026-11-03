@@ -35,6 +35,8 @@ arm:
   joints: [joint1, joint2, joint3, joint4, joint5, joint6]  # The movable joints from base_link to wrist_link, in order.
   root_link: link0  # The arm's first link (look_at views the target from its side).
   wrist_link: hand  # The link IK and the planners move; tools are poses in it.
+  # Where the arm reaches out from (its first pitch joint), in base_link at the zero posture [m].
+  shoulder: [0.0, 0.0, 0.0]
   stow: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # Folded for driving; the transit footprint is measured in it.
   prestow: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # Just out of the stow, collision free in the planners' model.
   move_seconds: 2.0  # A skill's straight joint move [s].

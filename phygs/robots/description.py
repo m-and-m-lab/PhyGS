@@ -78,7 +78,8 @@ class RobotInfo:
     """What an agent may read about its robot (``session.robot``): names, postures and gripper facts.
 
     ``stow`` and ``prestow`` [m or rad] are in :attr:`arm_joints` order; ``gripper_open`` and
-    ``gripper_closed`` are the primary gripper joint's values; ``tools`` are the frames
+    ``gripper_closed`` are the primary gripper joint's values; ``shoulder`` is where the arm reaches
+    out from (its first pitch joint) in the base link [m]; ``tools`` are the frames
     ``move_to_pose(tool=)`` accepts, each a pose in the wrist link [x, y, z [m], qx, qy, qz, qw] with
     the gripper's axes (x the approach, z the jaws' closing axis; ``wrist`` is the wrist link
     itself); ``look_camera`` is the camera ``look_at`` aims (None without).
@@ -89,6 +90,7 @@ class RobotInfo:
     gripper_joints: tuple[str, ...]
     gripper_open: float
     gripper_closed: float
+    shoulder: tuple[float, float, float]
     tools: dict[str, tuple[float, ...]]
     cameras: tuple[str, ...]
     look_camera: str | None
@@ -126,13 +128,15 @@ class RobotDescription:
     @dataclass(frozen=True)
     class Arm:
         """The arm: ``joints`` in planning order (the chain from the base link to ``wrist_link``),
-        ``root_link`` (the arm's first link), ``stow`` (navigation's transit posture) and ``prestow``
+        ``root_link`` (the arm's first link), ``shoulder`` (where the arm reaches out from: its first
+        pitch joint, in the base link at the zero posture [m]), ``stow`` (navigation's transit posture) and ``prestow``
         (just out of the stow, where planners start) [m or rad], ``move_seconds`` [s] (a skill's
         straight joint move) and ``motion`` (``MotionConfig`` settings)."""
 
         joints: tuple[str, ...]
         root_link: str
         wrist_link: str
+        shoulder: tuple[float, float, float]
         stow: tuple[float, ...]
         prestow: tuple[float, ...]
         move_seconds: float
@@ -269,7 +273,14 @@ class RobotDescription:
             raise ValueError(f"{path}: base kinematics {base['kinematics']!r}; expected one of {KINEMATICS}.")
         config = base.pop("config", None)
         arm = data["arm"]
-        _keys(arm, "arm", required=("joints", "root_link", "wrist_link", "stow", "prestow", "move_seconds", "motion"))
+        _keys(
+            arm,
+            "arm",
+            required=("joints", "root_link", "wrist_link", "shoulder", "stow", "prestow", "move_seconds", "motion"),
+        )
+        shoulder = tuple(map(float, arm["shoulder"]))
+        if len(shoulder) != 3:
+            raise ValueError(f"{path}: arm.shoulder is [x, y, z] [m] in the base link.")
         _keys(arm["motion"], "arm.motion", required=JOINT_MOTION, optional=OTHER_MOTION)
         gripper = data["gripper"]
         _keys(gripper, "gripper", required=("joints", "open", "closed", "jaw_links", "tools"))
@@ -339,6 +350,7 @@ class RobotDescription:
                 tuple(arm["joints"]),
                 arm["root_link"],
                 arm["wrist_link"],
+                shoulder,
                 tuple(map(float, arm["stow"])),
                 tuple(map(float, arm["prestow"])),
                 float(arm["move_seconds"]),
@@ -488,6 +500,7 @@ class RobotDescription:
             gripper_joints=self.gripper.joints,
             gripper_open=self.gripper.open,
             gripper_closed=self.gripper.closed,
+            shoulder=self.arm.shoulder,
             tools={name: _xyzw(pose) for name, pose in self.gripper.tools.items()},
             cameras=tuple(self.cameras),
             look_camera=self.look_camera,

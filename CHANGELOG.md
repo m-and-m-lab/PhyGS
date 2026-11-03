@@ -13,6 +13,30 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.11.0 (not tagged yet)
 
+Changed (2026-11-03):
+
+- **Breaking:** `robot.yaml` needs `arm.shoulder`: where the arm reaches out from (its first pitch
+  joint), in the base link at the zero posture [m]. Agents read it as `session.robot.shoulder`.
+  Copy the line from `phygs/robots/_template/robot.yaml` and take the joint's origin from the URDF.
+- The composite `open_drawer` and `close_drawer` grasp the handle one way, computed from where the
+  handle is: the gripper's closing axis up, pitched down along the line from the shoulder to the
+  handle (0 to `Tuning.handle_pitch_max_deg`, 30 deg), one `Tuning.handle_approach_m` (0.08 m).
+  They no longer try a list of pitches, distances and hands: `Tuning.handle_pitch_deg` is removed
+  and `Tuning.handle_approach_m` is one distance. Spot's upside-down hand had its pull refused at
+  every handle height, and the island's top drawer (0.675 m) failed on the true part; along the
+  line it opened (2.8 deg, 2026-11-03). `CompositeSkills.handle_grasp_pose(part, pitch_deg)` has no
+  `side` argument; `CompositeSkills.handle_pitch(part)` is new. The line is Spot's reach: the
+  Ridgeback's Franka has no IK on it (10-15 deg at a 0.465 m handle, 25-30 deg at 0.225 m), so its
+  drawer and retrieve rungs fail (0 of 5, 3 of 5 before) until it gets its own pitches.
+- A refused approach or pull stands again nearer (`stance_tries`). After a move, every failure lets
+  go of the handle and backs off, then raises `AgentFailed` with the step and how far the hand
+  moved. `open_drawer` checks the grip: the gripper must close at least
+  `Tuning.handle_grip_closed` (half) of the way on the bar. Before, a jaw stopped on the drawer
+  front counted as holding and the skill reported success with the drawer moved 1 cm (0.155 m
+  handle, 2026-11-03). Holding is not checked after the pull: the jaws creep on the bar while
+  pulling, so it read a held bar as lost. `Outcome.measured` has `gripper` (the reading
+  after the close) and no `held_handle`; `Outcome.option` is `stance`, `stroke_m`, `pitch_deg`.
+
 Added (2026-11-01):
 
 - Episode spec `parts: {name: {opening: m}}`: drawers open at the start, within the slide's limits;
