@@ -108,9 +108,19 @@ class HeldObject:
 
 
 def check_views(views) -> None:
-    """Refuse look_at views that are not (distance [m] > 0, elevation [deg] in [0, 90]) pairs."""
-    if not views or any(not (math.isfinite(d) and d > 0 and 0.0 <= e <= 90.0) for d, e in views):
-        raise ValueError("look_at views are (distance [m] > 0, elevation [deg] in [0, 90]) pairs, at least one.")
+    """Refuse look_at views that are not (distance [m] > 0, elevation [deg] in [0, 90]) pairs, each with
+    an optional azimuth [deg] in [-180, 180] third."""
+
+    def valid(view) -> bool:
+        if len(view) not in (2, 3) or not all(math.isfinite(v) for v in view):
+            return False
+        return view[0] > 0 and 0.0 <= view[1] <= 90.0 and (len(view) == 2 or -180.0 <= view[2] <= 180.0)
+
+    if not views or not all(valid(view) for view in views):
+        raise ValueError(
+            "look_at views are (distance [m] > 0, elevation [deg] in [0, 90][, azimuth [deg] in [-180, 180]]),"
+            " at least one."
+        )
 
 
 # Wrist pose [x, y, z, qx, qy, qz, qw] (m) in the robot body frame and seed arm joints [rad]
@@ -125,7 +135,8 @@ JointPlanner = Callable[[list[float]], Future[JointTrajectory]]
 PosePlanner = Callable[[list[float]], Future[JointTrajectory]]
 
 
-# look_at's views of a target (distance [m], elevation [deg]), tried in order until one is reachable.
+# look_at's views of a target (distance [m], elevation [deg]), tried in order until one is reachable; a
+# view may add an azimuth [deg] (look_at).
 # Measured for Spot on the grid and house drawers and boxes (low ones need the later, shallower views).
 LOOK_VIEWS = ((0.5, 60.0), (0.5, 45.0), (0.6, 60.0), (0.6, 75.0), (0.6, 30.0))
 
@@ -151,7 +162,7 @@ class SkillConfig:
     joints: tuple[str, ...]
     arm_root_link: str
     wrist_link: str
-    look_views: tuple[tuple[float, float], ...] = LOOK_VIEWS
+    look_views: tuple[tuple[float, ...], ...] = LOOK_VIEWS
 
     @classmethod
     def from_robot(cls, robot, backend: str) -> SkillConfig:

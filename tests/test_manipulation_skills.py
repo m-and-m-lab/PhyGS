@@ -400,6 +400,20 @@ def test_look_at_moves_the_camera_to_the_requested_view_of_the_target(kinematics
     assert "No view" in error.message and backend.attempts == len(CONFIG.look_views)  # Every view tried.
 
 
+def test_look_at_turns_a_view_about_the_target_by_its_azimuth(kinematics):
+    """Azimuth 90 deg turns the camera counterclockwise (seen from above) about the vertical through the
+    target: from the robot's side of it (-x) to its -y side, at the same distance and elevation."""
+    direct = FakeArm()
+    view = skills(direct, backend="direct", ik=position_ik).look_at(PointTarget((1.0, 0.0, 0.0)), ((0.5, 45.0, 90.0),))
+    assert drive(view) is None
+    side = 0.5 * np.sqrt(0.5)
+    ((name, joints),) = direct.calls
+    assert name == "move" and joints == pytest.approx((1.0, -side, side, 0.0, 0.0, 0.0))
+    backend = skills(FakeArm(), backend="direct", ik=position_ik)
+    with pytest.raises(ValueError):
+        drive(backend.look_at(PointTarget((1.0, 0.0, 0.0)), ((0.5, 45.0, 200.0),)))
+
+
 def test_look_at_tries_the_next_view_while_one_is_refused(kinematics):
     """Refused before moving (no plan) or stopped as the scene changed: the next view; a stall ends it."""
     arm, refusing = FakeArm(), FakeMotionPlanner("no_plan")

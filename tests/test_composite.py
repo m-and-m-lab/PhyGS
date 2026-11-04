@@ -482,6 +482,48 @@ def test_a_drawer_stroke_goes_on_when_no_view_of_the_handle_is_reachable():
         CompositeSkills(FakeSession(look_at=[STALLED])).open_drawer(DRAWER)
 
 
+NO_VIEW = Feedback("failed", "No view of the target is reachable", SkillFailure.OUT_OF_REACH, progress=0.0)
+
+
+def test_look_at_opens_the_gripper_keeps_each_view_it_reaches_then_stows():
+    """One look per sweep view, in order, from where the base stands; a view out of reach is skipped."""
+    session = FakeSession(look_at=[Feedback(), NO_VIEW])
+    skills = CompositeSkills(session)
+    looked = skills.look_at((0.0, 2.4, 0.1))
+    sweep = TUNING.look_sweep
+    assert session.names() == ["open_gripper", *["look_at"] * len(sweep), "stow"]
+    assert [call[1] for call in session.calls if call[0] == "look_at"] == [list(side) for side in sweep]
+    assert [look.view for look in skills.looks] == [side[0] for side in (sweep[0], *sweep[2:])]  # Reached first try.
+    assert all(look.observation.localization.valid for look in skills.looks)  # The observation at each view.
+    assert looked.refused == 1 and looked.measured["out_of_reach"] == [list(sweep[1][0])]
+    assert session.steps == [(0, "look_at")]
+    holding = FakeSession()
+    holding.manipulation.holding, carrying = True, CompositeSkills(holding)
+    carrying.held = "the picked box"  # A stand-in: the fake only passes it on.
+    carrying.look_at((0.0, 2.4, 0.1), sweep=[[(0.5, 45.0, 0.0)]])
+    assert holding.names() == ["look_at", "stow"]  # The gripper keeps what it holds.
+
+
+def test_look_at_keeps_the_view_of_a_side_that_look_at_reached_after_trying_others():
+    """look_at tries a side's views in order; its feedback counts the views it tried."""
+    session = FakeSession(look_at=[Feedback(attempts=3)])
+    skills = CompositeSkills(session)
+    skills.look_at((0.0, 2.4, 0.1), sweep=[[(0.6, 45.0, 0.0), (0.6, 60.0, 0.0), (0.6, 75.0, 0.0)]])
+    assert [look.view for look in skills.looks] == [(0.6, 75.0, 0.0)]
+
+
+def test_look_at_fails_with_no_view_reached_or_a_stopped_move_and_still_stows():
+    session = FakeSession(look_at=[NO_VIEW] * len(TUNING.look_sweep))
+    with pytest.raises(AgentFailed, match=f"none of the {len(TUNING.look_sweep)} sides"):
+        CompositeSkills(session).look_at((0.0, 2.4, 0.1))
+    assert session.names()[-1] == "stow"
+    session = FakeSession(look_at=[Feedback(), STALLED])
+    skills = CompositeSkills(session)
+    with pytest.raises(AgentFailed, match="stopped"):
+        skills.look_at((0.0, 2.4, 0.1))
+    assert session.names() == ["open_gripper", "look_at", "look_at", "stow"] and len(skills.looks) == 1
+
+
 def test_a_skill_stows_an_arm_that_is_out_before_it_walks_and_without_navigation_stays():
     session = FakeSession(inside=None)
     CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))

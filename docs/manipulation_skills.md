@@ -246,8 +246,9 @@ hand rises 0.10 m straight up and the stow is tried once more.
 `look_at(target, views=None, held=None)` moves the hand camera (`look_camera`) to a view of a
 point and aims it there: an object target's center, a pixel's depth return or a point. Each
 view is (distance [m], elevation [deg]): the camera that far from the target, on the robot's
-side of it, that high above the horizontal, upright; the wrist pose follows from the measured
-wrist-to-camera transform. The views are tried in order until one is reachable: library IK must
+side of it, that high above the horizontal, upright; an optional third value, an azimuth [deg],
+turns it about the vertical through the target, counterclockwise seen from above. The wrist pose
+follows from the measured wrist-to-camera transform. The views are tried in order until one is reachable: library IK must
 reach it, and the planner backend must plan to it (`PosePlanner`, with `held`) and move there
 without the scene changing; `direct` moves straight. `views` None is the skill settings'
 `look_views` (`(0.5, 60), (0.5, 45), (0.6, 60), (0.6, 75), (0.6, 30)`, measured on Spot); one view is
@@ -256,6 +257,19 @@ reachable ... move the base"); a failure while the arm moves ends it at once. Th
 when the arm has settled at a view, and `SkillFeedback.step` names it. It does not check what the
 camera sees: the agent observes afterwards. Example: from 1.4 m, a 0.7 m view into the open
 drawer shows its front (depth 0.26 m); a 0.5 m view shows its bottom.
+
+The composite `look_at(point, sweep=None)` (`phygs/composite/skills.py`) is a sweep: it opens an
+empty gripper, calls `look_at` once per side of `Tuning.look_sweep` (at -45, -25, 0, 25 and 45 deg
+around the point; each side 0.6 m out at 45 deg up, else 60, else 75 deg, tried in order), observes
+at each side's view reached and keeps it in `CompositeSkills.looks`, skips a side out of reach, and
+stows at the end, also when it fails. The
+gripper is open because the closed jaws sit in front of Spot's hand camera: at the same view,
+26-32% of the hand image had no depth or depth nearer than 0.25 m with the gripper closed, 1-6%
+open (2026-11-04). The sides were chosen from 40 views on the house's bottom drawer, the grid
+drawer and the grid table, and on the table from 0.80 m and 0.95 m (depth planning): views 30 deg up
+saw none of the drawer bottle's points, higher ones saw no more, and from 0.80 m the camera of three
+45 deg views would sit over the shoulder, so those sides go higher
+(`tests/robot_tests/episodes/check_look.py` checks it).
 
 ## Step narration
 

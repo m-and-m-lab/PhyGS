@@ -6,7 +6,8 @@
 """Composite skills: whole steps an agent asks for, composed from the session's commands.
 
 :class:`CompositeSkills` has the skills that use two clients, walking (``navigate_to``) and then
-moving the arm: ``pick``, ``place``, ``place_upright``, ``open_drawer`` and ``close_drawer``. They
+moving the arm: ``pick``, ``place``, ``place_upright``, ``open_drawer`` and ``close_drawer``; and
+``look_at``, a sweep of the hand camera over several views of a point, kept as observations. They
 take explicit affordances: an object's box, a drawer's :class:`~phygs.session.ArticulatedPart`, a
 point. Where an affordance comes from (the privileged hints, or an estimate from the cameras) is
 the caller's. Stances are computed from the affordance's geometry and the robot's grip range, not

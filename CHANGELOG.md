@@ -13,6 +13,23 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.11.0 (not tagged yet)
 
+Added (2026-11-04):
+
+- `CompositeSkills.look_at(point, sweep=None)`: a sweep of the look camera over several sides of a
+  point, from where the base stands. It opens an empty gripper (the jaws then keep out of the hand
+  image: at the same view, pixels without depth or nearer than 0.25 m fell from 26-32% to 1-6%),
+  looks from each side of `Tuning.look_sweep` in turn, keeps the session's observation at each
+  side's view reached in `CompositeSkills.looks` (`Look(view, observation)`), skips a side out of
+  reach, and stows at the end, also when it fails. `Tuning.look_sweep` has five sides, at -45, -25,
+  0, 25 and 45 deg around the target, each 0.6 m out at 45 deg up, else 60, else 75 deg (the
+  session's `look_at` tries a side's views in order). Chosen from 40 views measured from five stances
+  (see its comment): with a table target 0.80 m from the base three sides need the higher views.
+- The session's `look_at` views take an optional third value, an azimuth [deg] that turns the view
+  about the vertical through the target, counterclockwise seen from above. Two-value views are
+  unchanged.
+- Robot-test rungs `look_table`, `look_grid` and `look_house` (rung 11,
+  `tests/robot_tests/episodes/check_look.py`): the sweep at the target, after opening its drawer.
+
 Changed (2026-11-04):
 
 - The composite `open_drawer` and `close_drawer` end with the arm stowed, also when they fail.

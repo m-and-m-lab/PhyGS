@@ -3,9 +3,10 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The composite skills over one session: pick, place, place_upright, open_drawer and close_drawer.
-Each walks to where the arm reaches (``navigate_to``, after ``stow``), then moves the arm;
-open_drawer and close_drawer stow it again at the end.
+"""The composite skills over one session: look_at, pick, place, place_upright, open_drawer and
+close_drawer. Each but look_at walks to where the arm reaches (``navigate_to``, after ``stow``), then
+moves the arm; look_at looks from where the base stands. look_at, open_drawer and close_drawer stow the
+arm again at the end.
 
 The arm's moves are planned moves (``move_to_pose``) to where a straight motion starts, straight
 end-effector lines (``execute_trajectory``), the gripper, and ``look_at``. They place the robot's
@@ -69,6 +70,15 @@ class Motion(NamedTuple):
     refused: bool = False
 
 
+class Look(NamedTuple):
+    """One view of a :meth:`CompositeSkills.look_at` sweep: the view (distance [m], elevation [deg],
+    azimuth [deg], as the session's ``look_at`` takes it) and the session's observation once the arm
+    settled there."""
+
+    view: tuple[float, ...]
+    observation: Any
+
+
 class _Unreachable(AgentFailed):
     """navigate_to refused a stance before walking: no path to it, or the robot does not fit there."""
 
@@ -104,12 +114,14 @@ class CompositeSkills:
     Robot facts come from ``session.robot``; the base pose from the observed localization
     (``gt_localization``). :attr:`held` is the object the last pick grasped; the skills' later
     plans carry it while the gripper holds it, and a caller passes it to the session's ``stow``.
+    :attr:`looks` are the views the last look_at reached.
     """
 
     def __init__(self, session, tuning: Tuning = TUNING) -> None:
         self.session, self.tuning = session, tuning
         self.tools = {name: matrix(pose) for name, pose in session.robot.tools.items()}
         self.held: HeldObject | None = None
+        self.looks: list[Look] = []
 
     # Robot facts and readings.
 
@@ -324,6 +336,41 @@ class CompositeSkills:
         seconds = max(float(np.linalg.norm(there[:3] - here[:3])) / self.tuning.line_speed_m_s, 0.1)
         line = EndEffectorTrajectory([0.0, seconds], [here, there], manipulation.episode_id, tool=tool)
         return self.run(lambda: manipulation.execute_trajectory(line))
+
+    @_step("look_at")
+    def look_at(self, point, sweep=None) -> Outcome:
+        """Look at ``point`` [m] with the robot's look camera from each side of ``sweep`` in turn
+        (None: ``look_sweep``; a side is a list of views, (distance [m], elevation [deg], azimuth
+        [deg]), that the session's ``look_at`` tries in order), an empty gripper open so its jaws keep
+        out of the image, and keep the observation at each side's view reached in :attr:`looks`. A side
+        with no view in reach is skipped; a move that fails ends the sweep. It ends with the arm
+        stowed, also when it fails. Raises :class:`~phygs.session.AgentFailed` when no side was reached
+        or a move failed (:attr:`looks` keeps the views reached before)."""
+        manipulation, target = self.session.manipulation, PointTarget(tuple(map(float, point)))
+        sides = self.tuning.look_sweep if sweep is None else tuple(tuple(map(tuple, side)) for side in sweep)
+        self.looks, skipped = [], []
+        try:
+            if self._carried() is None:
+                self.gripper(close=False)
+            for side in sides:
+                feedback = self.session.wait(manipulation.look_at(target, views=list(side), held=self._carried()))
+                if feedback.status == "succeeded":
+                    reached = side[min(max(getattr(feedback, "attempts", 1), 1), len(side)) - 1]  # The last one tried.
+                    self.looks.append(Look(tuple(map(float, reached)), self.session.observe()))
+                elif feedback.failure == SkillFailure.OUT_OF_REACH:
+                    skipped.append(side)
+                else:
+                    raise AgentFailed(f"look_at: the move to a view of {side[0]} stopped: {feedback.reason}")
+            if not self.looks:
+                raise AgentFailed(f"look_at: none of the {len(sides)} sides is in reach; move the base.")
+        except AgentFailed:
+            if not self._stowed():
+                self._stow()
+            raise
+        self._stow()
+        option = dict(views=[list(look.view) for look in self.looks])
+        measured = dict(out_of_reach=[list(side[0]) for side in skipped])  # Each skipped side by its first view.
+        return Outcome("look_at", option=option, measured=measured, refused=len(skipped))
 
     @_step(lambda center, size, name=None, **options: f"pick({name})" if name else "pick")
     def pick(

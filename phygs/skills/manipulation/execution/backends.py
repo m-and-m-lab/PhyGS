@@ -146,11 +146,13 @@ class DirectSkills:
             self._say("not stowed; nothing to do")
 
     def look_at(
-        self, target: SkillTarget, views: tuple[tuple[float, float], ...] | None = None, held: HeldObject | None = None
+        self, target: SkillTarget, views: tuple[tuple[float, ...], ...] | None = None, held: HeldObject | None = None
     ) -> SkillSequence:
         """Move the hand camera to a view of the target point and aim it there, upright: each view
         (distance [m] from the point, elevation [deg] above the horizontal, on the side of the arm's
-        base) in turn, until one is not refused; ``views`` None: the configured ``look_views``.
+        base, and an optional azimuth [deg] that turns the view about the vertical through the point,
+        counterclockwise seen from above) in turn, until one is not refused; ``views`` None: the
+        configured ``look_views``.
 
         An object target means its center. The skill ends when the arm has settled at a view; it does
         not check what the camera sees. ``attempts`` counts the views tried.
@@ -166,10 +168,20 @@ class DirectSkills:
         toward = toward / np.linalg.norm(toward) if np.linalg.norm(toward) > 1e-6 else body[:3, 0]
         wrist_from_camera = self._wrist_from_camera(body)
         refused = "out of reach"
-        for distance_m, elevation_deg in views:
+        for view in views:
+            distance_m, elevation_deg, azimuth_deg = (*view, 0.0)[:3]
             self.attempts += 1
-            pose = self._view_pose(point, toward, distance_m, math.radians(elevation_deg), wrist_from_camera)
-            self._say(f"{describe(target)} {fmt(point)} m; view {distance_m:.2f} m, {elevation_deg:.0f} deg up")
+            turn = math.radians(azimuth_deg)
+            side = np.array(
+                [
+                    toward[0] * math.cos(turn) - toward[1] * math.sin(turn),
+                    toward[0] * math.sin(turn) + toward[1] * math.cos(turn),
+                    0.0,
+                ]
+            )
+            pose = self._view_pose(point, side, distance_m, math.radians(elevation_deg), wrist_from_camera)
+            around = f", {azimuth_deg:+.0f} deg around" if azimuth_deg else ""
+            self._say(f"{describe(target)} {fmt(point)} m; view {distance_m:.2f} m, {elevation_deg:.0f} deg up{around}")
             joints = self._ik(pose, self._arm_joints(), body)
             if joints is None:
                 continue

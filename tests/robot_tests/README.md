@@ -46,6 +46,7 @@ test side.
 | 9 | `arm_planning_depth` (`_moveit`) | agent | The same with plans on depth from the cameras (spec `table_reach_depth`) | cuRobo or MoveIt |
 | 10 | `pick_place_known`, `pick_place_depth` (`_moveit`) | agent | Picks the target next to the clutter, carries it over the clutter, places it on a free spot; on known boxes a carry only the held object would hit is refused (`check_pick_place.py`) | cuRobo or MoveIt |
 | 11 | `drawer_grid`, `drawer_house` | agent | Opens the target's drawer by its handle and pushes it shut (`check_drawer_stroke.py`) | ROS 2, cuRobo |
+| 11 | `look_table`, `look_grid`, `look_house` | agent | Opens the target's drawer (on the table: stays), looks at the target from look_at's sweep views; the hand camera sees it with depth in a view, the arm ends stowed (`check_look.py`) | cuRobo (the drawers: ROS 2) |
 | 12 | `drawer_place` | agent | Carries the target from the table into a drawer and closes it (`check_drawer_place.py`) | ROS 2, cuRobo |
 | 13 | `search_house` | component | Explores the house kitchen until a colour detector sees the cube (`check_nav2_pipeline.py`, which runs `check_house.py`) | explore_lite overlay |
 | 14 | `retrieve_grid`, `retrieve_house`, `retrieve_repeat` | agent | Finds the target in a closed drawer, opens it, picks the target, stows (`check_retrieve.py`); `retrieve_repeat` runs the grid episode three times in one World (`--repeats 3`), each from the same checked start | ROS 2, cuRobo |

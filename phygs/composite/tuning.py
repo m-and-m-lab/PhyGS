@@ -99,6 +99,21 @@ class Tuning:
     # look_at views (distance [m], elevation [deg]), tried in order: a drawer's handle (low handles,
     # the house's bottom drawer, need the later, shallower views) and a place spot, e.g. an open
     # drawer's floor. An object is looked at from look_at's own views.
+    # look_at's sweep: sides visited in order, each a list of views (distance [m], elevation [deg],
+    # azimuth [deg] about the vertical through the target, counterclockwise seen from above) that the
+    # session's look_at tries in order. One ring 0.6 m out at -45, -25, 0, 25 and 45 deg around, 45 deg
+    # up, higher where that is out of reach. Of 40 views (0.45/0.6 m, 30-75 deg, -45 to 45 deg) on five
+    # stances, 2026-11-04, depth planning: with the target 0.96-1.28 m from the base (the house's
+    # bottom drawer from its open stance, grid_drawer, grid_table) the 45 deg ring was reached in 14 of
+    # 15 cases (-45 deg in the house not) and saw 3-4 of the house bottle's 13 sample points, 9-11 in the
+    # grid scenes; 30 deg views saw none in the drawers. With a table target 0.80 m away 0, 25 and 45
+    # deg at 45 deg up were out of reach (the camera over the shoulder); 0 and 25 deg were reached at
+    # 60 deg, 45 deg at 75 deg, each seeing 10-11 points. At 0.95 m (the pick's reach stance) the ring
+    # was reached whole.
+    look_sweep: tuple[tuple[tuple[float, float, float], ...], ...] = tuple(
+        ((0.6, 45.0, azimuth), (0.6, 60.0, azimuth), (0.6, 75.0, azimuth))
+        for azimuth in (-45.0, -25.0, 0.0, 25.0, 45.0)
+    )
     look_views: dict[str, tuple[tuple[float, float], ...]] = field(
         default_factory=lambda: {
             "handle": ((0.6, 60.0), (0.5, 45.0), (0.45, 45.0), (0.6, 30.0)),

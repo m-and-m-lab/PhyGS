@@ -7,3 +7,10 @@ opening_tolerance_m: 0.02  # The drawer must open at least the request less this
 # 0.287 m (grid) and 0.263 m (house), 2026-10-22.
 stroke_min_opening_m: 0.20
 closed_max_m: 0.03  # Closed: at most this open [m] (the push stops 0.01 m short of the end).
+# check_look.py: look_at's sweep (Tuning.look_sweep, 5 sides). On 2026-11-04 the house reached 4 of
+# them (from the open stance of the island's bottom drawer) and saw 3-4 of the bottle's 13 sample
+# points in each; the grid drawer and tables (0.80-0.96 m away, with the higher views) reached all 5
+# and saw 9-11.
+look_min_views: 3
+look_min_points: 3
+look_depth_tolerance_m: 0.02  # A sample point is seen when the depth there is within this of it [m].

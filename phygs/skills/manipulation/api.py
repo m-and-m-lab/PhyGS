@@ -266,18 +266,20 @@ class ManipulationClient(CommandClient):
         self,
         target: SkillTarget,
         *,
-        views: Sequence[tuple[float, float]] | None = None,
+        views: Sequence[tuple[float, ...]] | None = None,
         held: HeldObject | None = None,
     ) -> int:
         """Move the hand camera to a view of the target and aim it there, upright.
 
         ``views`` are (distance [m] from the target, elevation [deg] above the horizontal) pairs on
         the robot's side, tried in order until one is reachable (None: the skill settings' ``look_views``,
-        e.g. ``[(0.5, 45.0)]`` for one view). Ends when the arm has settled; it does not check what
-        the camera sees: observe afterwards to get the view. An object target means its center.
-        ``held`` as for :meth:`stow`. The feedback's ``step`` names the view reached.
+        e.g. ``[(0.5, 45.0)]`` for one view). A view's optional third value, an azimuth [deg], turns it
+        about the vertical through the target, counterclockwise seen from above. Ends when the arm has
+        settled; it does not check what the camera sees: observe afterwards to get the view. An object
+        target means its center. ``held`` as for :meth:`stow`. The feedback's ``step`` names the view
+        reached.
         """
-        views = None if views is None else tuple((float(d), float(e)) for d, e in views)
+        views = None if views is None else tuple(tuple(map(float, view)) for view in views)
         return self._start_skill("look_at", lambda skills: skills.look_at(target, views, held))
 
     def _start_skill(self, name: str, sequence: Callable[[DirectSkills], SkillSequence]) -> int:

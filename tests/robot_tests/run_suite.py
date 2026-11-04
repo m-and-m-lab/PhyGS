@@ -39,10 +39,11 @@ ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parents[1]  # The PhyGS checkout.
 SPECS = ROOT / "configs" / "episodes"
 ARM, PICK = "episodes/check_arm_planning.py", "episodes/check_pick_place.py"
-NAVIGATION, RETRIEVE, STROKE = (
+NAVIGATION, RETRIEVE, STROKE, LOOK = (
     "episodes/check_navigation.py",
     "episodes/check_retrieve.py",
     "episodes/check_drawer_stroke.py",
+    "episodes/check_look.py",
 )
 
 
@@ -70,6 +71,9 @@ LADDER = [
     (10, "pick_place_depth_moveit", PICK, [*spec("table_reach_depth"), "--planner", "moveit"], ("ros2",)),
     (11, "drawer_grid", STROKE, spec("dev_grid_drawer"), ("ros2", "curobo")),
     (11, "drawer_house", STROKE, spec("dev_house_drawer"), ("ros2", "curobo")),
+    (11, "look_table", LOOK, spec("table_reach_depth"), ("curobo",)),
+    (11, "look_grid", LOOK, spec("dev_grid_drawer"), ("ros2", "curobo")),
+    (11, "look_house", LOOK, spec("dev_house_drawer"), ("ros2", "curobo")),
     (12, "drawer_place", "episodes/check_drawer_place.py", [], ("ros2", "curobo")),
     (13, "search_house", "components/check_nav2_pipeline.py", [], ("explore",)),
     (14, "retrieve_grid", RETRIEVE, spec("dev_grid_drawer"), ("ros2", "curobo")),
