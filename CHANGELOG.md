@@ -13,6 +13,15 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.11.0 (not tagged yet)
 
+Changed (2026-11-04):
+
+- The composite `open_drawer` and `close_drawer` end with the arm stowed, also when they fail.
+  Before, they left the hand backed a few centimetres off the handle. After `open_drawer` the hand
+  camera was 0.16 m from the drawer front (no depth nearer than 0.2 m) and the hand hid the bar
+  from the body cameras, so the next plan's map had no bar or front by the hand. A `look_at` into
+  the island's top drawer from there swung the jaws into both (32 N, Qwen3.8 house_drawer,
+  2026-11-03). A caller that wants the arm out after a stroke moves it from the stow.
+
 Changed (2026-11-03):
 
 - **Breaking:** `robot.yaml` needs `arm.shoulder`: where the arm reaches out from (its first pitch

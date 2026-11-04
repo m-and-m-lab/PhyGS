@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """The composite skills over one session: pick, place, place_upright, open_drawer and close_drawer.
-Each walks to where the arm reaches (``navigate_to``, after ``stow``), then moves the arm.
+Each walks to where the arm reaches (``navigate_to``, after ``stow``), then moves the arm;
+open_drawer and close_drawer stow it again at the end.
 
 The arm's moves are planned moves (``move_to_pose``) to where a straight motion starts, straight
 end-effector lines (``execute_trajectory``), the gripper, and ``look_at``. They place the robot's
@@ -485,7 +486,7 @@ class CompositeSkills:
         far as the part's travel allows (less the limit margin), and never past where the handle is at
         the near end of ``grip_range_m`` from where the base stopped. When the handle approach or the
         pull is refused before the arm moves, stand again one walk tolerance nearer, up to
-        ``stance_tries`` stances."""
+        ``stance_tries`` stances. It ends with the arm stowed, also when it fails."""
         tuning = self.tuning
         travel = part.limits[1] - part.opening - tuning.limit_margin_m
         wanted = travel if distance is None else min(distance, travel)
@@ -499,27 +500,40 @@ class CompositeSkills:
     def close_drawer(self, part: ArticulatedPart, distance: float | None = None) -> Outcome:
         """Stand at the close stance and push the drawer with the closed gripper: ``distance`` [m], else
         to its closed end (less the limit margin). When the approach or the push is refused before the
-        arm moves, stand there again, up to ``stance_tries`` stances."""
+        arm moves, stand there again, up to ``stance_tries`` stances. It ends with the arm stowed, also
+        when it fails."""
         length = part.opening - part.limits[0] - self.tuning.limit_margin_m if distance is None else distance
         return self._stroke_from_stances(part, "close", lambda attempt: self.close_stance(part, length), lambda: length)
 
     def _stroke_from_stances(self, part: ArticulatedPart, kind: str, stance, planned) -> Outcome:
         """Walk to ``stance(attempt)``, look at the handle and stroke ``planned()`` [m] (asked from where
-        the base stopped), until the stroke is not refused before moving."""
-        for attempt in range(self.tuning.stance_tries):
-            self._navigate(stance(attempt))
-            self._look(part.handle_center, "handle")
-            distance = planned()
-            if distance <= 0:
-                raise AgentFailed(f"{kind}_drawer: nothing to move from here ({distance:.3f} m).")
-            try:
-                option, measured = self._stroke(part, kind, distance)
-                break
-            except _Refused as error:
-                if attempt + 1 == self.tuning.stance_tries:
-                    raise AgentFailed(f"{str(error).rstrip('.')}, from {attempt + 1} stances.") from None
-                print(f"composite: {error} Standing again.", flush=True)
-        self.session.sleep(self.tuning.settle_seconds)
+        the base stopped), until the stroke is not refused before moving. Then stow, also on failure.
+
+        After the release the hand camera is nearer the drawer front than its least depth and the hand
+        hides the bar from the body cameras, so a plan from there misses the drawer. A look_at into the
+        island's top drawer from there swung the jaws into the bar and the front (32 N, 2026-11-03);
+        the stow folds away from them.
+        """
+        try:
+            for attempt in range(self.tuning.stance_tries):
+                self._navigate(stance(attempt))
+                self._look(part.handle_center, "handle")
+                distance = planned()
+                if distance <= 0:
+                    raise AgentFailed(f"{kind}_drawer: nothing to move from here ({distance:.3f} m).")
+                try:
+                    option, measured = self._stroke(part, kind, distance)
+                    break
+                except _Refused as error:
+                    if attempt + 1 == self.tuning.stance_tries:
+                        raise AgentFailed(f"{str(error).rstrip('.')}, from {attempt + 1} stances.") from None
+                    print(f"composite: {error} Standing again.", flush=True)
+            self.session.sleep(self.tuning.settle_seconds)
+        except AgentFailed:
+            if not self._stowed():
+                self._stow()
+            raise
+        self._stow()
         option = dict(stance=attempt, stroke_m=round(float(distance), 4), **option)
         return Outcome(f"{kind}_drawer", option=option, measured=measured, refused=attempt)
 

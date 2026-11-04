@@ -396,7 +396,7 @@ def test_a_gripper_stopped_short_of_the_bar_lets_go_and_fails():
     with pytest.raises(AgentFailed, match="stopped 5% closed, not on the handle bar"):
         CompositeSkills(session).open_drawer(DRAWER)
     releases = ["line"] * len(TUNING.handle_release)
-    assert session.names()[-2 - len(releases) :] == ["close_gripper", "open_gripper", *releases]  # No pull.
+    assert session.names()[-3 - len(releases) :] == ["close_gripper", "open_gripper", *releases, "stow"]  # No pull.
 
 
 def test_holding_read_as_lost_after_the_pull_still_opens():
@@ -416,7 +416,7 @@ def test_holding_read_as_lost_after_the_pull_still_opens():
     opened = CompositeSkills(session).open_drawer(DRAWER)
     assert opened.measured["moved_m"] == pytest.approx(PULL_M)
     releases = ["line"] * len(TUNING.handle_release)
-    assert session.names()[-2 - len(releases) :] == ["open_gripper", *releases, "sleep"]
+    assert session.names()[-3 - len(releases) :] == ["open_gripper", *releases, "sleep", "stow"]
 
 
 def test_a_handle_approach_stopped_while_moving_backs_off_and_fails():
@@ -426,8 +426,27 @@ def test_a_handle_approach_stopped_while_moving_backs_off_and_fails():
     with pytest.raises(AgentFailed, match="the handle approach stopped: End-effector tracking error"):
         CompositeSkills(session).open_drawer(DRAWER)
     releases = ["line"] * len(TUNING.handle_release)
-    assert session.names()[-3 - len(releases) :] == ["approach", "line", "open_gripper", *releases]
+    assert session.names()[-4 - len(releases) :] == ["approach", "line", "open_gripper", *releases, "stow"]
     assert session.names().count("approach") == 1
+
+
+@pytest.mark.parametrize(
+    "stroke, part",
+    [("open_drawer", DRAWER), ("close_drawer", replace(DRAWER, handle_center=(0.0, 2.273, 0.465), opening=0.287))],
+)
+def test_the_drawer_strokes_end_with_the_arm_stowed_also_when_they_fail(stroke, part):
+    """After the release the hand camera was 0.16 m from the island's top drawer front (no depth
+    nearer than 0.2 m) and the hand hid the bar from the body cameras: the next look_at's map had no
+    bar or front by the hand, and its plan swung the jaws into both (32 N; Qwen3.8, house_drawer,
+    2026-11-03). The stow folds the arm away from the drawer."""
+    session = FakeSession()
+    skills = CompositeSkills(session)
+    getattr(skills, stroke)(part)
+    assert session.names()[-2:] == ["sleep", "stow"] and skills._stowed()
+    failed = FakeSession(line=[STALLED])
+    with pytest.raises(AgentFailed, match="the handle approach stopped"):
+        getattr(CompositeSkills(failed), stroke)(part)
+    assert failed.names()[-1] == "stow"
 
 
 def test_a_refused_release_move_is_tried_at_half_then_ends_the_release():
@@ -480,7 +499,8 @@ def test_a_failure_while_moving_ends_the_plan():
     session = FakeSession(line=[Feedback(), STALLED])  # In, then the pull stalls.
     with pytest.raises(AgentFailed, match="the pull stopped after"):
         plan(session)
-    assert session.names()[-1 - len(TUNING.handle_release)] == "open_gripper"  # It let go and backed off.
+    assert session.names()[-2 - len(TUNING.handle_release)] == "open_gripper"  # It let go, backed off, stowed.
+    assert session.names()[-1] == "stow"
     before_lift = 2 + len(TUNING.handle_release) + 1  # Handle in, slide, releases, pick in.
     with pytest.raises(AgentFailed, match="pick lift"):
         plan(FakeSession(line=[Feedback()] * before_lift + [STALLED]))

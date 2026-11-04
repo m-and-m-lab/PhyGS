@@ -189,7 +189,11 @@ There is no drawer skill on the client. The composite skills compose a stroke in
 and `close_drawer` (`phygs/composite/skills.py`): stand at a stance computed from the part and the
 grip range, look at the handle, open the gripper; a straight approach into the part to the handle
 grasp pose; close; a straight line along the slide by the stroke; open; move the fixed jaw off the
-bar and back out with straight lines. `tests/robot_tests/episodes/check_drawer_stroke.py` checks it.
+bar and back out with straight lines. Both then stow, also when they fail: backed out, the hand
+camera is nearer the drawer front than its least depth (0.2 m) and the hand hides the bar from the
+body cameras, so a plan from there misses the drawer (a `look_at` into the island's top drawer swung
+the jaws into the bar and the front, 2026-11-03).
+`tests/robot_tests/episodes/check_drawer_stroke.py` checks it.
 
 Handle grasp pose: the bar along the gripper's y (Spot: the jaw hinge), the approach into the
 part, at the robot's `handle` tool frame: with a fixed jaw the bar rests on it (its axis a radius
