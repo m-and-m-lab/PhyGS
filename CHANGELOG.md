@@ -30,6 +30,7 @@ Changed (2026-11-05):
   joint moves and for where a trajectory may start. A gripper-only command (`open_gripper`,
   `close_gripper`) no longer checks the arm's tracking: closing on an object pushes the held arm up to
   0.112 rad, which a tighter limit would read as a failure.
+- `PLANS.md` is removed. Plans, known gaps and decisions are kept in the maintainers' project tracker, outside the repository; README, `AGENTS.md`, `docs/README.md` and the Spot README no longer point to it.
 - A planned `move_to_pose` fails when the arm stops with the wrist more than
   `MotionConfig.end_position_tolerance` (new, 0.02 m) from the plan's end: "The arm stopped 0.142 m
   short of the planned end pose (blocked)", an `execution_stalled` failure. Before, it reported

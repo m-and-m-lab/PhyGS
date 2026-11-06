@@ -17,6 +17,6 @@ The USD, URDF and cuRobo configuration are in `assets/` (the `spot_description` 
 ## Bring-up ladder
 
 Spot is the reference robot of the robot-test ladder (`phygs_robot_tests/run_suite.py`): the episode
-suite passes since 2026-10-23 and the Nav2 group passed on 2026-10-27 (`PLANS.md` keeps the dated
-runs). After a change to the asset or the policy, re-measure `navigation/transit.json` (rung 03);
-navigation refuses a profile whose hashes do not match.
+suite passes since 2026-10-23 and the Nav2 group passed on 2026-10-27. After a change to the asset or
+the policy, re-measure `navigation/transit.json` (rung 03); navigation refuses a profile whose hashes do
+not match.

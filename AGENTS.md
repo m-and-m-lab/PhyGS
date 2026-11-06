@@ -103,7 +103,6 @@ When changing architecture or workflow, update:
 | --- | --- |
 | `README.md` | User-facing setup, quick start, or major capability changes. |
 | `ARCHITECTURE.md` | Pipeline, API, backend, or data-flow changes. |
-| `PLANS.md` | Milestones, completed work, or known gaps. |
 | `CHANGELOG.md` | Any user-visible change: one past-tense line under Unreleased. |
 | `docs/README.md` | A guide is added, renamed, or superseded. Follow its "Keeping the docs tidy" rules. |
 | Local directory README | Large directory ownership or launch commands change. |

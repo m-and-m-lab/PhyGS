@@ -11,7 +11,6 @@ Start here. Each topic has **one** guide. Other files link to that guide; they d
 | How the system fits together: layers, runtime tick, navigation flow (with diagrams) | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | The package layout, the layers and the import rule, what moved in 0.4.0 | [layout.md](layout.md) |
 | Driving the framework from a benchmark: spec, task, World, ground truth, report, versions | [world.md](world.md) |
-| What is next and the known gaps | [PLANS.md](../PLANS.md) |
 | What changed and when (including every rename of the repository split) | [CHANGELOG.md](../CHANGELOG.md) |
 | Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [tests/robot_tests/README.md](../tests/robot_tests/README.md) |
 | Rules for coding agents and contributors | [AGENTS.md](../AGENTS.md) |

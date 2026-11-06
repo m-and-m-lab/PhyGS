@@ -47,7 +47,7 @@ Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetch
 
 ```
 PhyGS/
-├── README.md  AGENTS.md  ARCHITECTURE.md  CHANGELOG.md  PLANS.md  pyproject.toml
+├── README.md  AGENTS.md  ARCHITECTURE.md  CHANGELOG.md  pyproject.toml
 ├── phygs/                       # The framework (package `phygs`); layers and import rule in docs/layout.md
 │   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, replay_cli.py, configs/)
 │   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth,
@@ -182,7 +182,7 @@ Start at the [docs index](docs/README.md): one guide per topic (observations, pi
 
 ## 📈 Status and plans
 
-[PLANS.md](PLANS.md) lists milestones, known gaps and the decision log. After the move into this repository (2026-10-28) the retrieve, entry-point and navigation rungs were rerun here and pass with Spot; the other rungs last passed in the lab's development tree the same week. Ridgeback-Franka passes bring-up, footprint and navigation.
+After the move into this repository (2026-10-28) the retrieve, entry-point and navigation rungs were rerun here and pass with Spot; the other rungs last passed in the lab's development tree the same week. Ridgeback-Franka passes bring-up, footprint and navigation.
 
 ## 🧭 Coding philosophy
 
