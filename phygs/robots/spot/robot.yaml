@@ -52,6 +52,7 @@ arm:
     max_velocity: 1.5
     max_acceleration: 3.0
     tracking_tolerance: 0.15
+    trajectory_tracking_tolerance: 0.08  # Planned moves and straight lines lagged at most 0.057 rad (2026-11-05).
     joint_tolerance: 0.03
     stopped_velocity: 0.08
     gripper_tolerance: 0.03

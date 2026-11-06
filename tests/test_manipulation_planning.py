@@ -152,6 +152,88 @@ def test_async_pose_holds_then_executes_without_replacing_command():
     assert client.feedback(command).status == "succeeded"
 
 
+class _LineKinematics:
+    """The wrist 1 m along x per radian of the arm joint."""
+
+    @staticmethod
+    def forward(q):
+        pose = np.eye(4)
+        pose[0, 3] = q[0]
+        return pose
+
+
+def test_planned_pose_move_fails_when_the_arm_stops_short_of_its_end():
+    # 0.1 rad short (inside tracking_tolerance) is the wrist 0.1 m short: blocked, now or after a pending
+    # plan. 0.01 m short ends the move; a trajectory executed as given keeps ending when the arm stops.
+    for sag, pending, call, status in (
+        (0.1, False, "move_to_pose", "failed"),
+        (0.1, True, "move_to_pose", "failed"),
+        (0.01, False, "move_to_pose", "succeeded"),
+        (0.1, False, "execute_trajectory", "succeeded"),
+    ):
+        world, controller, runtime, client = setup(sag=sag)
+        client.bind_kinematics(_LineKinematics(), None)
+        plan = JointTrajectory(("arm",), [0.0, 1.0], [[0.0], [0.5]], runtime.episode_id)
+        future = Future()
+        client._pose_planner = lambda pose, held=None: future if pending else plan
+        if call == "move_to_pose":
+            command = client.move_to_pose((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0))
+            future.set_result(plan)
+        else:
+            command = client.execute_trajectory(plan)
+        advance(runtime, client, 3.5)
+        feedback = client.feedback(command)
+        assert feedback.status == status, (sag, pending, call, feedback)
+        if status == "failed":
+            assert "0.100 m short of the planned end pose (blocked)" in feedback.reason
+            assert feedback.stalled
+
+
+def test_trajectory_feedback_reports_the_largest_lag_behind_the_reference():
+    # The arm settles sag rad below every target; the wrist is 1 m along x per radian.
+    for sag in (0.0, 0.08):
+        world, controller, runtime, client = setup(sag=sag)
+        client.bind_kinematics(_LineKinematics(), None)
+        plan = JointTrajectory(("arm",), [0.0, 1.0], [[0.0], [0.5]], runtime.episode_id)
+        command = client.execute_trajectory(plan)
+        advance(runtime, client, 3.5)
+        feedback = client.feedback(command)
+        assert feedback.status == "succeeded"
+        assert set(feedback.max_joint_lag) == {"arm"}
+        assert feedback.max_joint_lag["arm"] == pytest.approx(sag, abs=0.03), sag
+        assert feedback.max_tool_lag == pytest.approx(sag, abs=0.03), sag
+    command = client.move_joints({"arm": 0.2}, duration=1)
+    advance(runtime, client, 3.5)
+    assert client.feedback(command).max_tool_lag is None  # A joint move has no wrist reference.
+
+
+def test_a_gripper_command_does_not_check_the_held_arm_but_an_arm_move_does():
+    # The arm settles 0.2 rad below its target (over tracking_tolerance), as a squeeze pushes it.
+    world, controller, runtime, client = setup(sag=0.2)
+    command = client.close_gripper(duration=1)
+    advance(runtime, client, 3.5)
+    assert client.feedback(command).status == "succeeded", client.feedback(command)
+    command = client.move_joints({"arm": 0.5}, duration=2)
+    advance(runtime, client, 4.5)
+    assert client.feedback(command).status == "failed"
+    assert "Joint tracking error" in client.feedback(command).reason
+
+
+def test_a_trajectory_is_tracked_within_its_own_tolerance():
+    from dataclasses import replace
+
+    for sag, status in ((0.05, "succeeded"), (0.1, "failed")):
+        world, controller, runtime, client = setup(sag=sag)
+        controller.config = replace(controller.config, trajectory_tracking_tolerance=0.08)
+        plan = JointTrajectory(("arm",), [0.0, 1.0], [[0.0], [0.5]], runtime.episode_id)
+        command = client.execute_trajectory(plan)  # Starts 0.05-0.1 rad off: within tracking_tolerance.
+        advance(runtime, client, 3.5)
+        feedback = client.feedback(command)
+        assert feedback.status == status, (sag, feedback)
+        if status == "failed":
+            assert "Trajectory tracking error" in feedback.reason
+
+
 def test_cancel_pending_plan_cannot_restart_motion():
     from concurrent.futures import Future
 

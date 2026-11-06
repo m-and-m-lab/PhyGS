@@ -54,6 +54,7 @@ JOINT_MOTION = (
     "max_velocity",
     "max_acceleration",
     "tracking_tolerance",
+    "trajectory_tracking_tolerance",
     "joint_tolerance",
     "stopped_velocity",
     "gripper_tolerance",
@@ -63,6 +64,7 @@ JOINT_MOTION = (
 OTHER_MOTION = (
     "tool_position_tolerance",
     "tool_orientation_tolerance",
+    "end_position_tolerance",
     "position_tolerance",
     "orientation_tolerance",
     "settle_seconds",

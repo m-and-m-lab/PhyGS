@@ -47,6 +47,7 @@ arm:
     max_velocity: 1.0  # Arm joints [rad/s]; also the planners' limit.
     max_acceleration: 2.0  # [rad/s²]; cuRobo's limit, MoveIt's half of it.
     tracking_tolerance: 0.15  # A joint move or trajectory fails beyond this from its reference.
+    trajectory_tracking_tolerance: 0.15  # The same while a trajectory runs; set it from logged lag (max_joint_lag).
     joint_tolerance: 0.03  # Arm joints at a Cartesian servo's end.
     stopped_velocity: 0.08  # Arm joints still below this.
     gripper_tolerance: 0.002  # A commanded gripper must come this near its target, else it holds.

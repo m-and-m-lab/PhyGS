@@ -30,6 +30,9 @@ class PoseServo(Protocol):
 # The simulator keeps joint limits in float32: a 0.04 m limit reads 0.0399999991 m, and a target at
 # the limit (an open gripper) is not outside it.
 LIMIT_SLACK = 1e-6
+# The wrist's lag behind the reference is sampled every this many ticks (20 ms at 250 Hz): two
+# forward-kinematics solves each time.
+LAG_TICKS = 5
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,18 @@ class MotionConfig:
     held object can yield, so the jaws creep part of the squeeze (0.021 of Spot's 0.05 rad on a box
     pinched at its edge, which the 0.03 rad gripper tolerance read as dropped, 2026-10-30); an empty
     gripper reaches the setpoint (within 0.004 rad).
+    ``tracking_tolerance`` [m or rad]: how far an arm joint of a joint move may fall behind its
+    reference, and how far a trajectory may start from the measured arm. ``trajectory_tracking_tolerance``
+    [m or rad]: the same while a trajectory (planned or end-effector) runs. Logged on Spot (2026-11-05,
+    rungs 8-15 and the pointing oracle): planned moves lagged at most 0.039 rad, straight lines 0.057
+    rad (with a held object); the four recorded blocked moves 0.100-0.147 rad. A gripper command does
+    not check the arm: closing on an object pushes the wrist and forearm up to 0.112 rad.
+    ``end_position_tolerance`` [m]: how near the wrist must stop to the end of a planned move to a
+    pose. A blocked arm stops on its path short of the end, and the joint tracking limit lets that pass
+    near the end (0.128 rad, the wrist 0.14 m short, 2026-11-04). Of 935 planned moves reported
+    reached (2026-10-28 to 11-04), 931 ended within 0.007 m of their goal (108 with a held object,
+    within 0.005 m); 4 blocked ones 0.05-0.15 m. The orientation is not checked: good moves ended up
+    to 0.049 rad off.
     ``motion_window_seconds`` [s]: joint motion is the net position change over this window;
     a jaw squeezing a handle fixed to the world chatters in place, which per-tick changes
     would read as motion.
@@ -53,8 +68,10 @@ class MotionConfig:
     max_velocity: float = 1.5
     max_acceleration: float = 3.0
     tracking_tolerance: float = 0.15
+    trajectory_tracking_tolerance: float = 0.15
     tool_position_tolerance: float = 0.02  # End-effector tracking of an end-effector trajectory [m].
     tool_orientation_tolerance: float = 0.05  # [rad]
+    end_position_tolerance: float = 0.02  # The wrist at the end of a planned move to a pose [m].
     joint_tolerance: float = 0.03
     gripper_tolerance: float = 0.03
     stopped_velocity: float = 0.08
@@ -83,12 +100,14 @@ class MotionConfig:
 class ManipulationController:
     """Own arm and gripper together; finish only after measured convergence.
 
-    A joint move or a trajectory is checked while it runs (``tracking_tolerance`` against its
-    reference) and at its end only has to stop: a held object's load holds arm joints a few
+    A joint move or a trajectory is checked while it runs (``tracking_tolerance``, for a trajectory
+    ``trajectory_tracking_tolerance``, against its reference; a gripper-only command not on the arm)
+    and at its end only has to stop: a held object's load holds arm joints a few
     hundredths of a radian off their targets at 250 Hz (0.039 rad on a drawer handle; a stow with
-    an object timed out on the old 0.03 rad end check, 2026-10-17). A commanded gripper still has
-    to reach its target or stop on an object. The Cartesian servo (``move_to_pose`` without a
-    planner) keeps its joint and pose checks.
+    an object timed out on the old 0.03 rad end check, 2026-10-17). A planned move to a pose also
+    has to stop with the wrist within ``end_position_tolerance`` of the plan's end (``end_error``).
+    A commanded gripper still has to reach its target or stop on an object. The Cartesian servo
+    (``move_to_pose`` without a planner) keeps its joint and pose checks.
 
     The last commanded gripper angle [rad] stays the gripper target in later arm
     commands, when stopping, and after release, as a physical gripper keeps squeezing.
@@ -147,6 +166,15 @@ class ManipulationController:
         self.pose_error = (0.0, 0.0)
         # An end-effector trajectory's tool tracking: (measured joints, elapsed [s]) -> error [m, rad].
         self.tool_error: Callable[[dict[str, float], float], tuple[float, float]] | None = None
+        # A planned move to a pose: measured joints -> the wrist's distance [m] from the plan's end.
+        self.end_error: Callable[[dict[str, float]], float] | None = None
+        # The largest lag behind the reference while the command ran, per joint [rad] and of the wrist
+        # [m] (tool_lag: measured, reference joints -> distance; sampled every LAG_TICKS). Recorded to
+        # set the tracking limits from measurements; nothing checks it.
+        self.max_joint_lag: dict[str, float] = {}
+        self.max_tool_lag = 0.0
+        self.tool_lag: Callable[[dict[str, float], dict[str, float]], float] | None = None
+        self._lag_ticks = 0
         self.progress = 0.0  # Fraction of the reference duration reached.
         self.time_scale = 1.0  # How much the trajectory was slowed down to the joint speed limit.
         self.gripper_commanded = False
@@ -249,6 +277,15 @@ class ManipulationController:
             for j in self.declaration.joints
         }
 
+    def _record_lag(self, lag: dict[str, float], positions: dict[str, float]) -> None:
+        """Keep the largest per-joint lag [rad] and, every LAG_TICKS ticks, the wrist's [m]."""
+        for joint, value in lag.items():
+            self.max_joint_lag[joint] = max(value, self.max_joint_lag.get(joint, 0.0))
+        if self.tool_lag is not None:
+            self._lag_ticks += 1
+            if self._lag_ticks % LAG_TICKS == 0:
+                self.max_tool_lag = max(self.max_tool_lag, self.tool_lag(positions, self.reference))
+
     def stop(self, outcome: str, reason: str, *, stalled: bool = False) -> None:
         self.final_reference, self.stalled = self.reference.copy(), stalled
         self.arm_hold = {}  # Hold where the arm stopped, not a target it may not reach.
@@ -281,10 +318,9 @@ class ManipulationController:
             fraction = t**3 * (10 - 15 * t + 6 * t * t)
             reference = {j: p + fraction * (self.target[j] - p) for j, p in self.initial.items()}
             if self.mode == "trajectory":
-                if (
-                    max(abs(positions[j] - self.reference[j]) for j in self.trajectory.names)
-                    > self.config.tracking_tolerance
-                ):
+                lag = {j: abs(positions[j] - self.reference[j]) for j in self.trajectory.names}
+                self._record_lag(lag, positions)
+                if max(lag.values()) > self.config.trajectory_tracking_tolerance:
                     self.stop("failed", "Trajectory tracking error exceeded tolerance", stalled=True)
                     return self.reference.copy()
                 if self.tool_error is not None:
@@ -321,13 +357,19 @@ class ManipulationController:
             goal = self.reference if self.mode == "pose" else self.target
             # A held (uncommanded) gripper may rest on an object; arm commands check arm joints only.
             arm = [j for j in goal if j not in self._gripper_joints]
-            if self.mode == "joints" and (
-                max((abs(positions[j] - reference[j]) for j in arm), default=0.0) > self.config.tracking_tolerance
+            # A gripper-only command checks the gripper; the arm must only be still.
+            gripper_only = self.gripper_commanded and self.commanded == {self.gripper}
+            if self.mode == "joints":
+                self._record_lag({j: abs(positions[j] - reference[j]) for j in arm}, positions)
+            # The arm's tracking is checked on arm moves only: a gripper that closes on an object pushes
+            # the held arm (up to 0.112 rad at the wrist and forearm on Spot, 2026-11-05).
+            if (
+                self.mode == "joints"
+                and not gripper_only
+                and (max((abs(positions[j] - reference[j]) for j in arm), default=0.0) > self.config.tracking_tolerance)
             ):
                 self.stop("failed", "Joint tracking error exceeded tolerance", stalled=True)
                 return self.reference.copy()
-            # A gripper-only command checks the gripper; the arm must only be still.
-            gripper_only = self.gripper_commanded and self.commanded == {self.gripper}
             checked = [self.gripper] if gripper_only else list(goal) if self.gripper_commanded else arm
             self.error_rad = max((abs(positions[j] - goal[j]) for j in checked), default=0.0)
             if self.mode == "pose":
@@ -363,7 +405,12 @@ class ManipulationController:
                 self.target.update(self._gripper_targets(self.gripper_setpoint))
                 reference.update(self._gripper_targets(self.gripper_setpoint))
                 self.object_held = True
-            if self.stable >= self.config.settle_seconds:
+            settled = self.stable >= self.config.settle_seconds
+            short = self.end_error(positions) if settled and self.end_error is not None else 0.0
+            if short > self.config.end_position_tolerance:
+                reason = f"The arm stopped {short:.3f} m short of the planned end pose (blocked)"
+                self.stop("failed", reason, stalled=True)
+            elif settled:
                 self.outcome, self.ready = "succeeded", True
                 self.final_reference = self.reference.copy()
                 self.arm_hold = {j: self.reference[j] for j in self.declaration.joints if j not in self._gripper_joints}

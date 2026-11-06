@@ -13,6 +13,31 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.11.0 (not tagged yet)
 
+Added (2026-11-05):
+
+- `MotionFeedback.max_joint_lag` [rad] and `max_tool_lag` [m]: each arm joint's and the wrist's largest lag behind the reference while a joint move or trajectory ran (the wrist sampled every 20 ms; None for a joint move or without kinematics). They are measurements for setting the tracking limits from data; nothing checks them yet.
+
+Changed (2026-11-05):
+
+- The arm's tracking while a trajectory runs (a planned move or a straight line) has its own limit,
+  `MotionConfig.trajectory_tracking_tolerance` (new; robot.yaml `arm.motion`, required like
+  `tracking_tolerance`): Spot 0.08 rad, Ridgeback-Franka 0.15 rad (not measured). Spot's planned moves
+  lagged at most 0.039 rad and its straight lines 0.057 rad (2026-11-05, rungs 8-15 and the pointing
+  oracle); the four recorded blocked moves 0.100-0.147 rad. `tracking_tolerance` (0.15) stays for
+  joint moves and for where a trajectory may start. A gripper-only command (`open_gripper`,
+  `close_gripper`) no longer checks the arm's tracking: closing on an object pushes the held arm up to
+  0.112 rad, which a tighter limit would read as a failure.
+- A planned `move_to_pose` fails when the arm stops with the wrist more than
+  `MotionConfig.end_position_tolerance` (new, 0.02 m) from the plan's end: "The arm stopped 0.142 m
+  short of the planned end pose (blocked)", an `execution_stalled` failure. Before, it reported
+  "Measured target reached and settled" whenever the arm stopped with every joint within
+  `tracking_tolerance` (0.15 rad) of the plan. A jaw stopped on a console top the planner had no
+  depth of left the wrist 0.14 m short (0.128 rad, Qwen3.8 house_drawer, 2026-11-04), and the failure
+  showed one step later as an end-effector tracking error. Of 935 planned moves reported reached in
+  runs from 2026-10-28 to 11-04, 931 ended within 0.007 m of their goal (108 with a held object,
+  within 0.005 m); 4 blocked ones 0.05-0.15 m. `execute_trajectory` and the planned parts of `stow`
+  and `look_at` still end when the arm stops. `robot.yaml` may set `arm.motion.end_position_tolerance`.
+
 Added (2026-11-04):
 
 - `CompositeSkills.look_at(point, sweep=None)`: a sweep of the look camera over several sides of a

@@ -73,7 +73,10 @@ class MotionFeedback(CommandFeedback):
     measured primary gripper joint alone, ``stalled`` whether the arm stopped
     following its reference (a tracking failure or a timeout, not a cancel), and ``tool_pose``
     [m, xyzw] the measured hand pose (``tool_pose("hand")``; None without kinematics or
-    localization). While a motion runs these are empty.
+    localization). ``max_joint_lag`` [rad] is each arm joint's largest lag behind its reference
+    while a joint move or trajectory ran, and ``max_tool_lag`` [m] the wrist's (a trajectory with
+    kinematics bound; else None): measurements for setting tracking limits, checked by nothing.
+    While a motion runs these are empty.
     """
 
     reason: str = ""
@@ -87,6 +90,8 @@ class MotionFeedback(CommandFeedback):
     gripper_aperture: float | None = None
     stalled: bool = False
     tool_pose: tuple[float, ...] | None = None
+    max_joint_lag: dict[str, float] = field(default_factory=dict)
+    max_tool_lag: float | None = None
 
 
 @dataclass(frozen=True)
@@ -133,6 +138,7 @@ class ManipulationClient(CommandClient):
         self._controller = controller
         self._pose_planner, self._joint_planner = pose_planner, joint_planner
         self._pending_plan: Future | None = None
+        self._pending_end_check = False  # The pending plan is a planned move to a pose.
         self._enabled = enabled
         self._joints, self._tools = robot.arm.joints, robot.gripper.tools
         self._gripper_joints, self._gripper_joint = robot.gripper.joints, robot.gripper.primary
@@ -356,15 +362,17 @@ class ManipulationClient(CommandClient):
         A configured planner plans around the permitted obstacles and times the motion; ``held`` is
         the object the gripper carries (its box in the wrist frame and name), so the planner avoids
         obstacles with it and leaves it out of them. From the stow the arm first moves straight to
-        the pre-stow posture. Otherwise this uses free-space differential IK, with duration
-        defaulting to 3 s. Planner failure never switches to differential IK.
+        the pre-stow posture. A planned move fails when the arm stops with the wrist more than
+        ``end_position_tolerance`` from the plan's end (blocked). Otherwise this uses free-space
+        differential IK, with duration defaulting to 3 s. Planner failure never switches to
+        differential IK.
         """
         pose_xyzw = self._wrist_pose(pose_xyzw, tool)
         self._require_available()
         if self._pose_planner is not None:
             if duration is not None:
                 raise ValueError("The collision planner determines trajectory duration from its motion limits")
-            return self.execute_trajectory(self._pose_planner(pose_xyzw, held))
+            return self._execute(self._pose_planner(pose_xyzw, held), end_check=True)
         duration = 3.0 if duration is None else duration
         if self._controller.pose_servo is None:
             raise RuntimeError("No Cartesian servo is configured.")
@@ -449,17 +457,24 @@ class ManipulationClient(CommandClient):
         moving (:class:`TrajectoryRefused`) when a pose is out of reach, needs another arm
         configuration, or the first pose is not where the tool is. Either is slowed down uniformly
         where a joint would exceed the speed limit (feedback ``time_scale``). While it runs every
-        joint tracks its reference (``tracking_tolerance``) and, for an end-effector trajectory, the
+        joint tracks its reference (``trajectory_tracking_tolerance``) and, for an end-effector trajectory, the
         tool its pose (``tool_position_tolerance``, ``tool_orientation_tolerance``); at the end the
         arm only has to stop. A pending plan (Future) holds the arm until it arrives; it must start
         within ``tracking_tolerance`` of the measured arm. :meth:`move_to_pose` plans around obstacles.
         """
+        return self._execute(trajectory)
+
+    def _execute(
+        self, trajectory: JointTrajectory | EndEffectorTrajectory | Future[JointTrajectory], *, end_check: bool = False
+    ) -> int:
+        """:meth:`execute_trajectory`; ``end_check``: a joint trajectory must end with the wrist where its
+        last sample puts it (``end_position_tolerance``)."""
         self._require_available()
         if isinstance(trajectory, EndEffectorTrajectory):
             return self._start_end_effector(trajectory)
         if not isinstance(trajectory, Future):
-            return self._start_trajectory(trajectory)
-        self._pending_plan = trajectory
+            return self._start_trajectory(trajectory, end_check=end_check)
+        self._pending_plan, self._pending_end_check = trajectory, end_check
         command = self._submit(2)
         self._controller.start(self._held_arm(), 1.0)
         self._controller.mode = "planning"
@@ -498,7 +513,7 @@ class ManipulationClient(CommandClient):
         controller.time_scale *= lowered.time_scale
         return command
 
-    def _start_trajectory(self, trajectory: JointTrajectory, *, pending: bool = False) -> int:
+    def _start_trajectory(self, trajectory: JointTrajectory, *, pending: bool = False, end_check: bool = False) -> int:
         import math
 
         controller = self._controller
@@ -531,7 +546,30 @@ class ManipulationClient(CommandClient):
         controller.trajectory = trajectory
         controller.mode = "trajectory"
         controller.time_scale = time_scale
+        if end_check and self._kinematics is not None:
+            controller.end_error = self._wrist_distance(controller.target)
+        if self._kinematics is not None:
+            controller.tool_lag = self._wrist_lag()
         return command
+
+    def _wrist_lag(self) -> Callable[[dict[str, float], dict[str, float]], float]:
+        """(measured, reference) joints -> how far [m] the measured wrist is from the reference's."""
+        import numpy as np
+
+        forward, joints = self._kinematics.forward, self._joints
+
+        def wrist(positions: dict[str, float]) -> np.ndarray:
+            return forward([positions[j] for j in joints])[:3, 3]
+
+        return lambda measured, reference: float(np.linalg.norm(wrist(measured) - wrist(reference)))
+
+    def _wrist_distance(self, end: dict[str, float]) -> Callable[[dict[str, float]], float]:
+        """Measured joints -> the wrist's distance [m] from where the arm joints ``end`` put it."""
+        import numpy as np
+
+        forward, joints = self._kinematics.forward, self._joints
+        there = forward([end[j] for j in joints])[:3, 3]
+        return lambda positions: float(np.linalg.norm(forward([positions[j] for j in joints])[:3, 3] - there))
 
     def open_gripper(self, *, duration: float = 2.0) -> int:
         """Move the gripper to its configured open position [m or rad] over duration [s]."""
@@ -583,7 +621,7 @@ class ManipulationClient(CommandClient):
             if self._pending_plan.done():
                 result, self._pending_plan = self._pending_plan, None
                 try:
-                    self._start_trajectory(result.result(), pending=True)
+                    self._start_trajectory(result.result(), pending=True, end_check=self._pending_end_check)
                 except Exception as exc:
                     controller.stop("failed", str(exc))
                     ticks = duration_ticks(controller.config.stop_timeout_seconds, self._runtime.physics_dt)
@@ -607,6 +645,8 @@ class ManipulationClient(CommandClient):
                 gripper_aperture=measured[self._gripper_joint],
                 stalled=controller.stalled,
                 tool_pose=self._measured_tool_pose(),
+                max_joint_lag={j: v for j, v in controller.max_joint_lag.items() if j not in self._gripper_joints},
+                max_tool_lag=controller.max_tool_lag if controller.tool_lag is not None else None,
             )
             self._records[self._current] = self._outcomes[self._current]
             self._runtime.release(self._name)

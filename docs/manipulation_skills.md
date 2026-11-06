@@ -51,6 +51,9 @@ Within a planned move (`move_to_pose`, and the planned parts of `stow` and `look
   and the evaluator measures any contact. Observing first improves the plan.
 - No silent fallback. A planning failure fails the command; it never switches to a straight
   move.
+- `move_to_pose` ends when the arm stops with the wrist within `end_position_tolerance` (0.02 m)
+  of the plan's end. Stopped farther, the arm was blocked: the command fails (`execution_stalled`).
+  The planned parts of `stow` and `look_at`, and `execute_trajectory`, end when the arm stops.
 
 ## Public API
 
