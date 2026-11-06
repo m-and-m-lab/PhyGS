@@ -1,5 +1,5 @@
 # Pass thresholds of the episode robot tests (episodes/check_*.py); the episodes themselves are
-# specs in configs/episodes/ here; the plans' strategy is the composite skills' tuning (phygs/composite/tuning.py).
+# specs in configs/episodes/ here; the plans' strategy is the composite skills' tuning (phygs/skills/composite/tuning.py).
 stow_tolerance_rad: 0.05  # Measured arm vs the stow posture at the end.
 place_drawer: corner_nightstand_tier_2_drawer  # check_drawer_place.py's drawer (the grid scene's top drawer).
 opening_tolerance_m: 0.02  # The drawer must open at least the request less this [m].

@@ -5,7 +5,7 @@
 
 """The public surfaces (ARCHITECTURE.md, Boundaries) and the package's independence.
 
-``phygs.session`` is what agents use, ``phygs.composite`` the composite skills over it;
+``phygs.session`` is what agents use, ``phygs.skills.composite`` the composite skills over it;
 ``phygs.world`` is what benchmarks use. A name added to or removed from any is an API change: edit
 the list here and bump the version (minor) with a CHANGELOG line. The package itself never imports
 the robot tests or reads the repository around it.
@@ -14,8 +14,10 @@ the robot tests or reads the repository around it.
 import ast
 from pathlib import Path
 
-import phygs.composite
+import pytest
+
 import phygs.session
+import phygs.skills.composite
 import phygs.world
 
 PACKAGE = Path(__file__).resolve().parents[1] / "phygs"
@@ -69,7 +71,18 @@ def test_the_agent_surface_is_the_listed_names():
 
 
 def test_the_composite_surface_is_the_listed_names():
-    assert sorted(phygs.composite.__all__) == sorted(COMPOSITE)
+    assert sorted(phygs.skills.composite.__all__) == sorted(COMPOSITE)
+
+
+def test_the_old_composite_path_is_a_deprecated_alias_of_the_moved_package():
+    import importlib
+    import sys
+
+    sys.modules.pop("phygs.composite", None)
+    with pytest.warns(DeprecationWarning, match="phygs.skills.composite"):
+        old = importlib.import_module("phygs.composite")
+    assert old.CompositeSkills is phygs.skills.composite.CompositeSkills
+    assert importlib.import_module("phygs.composite.tuning") is importlib.import_module("phygs.skills.composite.tuning")
 
 
 def test_the_benchmark_surface_is_the_listed_names_and_each_is_exported():

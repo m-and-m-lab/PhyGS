@@ -53,9 +53,10 @@ PhyGS/
 │   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth,
 │   │                            # the robot's assembly (robot.py), environment.yaml (physics, cameras, Nav2, planner, timing)
 │   ├── session/                 # What an agent gets: AgentSession, target types, hints
-│   ├── composite/               # The skills that walk, then move the arm: pick, place, drawers
+│   ├── composite/               # Deprecated alias of skills/composite/ (moved 2026-11-05)
 │   ├── robots/                  # spot/ (robot.yaml, policy, assets/, spot_description submodule), ridgeback_franka/, _template/
-│   ├── skills/                  # locomotion/, navigation/, manipulation/: each its api.py and execution/
+│   ├── skills/                  # locomotion/, navigation/, manipulation/: each its api.py and execution/;
+│   │                            # composite/: the skills that walk, then move the arm (pick, place, drawers, look_at sweep)
 │   ├── sim/  recording/         # Isaac Lab adapters; the video, panels, timeline, narration
 │   ├── scene/  runtime/         # Scenes by id, fetcher, USD reader; clock, ownership, reset, e-stop
 │   ├── observations/            # Observation packets, localization, front view, colour detectors
@@ -134,7 +135,7 @@ def run(session):
 | `grants` and `hints` | Privileged channels the spec grants (`gt_localization`, `known_map`, `object_targets`, `scene_hints`); every use is audited and listed in the report. |
 | `finish(reason)` | Ends the episode. The World then cancels everything, keeps the grip, settles and evaluates. |
 
-The skills that walk and then move the arm are the composite skills (`phygs.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.place_upright(point)`, `skills.close_drawer(part)`. Each walks to where the arm reaches (stowing first), tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
+The skills that walk and then move the arm are the composite skills (`phygs.skills.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.place_upright(point)`, `skills.close_drawer(part)`. Each walks to where the arm reaches (stowing first), tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
 
 Everything the agent does goes into `audit.jsonl`; the report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
 

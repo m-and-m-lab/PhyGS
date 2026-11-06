@@ -251,7 +251,7 @@ def first_tool_pose(folder: Path) -> np.ndarray:
     ``folder/audit.jsonl``), as a world 4x4 [m]."""
     import json
 
-    from phygs.composite.geometry import matrix
+    from phygs.skills.composite.geometry import matrix
 
     with (folder / "audit.jsonl").open() as audit:
         for line in audit:

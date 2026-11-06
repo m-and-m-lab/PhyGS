@@ -5,7 +5,7 @@
 
 """Agents act through the session only: the example agents (examples/agents) import nothing else
 of the project (the barrier is a convention until agents run in their own process). The composite
-skills (``phygs.composite``) are agent-side code and keep the same rule, and the robot tests'
+skills (``phygs.skills.composite``) are agent-side code and keep the same rule, and the robot tests'
 episode plans use only the session and the composite skills, so they prove those are enough."""
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import pytest
 PROJECT = Path(__file__).resolve().parents[1]
 AGENTS = PROJECT / "examples" / "agents"
 ROBOT_TESTS = PROJECT / "tests" / "robot_tests"
-COMPOSITE = sorted((PROJECT / "phygs" / "composite").glob("*.py"))
+COMPOSITE = sorted((PROJECT / "phygs" / "skills" / "composite").glob("*.py"))
 ALLOWED = {"phygs.session", "numpy", "yaml"}
 # An episode test also imports its harness helper (episode.py).
 PLANS = sorted(ROBOT_TESTS.glob("episodes/check_*.py"))
@@ -53,10 +53,12 @@ def test_agents_import_only_the_session_the_standard_library_numpy_and_yaml(path
 @pytest.mark.parametrize("path", COMPOSITE, ids=lambda path: path.name)
 def test_the_composite_skills_import_only_the_session_the_standard_library_and_numpy(path):
     for name in imports(path):
-        assert allowed(name, ("phygs.composite",)) and not name.startswith("yaml"), f"{path.name} imports {name}"
+        assert allowed(name, ("phygs.skills.composite",)) and not name.startswith("yaml"), f"{path.name} imports {name}"
 
 
 @pytest.mark.parametrize("path", PLANS, ids=lambda path: f"{path.parent.name}/{path.name}")
 def test_episode_plans_keep_the_agent_rule(path):
     for name in imports(path):
-        assert allowed(name, ("phygs.composite", "phygs_robot_tests.episodes.episode")), f"{path.name} imports {name}"
+        assert allowed(name, ("phygs.skills.composite", "phygs_robot_tests.episodes.episode")), (
+            f"{path.name} imports {name}"
+        )

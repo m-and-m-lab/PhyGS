@@ -7,12 +7,14 @@ phygs/
 │                  seam, Truth, the report schema, recorder, provenance, the Nav2 assembly, the viewer protocol,
 │                  the replay; the robot's assembly (robot.py: RobotControl); environment.yaml (every setting,
 │                  the benchmark-owned ones named)
-├── composite/     The skills that walk, then move the arm: pick, place, place_upright, open and close drawers
 ├── session/       What an agent gets: AgentSession, its target types and errors, privileged hints
 ├── robots/        One folder per robot (robot.yaml) and the description that loads it
-├── skills/        One folder per client, each its api.py and its execution/:
+├── skills/        Every skill. One folder per client, each its api.py and its execution/:
 │                  locomotion/ (base controllers), navigation/ (Nav2, footprint, known map, launch/ with
-│                  Nav2's parameters), manipulation/ (the arm controller, the stow and look_at skills, planners)
+│                  Nav2's parameters), manipulation/ (the arm controller, the stow and look_at skills, planners);
+│                  and composite/: the skills that walk, then move the arm (pick, place, place_upright, open and
+│                  close drawers, the look_at sweep), agent-side code over the session
+├── composite/     Deprecated alias of skills/composite/ (moved 2026-11-05)
 ├── sim/           Isaac Lab adapters: cameras, robot state and observations, base and arm readers, footprint,
 │                  Fabric, the robot's Isaac Lab scene (robot_scene.py)
 ├── recording/     The video, its panels, the command timeline, the skills' narration, the state log, the
@@ -34,7 +36,7 @@ in a lower layer, never one beside or above it:
 | Layer | Packages | Imports |
 | --- | --- | --- |
 | 1 | `ui` | everything below |
-| 2 | `world`, `composite` | `world`: the session, robots, skills (the clients it assembles), and the bottom layers; `composite`: the session only (agent-side code) |
+| 2 | `world`, `skills/composite` (`composite`: its deprecated alias) | `world`: the session, robots, skills (the clients it assembles), and the bottom layers; `skills/composite`: the session only (agent-side code, a layer of its own inside `skills/`) |
 | 3 | `session` | robots (`RobotInfo`), skills (the target types it re-exports) |
 | 4 | `robots` | skills (the planning model of a robot) |
 | 5 | `skills` | sim (the render GPU), recording (the planner's panel), scene (the known map, the part type), runtime, observations |
@@ -58,7 +60,7 @@ here and in `LAYERS`.
 ## Three audiences, three surfaces
 
 - **Agent authors:** `phygs.session` only (`tests/test_agent_imports.py`), with the standard
-  library, NumPy and PyYAML, and optionally the composite skills over it (`phygs.composite`, which
+  library, NumPy and PyYAML, and optionally the composite skills over it (`phygs.skills.composite`, which
   imports the session only). [The agent contract](../README.md#-the-agent-contract);
   `examples/agents/template.py`.
 - **Benchmark authors:** `phygs.world` and `phygs.scene` (scenes by id). [world.md](world.md).

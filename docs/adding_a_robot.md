@@ -94,8 +94,8 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
 8. **Arm tasks.** The rest of the robot-test ladder takes `--robot` too
    ([tests/robot_tests/README.md](../tests/robot_tests/README.md); `run_suite.py ladder`): arm
    planning, pick and place, drawers, retrieve. Their plans use the composite skills
-   (`phygs.composite`), which place your [tool frames](#tool-frames) and compute where to stand from
-   the drawer or object and the grip range; their tuning (`phygs/composite/tuning.py`: the grip
+   (`phygs.skills.composite`), which place your [tool frames](#tool-frames) and compute where to stand from
+   the drawer or object and the grip range; their tuning (`phygs/skills/composite/tuning.py`: the grip
    range, the option lists) was measured on Spot, and another robot passes its own `Tuning`.
 
 9. **Write down what passed**, with dates and output folders, in the robot folder's `README.md`

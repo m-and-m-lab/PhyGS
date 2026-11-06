@@ -24,8 +24,6 @@ from typing import Any, NamedTuple
 
 import numpy as np
 
-from phygs.composite.geometry import matrix, rotate_z, rotation_about, xyzw
-from phygs.composite.tuning import TUNING, Tuning
 from phygs.session import (
     AgentFailed,
     ArticulatedPart,
@@ -38,6 +36,8 @@ from phygs.session import (
     motion_failure,
     unit_approach,
 )
+from phygs.skills.composite.geometry import matrix, rotate_z, rotation_about, xyzw
+from phygs.skills.composite.tuning import TUNING, Tuning
 
 # Failures refused before the arm moved: the next option may work.
 REFUSED = frozenset({SkillFailure.OUT_OF_REACH, SkillFailure.PLANNING_FAILED})

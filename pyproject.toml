@@ -35,6 +35,7 @@ packages = [
     "phygs.session",
     "phygs.sim",
     "phygs.skills",
+    "phygs.skills.composite",
     "phygs.skills.locomotion",
     "phygs.skills.locomotion.execution",
     "phygs.skills.manipulation",

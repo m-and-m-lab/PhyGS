@@ -19,6 +19,9 @@ Added (2026-11-05):
 
 Changed (2026-11-05):
 
+- The composite skills moved into the skills folder: `phygs.skills.composite` (`CompositeSkills`,
+  `Outcome`, `Tuning`, `TUNING`; modules `skills`, `tuning`, `geometry`). They stay agent-side code
+  over the session, a layer of their own inside `skills/` (`docs/layout.md`, `tests/test_layers.py`).
 - The arm's tracking while a trajectory runs (a planned move or a straight line) has its own limit,
   `MotionConfig.trajectory_tracking_tolerance` (new; robot.yaml `arm.motion`, required like
   `tracking_tolerance`): Spot 0.08 rad, Ridgeback-Franka 0.15 rad (not measured). Spot's planned moves
@@ -37,6 +40,11 @@ Changed (2026-11-05):
   runs from 2026-10-28 to 11-04, 931 ended within 0.007 m of their goal (108 with a held object,
   within 0.005 m); 4 blocked ones 0.05-0.15 m. `execute_trajectory` and the planned parts of `stow`
   and `look_at` still end when the arm stops. `robot.yaml` may set `arm.motion.end_position_tolerance`.
+
+Deprecated (2026-11-05):
+
+- `phygs.composite` and its modules: import `phygs.skills.composite` instead. The old path warns
+  (`DeprecationWarning`) and goes in a later release.
 
 Added (2026-11-04):
 

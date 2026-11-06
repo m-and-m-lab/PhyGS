@@ -20,10 +20,10 @@ from fakes import SPOT
 from phygs_robot_tests.episodes.check_retrieve import plan
 from scipy.spatial.transform import Rotation
 
-from phygs.composite import TUNING, CompositeSkills
-from phygs.composite.geometry import quaternion
-from phygs.composite.skills import DOWN
 from phygs.session import AgentFailed, ArticulatedPart, SkillFailure, TargetHint, TrajectoryRefused
+from phygs.skills.composite import TUNING, CompositeSkills
+from phygs.skills.composite.geometry import quaternion
+from phygs.skills.composite.skills import DOWN
 
 DRAWER = ArticulatedPart(
     handle_center=(0.0, 2.56, 0.465),

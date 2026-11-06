@@ -17,10 +17,10 @@ done is the benchmark's.
 | Entry point | For | It owns |
 | --- | --- | --- |
 | `phygs.session` (`AgentSession`) | Agents, and anyone composing behaviour over them | Observations and robot facts (`session.robot`), the action clients the spec allows, command feedback, cancellation and timing, granted privileged hints, finishing the episode |
-| `phygs.composite` (`CompositeSkills`) | Agents that ask for whole steps | Agent-side code over the session only: the skills that walk and then move the arm, `pick`, `place`, `place_upright`, `open_drawer` and `close_drawer`, given explicit affordances (a box, a drawer part, a point); each walks to a stance computed from the affordance and the grip range, tries listed options and reports the option that worked and what the robot measured |
+| `phygs.skills.composite` (`CompositeSkills`) | Agents that ask for whole steps | Agent-side code over the session only: the skills that walk and then move the arm, `pick`, `place`, `place_upright`, `open_drawer` and `close_drawer`, given explicit affordances (a box, a drawer part, a point); each walks to a stance computed from the affordance and the grip range, tries listed options and reports the option that worked and what the robot measured |
 | `phygs.world` (`World`) | Benchmarks and robot tests | Building the scene and the robot, the initial state and reset, stepping, the services (Nav2, the arm planner), ground truth for evaluators (`Truth`), recording, the end of the episode |
 
-Each has an exported name list (`phygs.session.__all__`, `phygs.composite.__all__`,
+Each has an exported name list (`phygs.session.__all__`, `phygs.skills.composite.__all__`,
 `phygs.world.__all__`), copied in `tests/test_public_surface.py`; changing a list means editing that
 test and bumping the version. Where an affordance comes from (the privileged hints, or an estimate
 from the cameras) is the caller's: the composite skills neither perceive nor read the hints.
@@ -476,7 +476,7 @@ The skills (`stow`, `look_at`) and the low-level commands are described in
 [manipulation skills](docs/manipulation_skills.md).
 There are no pick, place or drawer skills on the client: they are composed from `move_to_pose`,
 end-effector trajectories (`execute_trajectory`) and the gripper commands, by the agent or by the
-composite skills (`phygs.composite`), which import the session only.
+composite skills (`phygs.skills.composite`), which import the session only.
 
 ## Scenes and assets
 
@@ -575,7 +575,7 @@ To add a new skill:
 To write an agent: a `run(session)` function that imports only `phygs.session`
 ([the agent contract](README.md#-the-agent-contract); `examples/agents/template.py`). Composed
 behaviour (pick, open a drawer) is agent-side code over the same session: the agent's own, or the
-composite skills (`phygs.composite`).
+composite skills (`phygs.skills.composite`).
 
 To add a task (a benchmark's): a task loader that builds a `Task` from the spec's task block. Its
 evaluator reads `Truth`'s measurements in `reset`, `update` and `result` and decides what they mean;

@@ -24,8 +24,8 @@ import time
 
 from phygs_robot_tests.episodes import episode
 
-from phygs.composite import CompositeSkills
 from phygs.session import AgentFailed
+from phygs.skills.composite import CompositeSkills
 
 
 def plan(session) -> None:

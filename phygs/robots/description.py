@@ -43,7 +43,7 @@ ROLES = ("navigation", "planning", "look", "front")
 # Gripper tool frames (gripper.tools): poses in the wrist link. "wrist" is the wrist link itself; every
 # other tool has the gripper's axes: x the approach (out of the palm, toward the object), z the axis
 # the jaws close along, y = z x x. Required: "hand" (the middle of the jaw gap) and "grasp" (where an
-# object's grasp point goes). Optional, for the composite skills (phygs.composite): "handle" (where a bar
+# object's grasp point goes). Optional, for the composite skills (phygs.skills.composite): "handle" (where a bar
 # handle goes in a pull grasp) and "fixed_jaw" (a gripper with one fixed jaw: its inner pad, which a
 # held object rests against; without it the jaws centre the object).
 REQUIRED_TOOLS = ("wrist", "hand", "grasp")

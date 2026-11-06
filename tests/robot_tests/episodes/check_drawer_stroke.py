@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from phygs_robot_tests.episodes import episode
 
-from phygs.composite import CompositeSkills
+from phygs.skills.composite import CompositeSkills
 
 
 def plan(session, seen: dict) -> None:

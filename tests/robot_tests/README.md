@@ -21,7 +21,7 @@ A test is written the way the real user of its subject would write it.
   after the run (`world.truth()`) and, during it, a per-tick call
   (`World.run(during=...)`) that samples ground truth or moves a scene body. The plan names
   its steps (`episode.Steps`) so the test knows what it measures. The plans use the framework's
-  composite skills (`phygs.composite`); a plan here is what an agent author copies.
+  composite skills (`phygs.skills.composite`); a plan here is what an agent author copies.
 - **Component tests** (`components/`) cover the machinery that carries out an agent's requests:
   the stage and reset, the cameras, the gait, the footprint, the arm's joint controller. Their
   reader works on that machinery, so they drive the modules directly, and some have keyboard

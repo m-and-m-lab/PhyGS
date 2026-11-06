@@ -4,7 +4,7 @@ Status: interface approved 2026-10-06. Two skills remain: `stow` and `look_at`. 
 were removed on 2026-10-16, and `pick`, `place` and `move_along_axis` on 2026-10-18 (the
 manipulation contract, [manipulation_contract/index.html](manipulation_contract/index.html)):
 agents compose grasps, placements and drawer strokes from `move_to_pose`, end-effector
-trajectories and the gripper commands, as the composite skills do (`phygs.composite`).
+trajectories and the gripper commands, as the composite skills do (`phygs.skills.composite`).
 This guide stays the source of truth for the skills; the contract is the source of truth for
 the low-level commands.
 
@@ -145,7 +145,7 @@ forces and object poses go only to the evaluator.
 ## Composing grasps, placements and straight motions
 
 The composite skills are the skills that use two clients: they walk (`navigate_to`, stowing the
-arm first), then move the arm (`phygs.composite`: `CompositeSkills` in `skills.py`, its numbers in
+arm first), then move the arm (`phygs.skills.composite`: `CompositeSkills` in `skills.py`, its numbers in
 `tuning.py`): `pick`, `place`, `place_upright`, `open_drawer` and `close_drawer`. They import the
 session only, so any agent may use them, do the same or do something else. Each takes an explicit
 affordance (a box, a drawer part, a point), walks to a stance computed from it (`reach_stances`:
@@ -189,7 +189,7 @@ slide axis builds force (on the kitchen island the jaws wedged at ~320 N).
 ## Drawers
 
 There is no drawer skill on the client. The composite skills compose a stroke in `open_drawer`
-and `close_drawer` (`phygs/composite/skills.py`): stand at a stance computed from the part and the
+and `close_drawer` (`phygs/skills/composite/skills.py`): stand at a stance computed from the part and the
 grip range, look at the handle, open the gripper; a straight approach into the part to the handle
 grasp pose; close; a straight line along the slide by the stroke; open; move the fixed jaw off the
 bar and back out with straight lines. Both then stow, also when they fail: backed out, the hand
@@ -261,7 +261,7 @@ when the arm has settled at a view, and `SkillFeedback.step` names it. It does n
 camera sees: the agent observes afterwards. Example: from 1.4 m, a 0.7 m view into the open
 drawer shows its front (depth 0.26 m); a 0.5 m view shows its bottom.
 
-The composite `look_at(point, sweep=None)` (`phygs/composite/skills.py`) is a sweep: it opens an
+The composite `look_at(point, sweep=None)` (`phygs/skills/composite/skills.py`) is a sweep: it opens an
 empty gripper, calls `look_at` once per side of `Tuning.look_sweep` (at -45, -25, 0, 25 and 45 deg
 around the point; each side 0.6 m out at 45 deg up, else 60, else 75 deg, tried in order), observes
 at each side's view reached and keeps it in `CompositeSkills.looks`, skips a side out of reach, and
@@ -319,7 +319,7 @@ Configuration in the robot's `robot.yaml` (Spot's: `phygs/robots/spot/robot.yaml
 the skill backend is `skills.backend` in `phygs/world/environment.yaml`). The tool frames are the
 gripper geometry the skills, the UI and the composite skills read; every tool but `wrist` has
 the gripper's axes (x the approach, z the jaws' closing axis). The composite skills' line speed and
-clearances are their tuning (`phygs/composite/tuning.py`):
+clearances are their tuning (`phygs/skills/composite/tuning.py`):
 
 ```yaml
 arm:
@@ -343,12 +343,12 @@ camera_roles:
 | `phygs/skills/manipulation/execution/types.py` | Targets, `SkillFailure`, `SkillError`, `SkillConfig`, `HeldObject` |
 | `phygs/skills/manipulation/execution/runner.py` | Runs a skill sequence one low-level command at a time |
 | `phygs/skills/manipulation/execution/backends.py` | `DirectSkills`, `CollisionAvoidancePlannerSkills`, `create_skills` |
-| `phygs/composite/` | The skills that walk, then move the arm: pick, place, drawer strokes (`skills.py`), their tuning (`tuning.py`) |
+| `phygs/skills/composite/` | The skills that walk, then move the arm: pick, place, drawer strokes (`skills.py`), their tuning (`tuning.py`) |
 
 ## Example: orchestrating agent
 
 ```python
-skills = CompositeSkills(session)  # phygs.composite
+skills = CompositeSkills(session)  # phygs.skills.composite
 target = session.hints.target()  # Privileged; a perceiving agent finds it in its images.
 skills.pick(target.center, target.size)  # Walks into reach; or compose it: move_to_pose, a line in, close, a line out.
 session.wait(session.manipulation.stow(held=skills.held))  # Carries the picked object.

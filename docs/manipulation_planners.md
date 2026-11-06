@@ -302,7 +302,7 @@ skills, attached-object planning and opening are not implemented yet.
 Note 2026-10-16: there is no `open`/`close` skill (removed). Since 2026-10-18 there is no
 `pick`, `place` or `move_along_axis` either: agents compose them from `move_to_pose`,
 end-effector trajectories and the gripper commands (see the composite skills,
-`phygs/composite/`).
+`phygs/skills/composite/`).
 
 ## Limits that matter
 

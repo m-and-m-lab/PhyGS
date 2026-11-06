@@ -10,7 +10,7 @@ refused first; on depth (``table_reach_depth``) the clutter's top is unseen whil
 front cameras sit below it and the held box hides it from the hand camera), so that refusal is not
 asked. ``--planner`` picks cuRobo or MoveIt.
 
-The plan is the framework's composite pick and place (``phygs.composite``): the starting point for
+The plan is the framework's composite pick and place (``phygs.skills.composite``): the starting point for
 a scripted manipulation agent. The test side checks the grasp, the lift, that neither the arm nor the held
 object touched the furniture, where the object rests and the stow. Thresholds: ``configs/pick_place.yaml``.
 
@@ -28,9 +28,9 @@ import numpy as np
 import yaml
 from phygs_robot_tests.episodes import episode
 
-from phygs.composite import TUNING, CompositeSkills
-from phygs.composite.geometry import matrix, xyzw
 from phygs.session import AgentFailed
+from phygs.skills.composite import TUNING, CompositeSkills
+from phygs.skills.composite.geometry import matrix, xyzw
 
 SETTINGS = yaml.safe_load((episode.CONFIGS / "pick_place.yaml").read_text())
 CARRY = ("refused carry", "after refusal", "carry over clutter", "carry back")  # The held object must not touch.

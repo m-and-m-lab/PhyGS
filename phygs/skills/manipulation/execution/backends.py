@@ -9,7 +9,7 @@ ManipulationClient command.
 ``direct`` moves in straight joint moves and avoids nothing, like Spot's own arm controller;
 ``collision_avoidance_planner`` plans the view and the stow around every known obstacle. Agents
 compose grasps, placements and drawer strokes themselves from ``move_to_pose``, end-effector
-trajectories and the gripper (the composite skills, ``phygs.composite``).
+trajectories and the gripper (the composite skills, ``phygs.skills.composite``).
 """
 
 from __future__ import annotations
