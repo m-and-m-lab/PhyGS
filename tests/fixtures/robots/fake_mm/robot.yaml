@@ -22,6 +22,7 @@ arm:
   shoulder: [0.1, 0.0, 0.6]  # shoulder_pitch at the zero posture.
   stow: [0.0, 0.0, -1.5, 2.4, 0.0]
   prestow: [0.0, 0.0, -1.2, 2.1, 0.0]
+  stow_tolerance: 0.18
   move_seconds: 2.0
   motion:  # The fingers [m, m/s].
     max_velocity: 1.0

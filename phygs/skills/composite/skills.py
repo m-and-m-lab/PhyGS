@@ -157,11 +157,11 @@ class CompositeSkills:
         return {} if joints is None else dict(zip(joints.names, joints.positions.tolist(), strict=True))
 
     def _stowed(self) -> bool:
-        """Whether every arm joint is within ``stow_tolerance_rad`` of the stow posture."""
+        """Whether every arm joint is within the robot's ``stow_tolerance`` of the stow posture."""
         robot, measured = self.session.robot, self.joints()
         if not measured:
             return False
-        return max(abs(measured[j] - v) for j, v in zip(robot.arm_joints, robot.stow)) <= self.tuning.stow_tolerance_rad
+        return max(abs(measured[j] - v) for j, v in zip(robot.arm_joints, robot.stow)) <= robot.stow_tolerance
 
     def _carried(self) -> HeldObject | None:
         """The picked object while the gripper holds it: the arm's plans carry it."""

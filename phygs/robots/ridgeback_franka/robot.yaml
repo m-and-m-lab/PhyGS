@@ -36,6 +36,9 @@ arm:
   # Isaac Lab's default posture, folded over the base; it held within 0.18 rad through the footprint drives.
   stow: [0.0, -0.569, 0.0, -2.810, 0.0, 2.0, 0.741]
   prestow: [0.0, -0.3, 0.0, -2.4, 0.0, 2.1, 0.741]  # A little unfolded; to tune on rung 07.
+  # Stowed: every arm joint within this of the stow [rad] (the stow skill, composite skills,
+  # navigation, evaluators); the footprint drives allowed 0.18. The prestow is 0.41 rad away.
+  stow_tolerance: 0.18
   move_seconds: 2.0
   motion:  # MotionConfig: the arm [rad, rad/s, rad/s²], the fingers [m, m/s].
     max_velocity: 1.0

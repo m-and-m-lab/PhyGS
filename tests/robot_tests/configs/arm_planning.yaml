@@ -24,7 +24,6 @@ poses:
 pose_tolerance: {position_m: 0.015, rotation_rad: 0.06}
 # Cancel a planned 5 cm lift after 0.16 s; after 0.32 s the arm must have stopped where it was.
 cancel: {lift_m: 0.05, after_seconds: 0.16, settle_seconds: 0.32, drift_rad: 0.05, speed_radps: 0.08}
-stow_tolerance_rad: 0.05  # Measured arm vs the stow posture; navigation accepts 0.18.
 # A plan from the measured start, inside a 4 m box around the robot, to the arm raised (the robot's
 # planning.default_joints) must be refused.
 # The planner's model at the measured joints must sit on the physical links.

@@ -42,6 +42,7 @@ class GroundTruth(Protocol):
     def object_pose(self, name: str) -> np.ndarray: ...
     def lifted_near_wrist(self, name: str, *, lift_m: float, reach_m: float) -> bool: ...
     def stow_error_rad(self) -> float: ...
+    def stowed(self) -> bool: ...
     def base_pose(self) -> np.ndarray: ...
     def part_openings(self) -> dict[str, float]: ...
 
@@ -49,7 +50,7 @@ class GroundTruth(Protocol):
 def load_thresholds(path: Path = THRESHOLDS) -> dict:
     """The evaluator's numbers; every key is required so a missing one is an error, not a default."""
     data = yaml.safe_load(path.read_text())
-    required = {"held_lift_m", "held_reach_m", "stow_tolerance_rad", "upright_min_cos", "drawer_closed_m", "contact_n"}
+    required = {"held_lift_m", "held_reach_m", "upright_min_cos", "drawer_closed_m", "contact_n"}
     missing = required - set(data)
     if missing:
         raise ValueError(f"{path} lacks {sorted(missing)}.")
@@ -94,7 +95,7 @@ class RetrieveTask:
         t, ended_by, contacts = self.thresholds, end.ended_by, end.contacts
         checks = dict(
             held=truth.lifted_near_wrist(self.target, lift_m=t["held_lift_m"], reach_m=t["held_reach_m"]),
-            stowed=truth.stow_error_rad() <= t["stow_tolerance_rad"],
+            stowed=truth.stowed(),
             upright=float(truth.base_pose()[2, 2]) >= t["upright_min_cos"],
             in_time=ended_by in ENDED_IN_TIME,
         )

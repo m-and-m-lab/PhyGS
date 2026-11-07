@@ -79,7 +79,8 @@ OTHER_MOTION = (
 class RobotInfo:
     """What an agent may read about its robot (``session.robot``): names, postures and gripper facts.
 
-    ``stow`` and ``prestow`` [m or rad] are in :attr:`arm_joints` order; ``gripper_open`` and
+    ``stow`` and ``prestow`` [m or rad] are in :attr:`arm_joints` order; the arm is stowed when every
+    arm joint is within ``stow_tolerance`` [m or rad] of ``stow``; ``gripper_open`` and
     ``gripper_closed`` are the primary gripper joint's values; ``shoulder`` is where the arm reaches
     out from (its first pitch joint) in the base link [m]; ``tools`` are the frames
     ``move_to_pose(tool=)`` accepts, each a pose in the wrist link [x, y, z [m], qx, qy, qz, qw] with
@@ -100,6 +101,7 @@ class RobotInfo:
     stow: tuple[float, ...]
     prestow: tuple[float, ...]
     move_seconds: float
+    stow_tolerance: float
 
 
 @dataclass(frozen=True)
@@ -133,7 +135,10 @@ class RobotDescription:
         ``root_link`` (the arm's first link), ``shoulder`` (where the arm reaches out from: its first
         pitch joint, in the base link at the zero posture [m]), ``stow`` (navigation's transit posture) and ``prestow``
         (just out of the stow, where planners start) [m or rad], ``move_seconds`` [s] (a skill's
-        straight joint move) and ``motion`` (``MotionConfig`` settings)."""
+        straight joint move), ``motion`` (``MotionConfig`` settings) and ``stow_tolerance`` [m or rad]:
+        the arm is stowed when every arm joint is within it of ``stow``. The stow skill, the
+        composite skills, navigation (which walks only with the arm stowed) and the evaluators all
+        use this one limit."""
 
         joints: tuple[str, ...]
         root_link: str
@@ -143,6 +148,7 @@ class RobotDescription:
         prestow: tuple[float, ...]
         move_seconds: float
         motion: dict[str, float]
+        stow_tolerance: float
 
         @property
         def transit_posture(self) -> tuple[tuple[str, float], ...]:
@@ -278,7 +284,17 @@ class RobotDescription:
         _keys(
             arm,
             "arm",
-            required=("joints", "root_link", "wrist_link", "shoulder", "stow", "prestow", "move_seconds", "motion"),
+            required=(
+                "joints",
+                "root_link",
+                "wrist_link",
+                "shoulder",
+                "stow",
+                "prestow",
+                "stow_tolerance",
+                "move_seconds",
+                "motion",
+            ),
         )
         shoulder = tuple(map(float, arm["shoulder"]))
         if len(shoulder) != 3:
@@ -357,6 +373,7 @@ class RobotDescription:
                 tuple(map(float, arm["prestow"])),
                 float(arm["move_seconds"]),
                 dict(arm["motion"]),
+                float(arm["stow_tolerance"]),
             ),
             gripper=cls.Gripper(
                 tuple(gripper["joints"]),
@@ -394,12 +411,15 @@ class RobotDescription:
             *arm.stow,
             *arm.prestow,
             arm.move_seconds,
+            arm.stow_tolerance,
             gripper.open,
             gripper.closed,
             *self.planning.default_joints,
         )
         if not all(map(math.isfinite, values)) or arm.move_seconds <= 0 or self.spawn_height < 0:
             raise ValueError(f"{self.name}: postures, gripper values and durations must be finite.")
+        if arm.stow_tolerance <= 0:
+            raise ValueError(f"{self.name}: arm.stow_tolerance must be positive.")
         for name, posture in (
             ("stow", arm.stow),
             ("prestow", arm.prestow),
@@ -510,6 +530,7 @@ class RobotDescription:
             stow=self.arm.stow,
             prestow=self.arm.prestow,
             move_seconds=self.arm.move_seconds,
+            stow_tolerance=self.arm.stow_tolerance,
         )
 
     def summary(self) -> dict:

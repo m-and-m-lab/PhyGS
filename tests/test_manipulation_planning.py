@@ -234,6 +234,58 @@ def test_a_trajectory_is_tracked_within_its_own_tolerance():
             assert "Trajectory tracking error" in feedback.reason
 
 
+def test_a_trajectory_is_tracked_from_its_first_sample_not_from_the_held_targets():
+    # A load leaves the arm 0.1 rad below its held target; a plan from where the arm is starts
+    # there and is tracked against its own samples from the first tick (0.03 rad of sag, limit 0.08).
+    from dataclasses import replace
+
+    world, controller, runtime, client = setup(sag=0.1)
+    command = client.move_joints({"arm": 0.2}, duration=2)
+    advance(runtime, client, 4.5)
+    assert client.feedback(command).status == "succeeded"
+    controller.config = replace(controller.config, trajectory_tracking_tolerance=0.08)
+    world.sag, here = 0.03, world.state["arm"]
+    command = client.execute_trajectory(JointTrajectory(("arm",), [0.0, 1.0], [[here], [0.4]], runtime.episode_id))
+    advance(runtime, client, 3.5)
+    feedback = client.feedback(command)
+    assert feedback.status == "succeeded", feedback
+    assert feedback.max_joint_lag["arm"] == pytest.approx(0.03, abs=0.01)
+
+
+class _FoldingSkills:
+    """A stow of three moves over :func:`fakes.setup`'s arm: a squeeze that pushes the arm 0.12 rad,
+    a planned move with 0.03 rad of sag, a straight joint move with 0.06 rad."""
+
+    attempts, step = 1, ""
+
+    def __init__(self, world, client, runtime):
+        self.world, self.client, self.runtime = world, client, runtime
+
+    def stow(self, held=None):
+        self.world.sag = 0.12
+        yield self.client.close_gripper(duration=1)
+        self.world.sag = 0.03
+        here = self.world.state["arm"]
+        yield self.client.execute_trajectory(
+            JointTrajectory(("arm",), [0.0, 1.0], [[here], [0.3]], self.runtime.episode_id)
+        )
+        self.world.sag = 0.06
+        yield self.client.move_joints({"arm": 0.5}, duration=2)
+
+
+def test_a_skill_reports_the_lag_of_its_arm_moves_and_of_its_trajectories_alone():
+    world, controller, runtime, client = setup()
+    client.bind_kinematics(_LineKinematics(), None)
+    client.bind_skills(_FoldingSkills(world, client, runtime))
+    command = client.stow()
+    advance(runtime, client, 9.0)
+    feedback = client.feedback(command)
+    assert feedback.status == "succeeded", feedback
+    assert feedback.max_joint_lag["arm"] == pytest.approx(0.06, abs=0.01)  # Not the squeeze's 0.12.
+    assert feedback.max_trajectory_lag["arm"] == pytest.approx(0.03, abs=0.01)
+    assert feedback.max_tool_lag == pytest.approx(0.03, abs=0.01)
+
+
 def test_cancel_pending_plan_cannot_restart_motion():
     from concurrent.futures import Future
 

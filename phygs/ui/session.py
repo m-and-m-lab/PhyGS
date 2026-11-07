@@ -92,8 +92,8 @@ class UiSession:
     and turn rate, arm joint speeds, the hand position, the running arm command's latest feedback,
     each camera's frame rate and age, the counts of commands and failures, and ``health()`` (the
     runner's timing and the planner). Every ``telemetry_period`` [s of sim time] the telemetry is
-    also appended to ``telemetry_path`` (JSON lines). ``stow_tolerance`` [m or rad] reports whether
-    the arm is within it of the robot's stow.
+    also appended to ``telemetry_path`` (JSON lines). The arm is reported stowed when every arm joint
+    is within the robot's ``arm.stow_tolerance`` [m or rad] of its stow.
 
     Agent side (:meth:`agent`): requests from the page are ``episode`` (start or end), ``run`` (a
     skill from :mod:`phygs.ui.schema` with its inputs), ``preview``, ``drive`` (v_x,
@@ -125,7 +125,6 @@ class UiSession:
         robot,
         cameras: tuple[str, ...],
         map_period: float = 0.5,
-        stow_tolerance: float = 0.2,
         drive_limits: dict | None = None,
         forward: Callable[[dict], dict] | None = None,
         held_object_size_m: tuple[float, float, float] | None = None,
@@ -149,7 +148,7 @@ class UiSession:
         self._gripper_joint, self._hand = robot.gripper.primary, robot.tool("hand")
         self._grasp = robot.tool("grasp")  # Where Move to pose puts a clicked point, in the wrist link.
         self._held_size = None if held_object_size_m is None else tuple(map(float, held_object_size_m))
-        self._stow, self._stow_tolerance = robot.arm.stow, stow_tolerance
+        self._stow, self._stow_tolerance = robot.arm.stow, robot.arm.stow_tolerance
         self._forward, self._demo_script, self._demo = forward, demo, None
         self._task, self._budget, self._health = dict(task or {}), budget_seconds, health
         self._clock, self._started = clock, clock()

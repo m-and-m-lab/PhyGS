@@ -94,3 +94,8 @@ class Truth:
         """Largest arm joint distance [m or rad, rad for a revolute arm] from the stow posture."""
         stow = self._description.arm.stow
         return float(max(abs(value - goal) for value, goal in zip(self.arm_joints().values(), stow, strict=True)))
+
+    def stowed(self) -> bool:
+        """Whether the arm is stowed: every arm joint within the robot's ``arm.stow_tolerance`` [m or
+        rad] of the stow posture, the limit the stow skill and navigation use too."""
+        return self.stow_error_rad() <= self._description.arm.stow_tolerance

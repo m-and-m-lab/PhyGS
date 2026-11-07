@@ -39,6 +39,11 @@ arm:
   shoulder: [0.0, 0.0, 0.0]
   stow: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # Folded for driving; the transit footprint is measured in it.
   prestow: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # Just out of the stow, collision free in the planners' model.
+  # Stowed: every arm joint within this of the stow [m or rad], the one limit of the stow skill, the
+  # composite skills, navigation and the evaluators. At most the footprint drives' criteria
+  # arm_tolerance (navigation/transit.json), above the stow's sag with a held object, below the
+  # prestow's distance from the stow.
+  stow_tolerance: 0.18
   move_seconds: 2.0  # A skill's straight joint move [s].
   # ManipulationController limits and tolerances (MotionConfig) in the joints' units [m or rad].
   # These are required; the Cartesian tolerances and the waits (position_tolerance, settle_seconds,

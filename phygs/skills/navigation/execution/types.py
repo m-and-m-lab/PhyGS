@@ -58,7 +58,7 @@ class NavigationConfig:
     max_speed: float = 1.0
     max_yaw_speed: float = 1.5
     timeout: float | None = None
-    arm_tolerance: float = 0.18
+    arm_tolerance: float | None = None
     fine_approach_radius: float = 0.10
     fine_approach_exit_radius: float = 0.25
     fine_turn_first: float = 0.3
@@ -68,8 +68,8 @@ class NavigationConfig:
     # A settled pose outside the goal tolerances beyond the fine approach is corrected by following a
     # new route in; after this many corrections the command fails instead of looping on its budget.
     max_goal_corrections: int = 3
-    # The arm's transit posture [m or rad] (the robot's arm.stow), within arm_tolerance while the base
-    # moves; none: no arm check.
+    # The arm's transit posture [m or rad] (the robot's arm.stow), within arm_tolerance (the robot's
+    # arm.stow_tolerance, required with it) while the base moves; none: no arm check.
     arm_posture: tuple[tuple[str, float], ...] = ()
 
     reference_frame: str = "world"
@@ -81,7 +81,7 @@ class NavigationConfig:
             self.period,
             self.max_speed,
             self.max_yaw_speed,
-            self.arm_tolerance,
+            *(() if self.arm_tolerance is None else (self.arm_tolerance,)),
             self.fine_approach_radius,
             self.fine_approach_exit_radius,
             self.fine_turn_first,
@@ -91,6 +91,8 @@ class NavigationConfig:
         ):
             if not math.isfinite(value) or value <= 0:
                 raise ValueError("Navigation timing, gains, limits and tolerances must be positive and finite.")
+        if self.arm_posture and self.arm_tolerance is None:
+            raise ValueError("An arm posture needs its tolerance (the robot's arm.stow_tolerance).")
         if self.fine_approach_exit_radius < self.fine_approach_radius:
             raise ValueError("fine_approach_exit_radius must not be smaller than fine_approach_radius.")
         if isinstance(self.max_goal_corrections, bool) or type(self.max_goal_corrections) is not int:

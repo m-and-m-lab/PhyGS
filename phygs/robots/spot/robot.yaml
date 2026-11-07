@@ -47,6 +47,11 @@ arm:
   stow: [0.0, -3.13, 3.13, 0.0, 0.0, 0.0]
   # 0.3 rad less folded: >= 1.2 cm self-clearance in every cuRobo sphere fit (the stow: -2 to -3 cm).
   prestow: [0.0, -2.83, 2.83, 0.0, 0.0, 0.0]
+  # Stowed: every arm joint within this of the stow [rad]. The one limit of the stow skill, the
+  # composite skills, navigation and the evaluators; the transit footprint holds for it (its drives
+  # allowed 0.18, navigation/transit.json). A held object sags the wrist 0.040-0.051 rad (2026-11-05);
+  # the prestow is 0.3 rad away.
+  stow_tolerance: 0.18
   move_seconds: 2.0  # A skill's straight joint move [s].
   motion:  # ManipulationController limits and tolerances (MotionConfig) [rad, rad/s, rad/s²].
     max_velocity: 1.5

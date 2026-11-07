@@ -98,7 +98,9 @@ def nav2_navigation(
             f"Live collision geometry ({geometry.colliders} shapes) does not match the measured footprint profile"
             f" ({footprint['collision_shapes']} shapes); see footprint_colliders.json"
         )
-    config = NavigationConfig(**robot.navigation.limits, arm_posture=robot.arm.transit_posture)
+    config = NavigationConfig(
+        **robot.navigation.limits, arm_posture=robot.arm.transit_posture, arm_tolerance=robot.arm.stow_tolerance
+    )
     validate_transit(footprint, config, dt)
     settings = Nav2Config(**{"explore_log": str(output / "explore.log"), **nav2})
     common = dict(

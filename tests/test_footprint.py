@@ -119,8 +119,12 @@ def test_navigation_rejects_settings_outside_calibration():
     from phygs.skills.navigation.execution.types import NavigationConfig
 
     profile = json.loads(SPOT.navigation.footprint_profile.read_text())
-    config = NavigationConfig(**SPOT.navigation.limits, arm_posture=TRANSIT)
+    config = NavigationConfig(**SPOT.navigation.limits, arm_posture=TRANSIT, arm_tolerance=SPOT.arm.stow_tolerance)
     validate_transit(profile, config, 0.004)
+    with pytest.raises(ValueError, match="arm tolerance"):
+        validate_transit(profile, replace(config, arm_tolerance=0.2), 0.004)
+    with pytest.raises(ValueError, match="needs its tolerance"):
+        NavigationConfig(arm_posture=TRANSIT)
     with pytest.raises(ValueError, match="timestep"):
         validate_transit(profile, config, 0.002)
     with pytest.raises(ValueError, match="speed"):

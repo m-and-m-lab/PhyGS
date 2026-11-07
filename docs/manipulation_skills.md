@@ -227,9 +227,11 @@ Geometry limits (Spot gripper and arm, measured in the robot test):
 ## Stow and look_at
 
 `stow` folds the arm into the transit posture (`stow_posture` in the skill config:
-0, −3.13, 3.13, 0, 0, 0 rad). Navigation refuses to move unless every arm joint is within
-0.18 rad of it, and the transit footprint was measured in it; a unit test keeps the three
-equal. The skill closes the empty gripper, then moves the arm. `direct` makes a straight
+0, −3.13, 3.13, 0, 0, 0 rad). The arm is stowed when every arm joint is within the robot's
+`arm.stow_tolerance` of it (Spot 0.18 rad): one limit for the stow skill, the composite skills,
+navigation (which refuses to move otherwise) and the evaluators. The transit footprint was measured
+in the stow; a unit test keeps the postures equal. With a held object the stowed wrist sags
+0.040-0.051 rad (2026-11-05); the pre-stow is 0.3 rad away. The skill closes the empty gripper, then moves the arm. `direct` makes a straight
 joint move. The planner backend plans a collision-free path to the pre-stow posture
 (`prestow_posture`: 0.3 rad less folded in the shoulder and elbow), then moves straight into
 the stow. Sphere models of the robot call the folded stow itself a self-collision: in every

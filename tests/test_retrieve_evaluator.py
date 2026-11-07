@@ -32,6 +32,9 @@ class FakeTruth:
         self.asked = (name, lift_m, reach_m)
         return self._held
 
+    def stowed(self):
+        return self._stow <= 0.18  # Spot's arm.stow_tolerance.
+
     def stow_error_rad(self):
         return self._stow
 
@@ -53,7 +56,7 @@ def evaluate(truth, ended_by="finish", contacts=(), at_start=None):
 
 def test_the_thresholds_file_is_complete_and_a_missing_key_is_an_error(tmp_path):
     thresholds = load_thresholds()
-    assert set(thresholds) >= {"held_lift_m", "held_reach_m", "stow_tolerance_rad", "upright_min_cos"}
+    assert set(thresholds) >= {"held_lift_m", "held_reach_m", "upright_min_cos"}
     assert THRESHOLDS.exists()
     partial = tmp_path / "retrieve.yaml"
     partial.write_text("held_lift_m: 0.05\n")

@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
-from fakes import SPOT_COVERAGE, SPOT_DEAD_BAND, TRANSIT, Motion, Runtime, grid, nav2_transport
+from fakes import SPOT, SPOT_COVERAGE, SPOT_DEAD_BAND, TRANSIT, Motion, Runtime, grid, nav2_transport
 
 from phygs.runtime.episode import EpisodeStatus
 from phygs.skills.navigation.api import NavigationClient, NavigationConfig
@@ -108,7 +108,7 @@ def make_backend(nav2_config=None):
         runtime,
         motion,
         maps,
-        NavigationConfig(period=0.1, arm_posture=TRANSIT),
+        NavigationConfig(period=0.1, arm_posture=TRANSIT, arm_tolerance=SPOT.arm.stow_tolerance),
         nav2_config,
         transport,
         observations=observations,

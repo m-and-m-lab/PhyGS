@@ -19,12 +19,14 @@ class SkillRun:
     """Advance a skill when its current low-level command ends; record the outcome.
 
     ``advancing`` is true only while the sequence issues its next command, so the client
-    can accept that command while rejecting agent commands during the skill.
+    can accept that command while rejecting agent commands during the skill. ``commands`` are the
+    low-level commands it issued, in order.
     """
 
     def __init__(self, sequence: SkillSequence, feedback: Callable[[int], Any]) -> None:
         self._sequence, self._feedback = sequence, feedback
         self.command: int | None = None
+        self.commands: list[int] = []
         self.done = False
         self.failure: SkillFailure | None = None
         self.message = ""
@@ -49,6 +51,7 @@ class SkillRun:
         self.advancing = True
         try:
             self.command = self._sequence.send(value)
+            self.commands.append(self.command)
         except StopIteration:
             self._finish(None, "Skill completed")
         except SkillError as error:

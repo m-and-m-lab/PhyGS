@@ -95,7 +95,6 @@ class Tuning:
     place_carcass_clearance_m: float = 0.17
     place_front_margin_m: float = 0.08
     line_speed_m_s: float = 0.1  # Straight end-effector lines [m/s].
-    stow_tolerance_rad: float = 0.2  # Within this of the stow (every arm joint), the arm counts as stowed [rad].
     # look_at views (distance [m], elevation [deg]), tried in order: a drawer's handle (low handles,
     # the house's bottom drawer, need the later, shallower views) and a place spot, e.g. an open
     # drawer's floor. An object is looked at from look_at's own views.

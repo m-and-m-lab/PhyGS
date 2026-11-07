@@ -150,7 +150,9 @@ class SkillConfig:
     ``stow_posture`` [m or rad]: arm joints of the folded transit posture; navigation requires it
     and the transit footprint was measured in it. ``prestow_posture`` [m or rad]: the stow posture
     slightly unfolded above the body. Planners reach the stow through it (and leave the stow through
-    it): sphere models of the robot call the folded stow itself a self-collision. ``look_camera``:
+    it): sphere models of the robot call the folded stow itself a self-collision. ``stow_tolerance``
+    [m or rad]: the arm is stowed when every arm joint is within it of the stow posture (the
+    robot's ``arm.stow_tolerance``). ``look_camera``:
     the hand camera ``look_at`` aims; ``look_views`` the views it tries when given none.
     """
 
@@ -158,6 +160,7 @@ class SkillConfig:
     move_seconds: float
     stow_posture: tuple[float, ...]
     prestow_posture: tuple[float, ...]
+    stow_tolerance: float
     look_camera: str
     joints: tuple[str, ...]
     arm_root_link: str
@@ -172,6 +175,7 @@ class SkillConfig:
             move_seconds=robot.arm.move_seconds,
             stow_posture=robot.arm.stow,
             prestow_posture=robot.arm.prestow,
+            stow_tolerance=robot.arm.stow_tolerance,
             look_camera=robot.look_camera,
             joints=robot.arm.joints,
             arm_root_link=robot.arm.root_link,
@@ -190,14 +194,14 @@ class SkillConfig:
             raise ValueError("look_at needs a camera name.")
         check_views(self.look_views)
 
-    def planner_stow(self, tolerance: float) -> dict:
-        """The arm planner's ``stow`` setting: plans asked within ``tolerance`` [rad] of the stow start
-        with a straight move to the pre-stow posture."""
+    def planner_stow(self) -> dict:
+        """The arm planner's ``stow`` setting: plans asked from the stow (within ``stow_tolerance``)
+        start with a straight move to the pre-stow posture."""
         return dict(
             stow_posture=list(self.stow_posture),
             prestow_posture=list(self.prestow_posture),
             move_seconds=self.move_seconds,
-            tolerance=tolerance,
+            tolerance=self.stow_tolerance,
         )
 
 

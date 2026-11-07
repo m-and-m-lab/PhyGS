@@ -47,7 +47,7 @@ from phygs.sim.base import BaseLink
 from phygs.sim.cameras import aim_camera
 from phygs.sim.robot_scene import make_scene_cfg, robot_cameras, simulation_cfg
 from phygs.skills.manipulation.execution.arm_planner import ArmPlanner
-from phygs.skills.manipulation.execution.backends import STOW_TOLERANCE_RAD, create_skills
+from phygs.skills.manipulation.execution.backends import create_skills
 from phygs.skills.manipulation.execution.kinematics import ArmKinematics
 from phygs.skills.manipulation.execution.planners.model import collider_spheres, usd_only_boxes
 from phygs.skills.manipulation.execution.types import SkillConfig
@@ -214,7 +214,7 @@ class World:
                 cameras=() if self._known_map else robot.cameras_for("planning"),
                 boxes=self._obstacles if self._known_map else None,
                 target=target,
-                stow=self.skill_config.planner_stow(STOW_TOLERANCE_RAD),
+                stow=self.skill_config.planner_stow(),
                 episode_id=lambda: self.control.runtime.episode_id,
                 time_seconds=lambda: self.control.runtime.time_seconds,
             )

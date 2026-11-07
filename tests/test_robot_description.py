@@ -91,6 +91,8 @@ def _broken(tmp_path, change) -> Path:
         (lambda d: d["camera_roles"].update(sideways=["head"]), "unknown camera roles"),
         (lambda d: d["camera_roles"].update(navigation=["periscope"]), "unknown cameras"),
         (lambda d: d["arm"].update(stow=[0.0, 0.0]), "one value per arm joint"),
+        (lambda d: d["arm"].pop("stow_tolerance"), "arm: missing keys"),
+        (lambda d: d["arm"].update(stow_tolerance=0.0), "stow_tolerance must be positive"),
         (lambda d: d["initial_joints"].update(elbow=0.3), "must not set arm joints"),
         (lambda d: d["navigation"].update(footprint_profile="missing.json"), "does not exist"),
         (lambda d: d["arm"]["motion"].pop("gripper_stopped_velocity"), "arm.motion: missing keys"),
@@ -174,6 +176,22 @@ def test_the_template_has_every_field_the_schema_reads(tmp_path):
     (tmp_path / "assets" / "my_robot.usd").write_text("#usda 1.0\n")
     robot = load_robot(tmp_path)
     assert robot.name == "my_robot" and robot.base.kind == "planar_joints"
+
+
+@pytest.mark.parametrize("folder", ROBOT_FOLDERS, ids=lambda p: p.name)
+def test_every_robot_s_stowed_limit_holds_its_sagging_stow_and_leaves_the_prestow_out(folder):
+    """``arm.stow_tolerance`` is the one limit of the stow skill, the composite skills, navigation and
+    the evaluators: the transit footprint holds within it (its drives allowed at most
+    ``criteria.arm_tolerance``), and the prestow, where planned stows end, lies outside it."""
+    import json
+
+    robot = load_robot(folder.name)
+    prestow = max(abs(a - b) for a, b in zip(robot.arm.stow, robot.arm.prestow, strict=True))
+    assert 0 < robot.arm.stow_tolerance < prestow
+    if robot.navigation.footprint_profile is not None:
+        profile = json.loads(robot.navigation.footprint_profile.read_text())
+        assert robot.arm.stow_tolerance <= profile["configuration"]["criteria"]["arm_tolerance"]
+    assert robot.info().stow_tolerance == robot.arm.stow_tolerance
 
 
 def test_every_measured_footprint_still_matches_the_files_it_pins():

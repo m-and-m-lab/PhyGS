@@ -28,4 +28,3 @@ refused_depth_m: 0.01  # The refused carry puts the object's bottom this far bel
 refused_wrist_motion_m: 0.02  # The wrist sags a few mm while the planner works; a carry moves > 10 cm.
 carry_clearance_m: 0.03  # The carry over the clutter keeps the object's bottom this far above it [m].
 place_tolerance: {position_m: 0.02, height_m: 0.01, tilt_deg: 10.0}
-stow_tolerance_rad: 0.05
