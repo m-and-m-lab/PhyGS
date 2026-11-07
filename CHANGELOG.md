@@ -11,7 +11,7 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
-### 0.11.0 (not tagged yet)
+### 0.11.0 (2026-11-07)
 
 Changed (2026-11-07, speed):
 
