@@ -295,8 +295,9 @@ A plan request with `held` (from `move_to_pose`, `stow` or `look_at`):
 - carries the box (in the wrist frame, padded like obstacles) and the measured gripper angle.
   MoveIt attaches the box to the wrist with the gripper links as touch links and plans with
   the real gripper angle. cuRobo fills a reserved `held_object` wrist link (256 sphere slots)
-  with spheres covering the box (cells of the planner padding, grown until they fit). It keeps
-  one planner per gripper angle, because it fixes locked joints when the planner is built.
+  with spheres covering the box (cells of the planner padding, grown until they fit). Its one
+  planner takes the gripper angle by moving the locked jaw joints' fixed transforms, as it does
+  for the legs (cuRobo bakes locked joints into them when it builds a planner).
 - leaves the obstacle `held.name` names out of the known boxes (else the task target); the
   depth map treats the box's current voxels as robot, like the arm's own voxels.
 - Without `held`, nothing is carried in the plan. The robot UI, whose person does not say what

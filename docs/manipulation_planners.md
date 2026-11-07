@@ -407,7 +407,8 @@ during arm planning, so `prepare_model` now ignores all pairs among them.
 cuRobo speed (2026-10-07): its collision check scans every slot of the obstacle cache,
 used or not. The adapter had a fixed 4,096-box cache, so a 4-box plan took 18-30 s.
 With the depth map in cuRobo's own voxel grid, the box cache is fixed at 32 slots and
-each new planner warms up; a new gripper angle builds a new planner once (about 15 s).
+each new planner warms up. A new gripper angle used to build a new planner (8-15 s); since
+2026-11-07 the one planner takes it as it takes the legs' angles (a repose, about 0.1 s).
 
 Library depth maps, gate 2026-10-07 (`output_check/map3b_*`): pick, lift, refused and
 allowed carry, place; 4/4 passed, 0 N furniture contact. Depth/center plans: MoveIt

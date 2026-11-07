@@ -123,8 +123,8 @@ def gripper_positions(model: dict, value: float) -> dict[str, float]:
 
 
 def planner_angle(gripper: float) -> float:
-    """The gripper angle [rad] a cuRobo planner is built for: one planner per 0.01 rad, since cuRobo
-    fixes locked joints when it builds a planner."""
+    """The gripper angle [rad] the cuRobo planner plans with, to 0.01 rad: a change smaller than that
+    does not move its locked jaw joints."""
     return round(gripper, 2)
 
 

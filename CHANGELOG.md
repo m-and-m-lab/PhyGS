@@ -13,6 +13,21 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.11.0 (not tagged yet)
 
+Changed (2026-11-07, speed):
+
+- The cuRobo worker keeps one planner for every gripper angle: a new angle (the jaws on a held
+  object) moves the planner's locked jaw joints, as the legs' angles do (`Planner.repose`, about
+  0.1 s), instead of building a planner per 0.01 rad (8.5 s of wall time each, inside a tick).
+  `ArmPlanner.poll` no longer warms angles. A privileged house oracle episode built four planners
+  (34 s of its 173 s). Replayed through both, its ten plans (six gripper angles, one holding the
+  object) give the same results and trajectories.
+- `KnownBoxMap` computes its distance field once when it has no movable box, as every episode's
+  known map (`known_map` grant: ForageBench's privileged track, the nav_course, nav_house and
+  table_reach robot tests): its boxes are fixed at the episode's start. It was computed again from
+  every box at each Nav2 control step: in the house, Nav2's control step took 18.6 ms (18.8 s of a
+  173 s privileged oracle episode), now 3.6 ms. The maps are unchanged. Navigation on depth (no
+  `known_map`) does not use it.
+
 Added (2026-11-06):
 
 - `SkillFeedback` (`stow`, `look_at`, `unstow`) reports the lag of the arm moves the skill made:

@@ -131,23 +131,25 @@ class Planner:
         )
         self.esdf = self.mapper.compute_esdf()
         self.mapped = False  # The ESDF holds a request's images (an empty map otherwise).
-        self.planners: dict[float, MotionPlanner] = {}
-        self.segmenters: dict[float, tuple[RobotSegmenter, AttachmentManager]] = {}
+        self.planner: MotionPlanner | None = None
+        self.segmenter: tuple[RobotSegmenter, AttachmentManager] | None = None
         gripper = config["gripper_ratios"]
         self.locked = {name: value for name, value in config["locked_joints"].items() if name not in gripper}
-        self.posed: dict[float, dict[str, float]] = {}  # The leg angles [rad] each planner holds.
+        self.posed: tuple[dict[str, float], float] | None = None  # The leg angles and gripper angle [rad] it holds.
         self.planner_for(config["locked_joints"][self.gripper])
 
     def planner_for(self, gripper: float) -> MotionPlanner:
-        """Warmed-up planner with the gripper locked at gripper [rad]; cuRobo fixes locked joints at build.
+        """The warmed-up planner, built once with the gripper locked at gripper [rad] (about 8-15 s);
+        another gripper angle is a :meth:`repose`, as the legs are (cuRobo bakes locked joints into
+        fixed link transforms, and the jaws' spheres stay in their link frames).
 
-        Every planner has the same collision types (boxes and the depth map). A planner with
-        other types makes Warp rebuild the collision kernels, and the voxel check of planners
-        built before it then fails silently inside their CUDA graphs. Building takes about 15 s.
+        The planner has both collision types (boxes and the depth map). A planner with other types
+        makes Warp rebuild the collision kernels, and the voxel check of planners built before it
+        then fails silently inside their CUDA graphs.
         """
         angle = planner_angle(gripper)
         grid = self.config["depth_map"]
-        if angle not in self.planners:
+        if self.planner is None:
             self.robot["robot_cfg"]["kinematics"]["lock_joints"].update(
                 {**self.locked, **gripper_positions(self.config, angle)}
             )
@@ -163,7 +165,7 @@ class Planner:
                 )
             )
             planner.warmup(num_warmup_iterations=1)
-            self.planners[angle] = planner
+            self.planner = planner
             # The self filter has its own copy of the kinematics (legs, gripper and held object kept
             # equal to the planner's): run on the planner's own, it made the planner miss obstacles.
             # float32: the default bfloat16 fails this commit's own sphere dtype check.
@@ -173,25 +175,28 @@ class Planner:
                 use_cuda_graph=False,
                 ops_dtype=torch.float32,
             )
-            self.segmenters[angle] = segmenter, AttachmentManager(segmenter.kinematics)
-            self.posed[angle] = dict(self.locked)
-        return self.planners[angle]
+            self.segmenter = segmenter, AttachmentManager(segmenter.kinematics)
+            self.posed = dict(self.locked), angle
+        return self.planner
 
     def repose(self, locked: dict[str, float] | None, gripper: float) -> None:
-        """Take the measured leg angles [rad] (None keeps the last ones) into the planner for gripper [rad].
+        """Take the measured leg angles [rad] (None keeps the last ones) and the gripper angle [rad]
+        into the planner.
 
         cuRobo bakes locked joints into fixed link transforms. The planner's solvers share one
-        kinematics parameter set, so new transforms copied into it move the legs in place: about
-        0.1 s, where building a planner takes about 15 s. Only the transforms and the locked
-        state change; the collision spheres stay in their link frames.
+        kinematics parameter set, so new transforms copied into it move the legs and the jaws in
+        place: about 0.1 s, where building a planner takes about 8-15 s. Only the transforms and the
+        locked state change; the collision spheres stay in their link frames.
         """
         if locked is not None:
             if set(locked) != set(self.locked):
                 raise ValueError(f"Locked joints {sorted(locked)} do not match the model's {sorted(self.locked)}.")
             self.locked = dict(locked)
         angle = planner_angle(gripper)
-        moved = (abs(self.posed[angle][name] - value) for name, value in self.locked.items())
-        if max(moved, default=0.0) <= POSTURE_TOLERANCE:  # A robot may lock nothing but the gripper.
+        legs, posed_angle = self.posed
+        moved = (abs(legs[name] - value) for name, value in self.locked.items())
+        # A robot may lock nothing but the gripper (no legs: max of nothing).
+        if max(moved, default=0.0) <= POSTURE_TOLERANCE and angle == posed_angle:
             return
         robot = copy.deepcopy(self.robot)
         kinematics = robot["robot_cfg"]["kinematics"]
@@ -201,11 +206,11 @@ class Planner:
         kinematics["tool_frames"] = [*kinematics["tool_frames"], *kinematics["collision_link_names"]]
         kinematics["collision_link_names"] = []
         posed = KinematicsCfg.from_data_dict(robot).kinematics_config
-        for model in (self.planners[angle].kinematics, self.segmenters[angle][0].kinematics):
+        for model in (self.planner.kinematics, self.segmenter[0].kinematics):
             current = model.config.kinematics_config
             current.fixed_transforms.copy_(posed.fixed_transforms)
             current.lock_jointstate.copy_(posed.lock_jointstate)
-        self.posed[angle] = dict(self.locked)
+        self.posed = dict(self.locked), angle
 
     def state(self, values):
         return JointState.from_position(
@@ -240,7 +245,7 @@ class Planner:
         planner = self.planner_for(gripper)
         self.repose(locked, gripper)
         state = self.state(start)
-        segmenter, attachments = self.segmenters[planner_angle(gripper)]
+        segmenter, attachments = self.segmenter
         for manager in (planner.attachment_manager, attachments):
             manager.detach(HELD_LINK)
             if held is not None:  # Held object in the wrist frame; collision model only.

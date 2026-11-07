@@ -253,30 +253,25 @@ def test_warm_up_plans_once_per_gripper_angle_before_the_episode(host):
     assert all(request.boxes == [] and request.images is None for request in requests)
 
 
-def test_a_new_gripper_angle_is_warmed_inside_the_tick_before_its_plan(host):
-    """The jaws on a held object give an angle with no planner yet: poll warms it (synchronously, so
-    the build costs no simulated time) and then sends the plan; an angle within 0.01 rad of a warmed
-    one is not warmed again. A build that breaks the process is the World's failure."""
+def test_a_new_gripper_angle_needs_no_warm_up(host):
+    """The worker's one planner takes any gripper angle (the jaws on a held object) by moving its
+    locked joints, so poll sends the plan with the new angle straight away. A plan that breaks the
+    process is the World's failure."""
     make, robot, _ = host
     planner = make(boxes=lambda exclude: {})
     worker = Worker.started[0]
     robot.gripper = -0.443
     planner.request(goal=[0.1] * 6)
     planner.poll()
-    warm, plan = worker.requests
-    assert warm.gripper == plan.gripper == pytest.approx(-0.443)
-    assert warm.boxes == [] and warm.images is None and plan.goal == [0.1] * 6
-    robot.gripper = -0.441  # The same planner (to 0.01 rad).
-    planner.request(goal=[0.2] * 6)
-    planner.poll()
-    assert len(worker.requests) == 3 and planner.failure is None
+    (plan,) = worker.requests
+    assert plan.gripper == pytest.approx(-0.443) and plan.goal == [0.1] * 6
     robot.gripper = -0.9
     worker.result = TimeoutError("Planner response exceeded 180 wall seconds")
     broken = planner.request(goal=[0.3] * 6)
     planner.poll()
     with pytest.raises(TimeoutError):
         broken.result()
-    assert planner.failure.startswith("TimeoutError") and len(worker.requests) == 4  # The plan was not sent.
+    assert planner.failure.startswith("TimeoutError") and len(worker.requests) == 2
 
 
 def test_each_episode_writes_its_plan_records_to_its_own_folder(host, tmp_path):

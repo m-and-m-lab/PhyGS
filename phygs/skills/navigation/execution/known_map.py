@@ -77,6 +77,10 @@ class KnownBoxMap:
         self._shape = tuple(round(value) for value in shape)
         self._map: GridMap | None = None
         self._raw_map: GridMap | None = None
+        # With no movable box (an episode's map: its boxes are fixed at the start) the distance field
+        # never changes, so it is computed once per margin and reach.
+        self._fixed = all(box.scene_key is None for box in boxes)
+        self._fixed_distances: dict[tuple[float, float], np.ndarray] = {}
 
     @property
     def configuration(self) -> dict:
@@ -94,8 +98,12 @@ class KnownBoxMap:
     def _distance(self, margin: float, reach: float) -> np.ndarray:
         """Signed planar clearance [m] from boxes and map boundaries, less ``margin``; exact where it
         is below ``reach`` [m] (each box updates only the cells within its extent plus reach, so a
-        map over a whole house costs per box, not per box and cell)."""
+        map over a whole house costs per box, not per box and cell). Without movable boxes it is
+        computed once and shared: callers must not write to it."""
         from isaaclab.utils.math import matrix_from_quat
+
+        if self._fixed and (margin, reach) in self._fixed_distances:
+            return self._fixed_distances[(margin, reach)]
 
         xmin, ymin, xmax, ymax = self._bounds
         x = xmin + (np.arange(self._shape[1]) + 0.5) * self._resolution
@@ -119,6 +127,8 @@ class KnownBoxMap:
             dy = np.maximum(np.abs(y[rows] - center[1]) - half[1], 0)
             window = distance[rows, columns]
             np.minimum(window, np.hypot(dx[None, :], dy[:, None]) - margin, out=window)
+        if self._fixed:
+            self._fixed_distances[(margin, reach)] = distance
         return distance
 
     def snapshot(self) -> GridMap:
