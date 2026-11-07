@@ -10,7 +10,7 @@ PhyGS runs in its own container, built from Isaac Lab's base image plus what the
 | explore_lite (m-explore-ros2 at a pinned commit) | overlay in `/opt/explore_ws`, sourced by every shell | `navigation.explore()`, rung 13 |
 | MoveIt (`moveit_py`, OMPL, task constructor, perception) | apt | The optional `--planner moveit` |
 | cuRobo V2 (a pinned commit) | `/opt/curobo_deps` (`planner.curobo_dependencies`) | The default arm planner |
-| `huggingface_hub`, `pre-commit`, `rerun-sdk`, `imageio-ffmpeg` | pip in Isaac Sim's Python | Scene releases, the commit hooks, run viewing, videos |
+| `huggingface_hub`, `pre-commit`, `rerun-sdk` 0.42.0, `imageio-ffmpeg` | pip in Isaac Sim's Python | Scene releases, the commit hooks, episode recordings (`episode.rrd`), videos |
 | ffmpeg, tmux, Chromium's libraries | apt | Videos, sessions, page screenshots |
 | Fast DDS over UDP only (`fastdds_udp.xml`) | `FASTRTPS_DEFAULT_PROFILES_FILE` | No shared-memory transport between containers |
 

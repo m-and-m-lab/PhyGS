@@ -7,19 +7,19 @@
 
 The trace has one lane per actor, each a list of items with a start ``s`` and end ``e`` [s sim]:
 
-- ``Agent``: the agent's named steps (``session.step``, from ``audit.jsonl``); nested steps are
+- ``Agent``: the agent's named steps (``session.step``, from the audit's lines); nested steps are
   kept with their ``depth``, the lane shows depth 0.
-- ``Base``, ``Arm``, ``Gripper``: the commands the robot ran, from the state log's command spans
-  (:mod:`.state_log`), with their final status.
+- ``Base``, ``Arm``, ``Gripper``: the commands the robot ran, from the command spans, with their
+  final status.
 - ``Grip``: both jaws on a body, with the peak squeeze [N] (the report's ``grasp_contacts``).
 - ``Bumps``: every other arm contact, with its peak force [N] (the report's ``contacts``).
 
-``holding`` lists the intervals the gripper held an object (from the state log), named by the
+``holding`` lists the intervals the gripper held an object (from the states), named by the
 body gripped then; ``narration`` the skills' lines (time, kind, text); ``title`` names the run. The
 path holds the robot's poses at ``rate``, Nav2's routes and, when the agent read it through a hint,
 the target's position; ``z`` is the robot's height at the start [m], which picks the floor plan.
 :func:`compose` makes the trace from what a run logs, as it goes or after it; :func:`build` reads a
-finished run's folder. Either is one JSON-friendly dict.
+finished run's folder (its report and recording, :mod:`.reader`). Either is one JSON-friendly dict.
 """
 
 from __future__ import annotations
@@ -28,20 +28,13 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
+from phygs.recording.reader import Recording
 from phygs.recording.state_log import States
 
 LANES = ("Agent", "Base", "Arm", "Gripper", "Grip", "Bumps")
 GRIPPER = frozenset({"open_gripper", "close_gripper"})
 BASE_LANE, ARM_LANE = "base", "arm"  # The command timeline's lanes (recording.timeline).
 STEP = "session.step"  # The audit's call name of step markers.
-
-
-def read_audit(path: Path) -> list[dict]:
-    """The audit's lines (``audit.jsonl``); none when the file is missing."""
-    path = Path(path)
-    if not path.is_file():
-        return []
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def steps(audit: list[dict], end: float) -> list[dict]:
@@ -211,17 +204,17 @@ def compose(
 
 
 def build(run: Path, *, rate: float = 10.0) -> dict:
-    """The trace and the path of the run in folder ``run`` (``report.json``, ``audit.jsonl``,
-    ``state.npz``): ``{title, duration, lanes, steps, holding, narration, path: {rate, z, poses,
-    routes, target}}``."""
+    """The trace and the path of the run in folder ``run`` (``report.json`` and ``episode.rrd``):
+    ``{title, duration, lanes, steps, holding, narration, path: {rate, z, poses, routes, target}}``."""
     run = Path(run)
     report = json.loads((run / "report.json").read_text())
-    states = States.load(run)
+    recording = Recording(run)
+    states = recording.states()
     task = report.get("task", {})
     return compose(
         end=float(states.time[-1]) if len(states) else float(report.get("sim_seconds", 0.0)),
         title=f"{report.get('spec', {}).get('id', run.name)} | {task.get('goal', '')}: {task.get('description', '')}",
-        audit=read_audit(run / "audit.jsonl"),
+        audit=recording.audit,
         commands=states.commands,
         contacts=report,
         states=states,

@@ -439,6 +439,12 @@ class UsdScene:
         y = (DRAWER_FRONT_INNER_Y_M + CARCASS_FRONT_Y_M + opening) / 2
         return (self.object_pose(part) @ [0.0, y, DRAWER_FLOOR_Z_M, 1.0])[:3]
 
+    @property
+    def colliders(self) -> tuple[tuple[str, str | None, np.ndarray, np.ndarray], ...]:
+        """Every collider as a box: (collider path, body path or None when fixed to the world, center
+        [m], size [m]); the center in the body's frame, else in the world's."""
+        return tuple(self._colliders)
+
     def obstacle_boxes(
         self, center_xy, radius: float, height: tuple[float, float], exclude: frozenset[str] = frozenset()
     ) -> dict[str, tuple[np.ndarray, np.ndarray]]:

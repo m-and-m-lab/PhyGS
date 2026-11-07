@@ -13,9 +13,10 @@ world builds its report with :func:`compose`, which refuses a key missing from o
 
 from __future__ import annotations
 
-REPORT_SCHEMA = 2
+REPORT_SCHEMA = 3
 KEYS = (
     "schemas",  # {spec, report}: the schema numbers this report follows.
+    "run_id",  # The run's id: it names the recording (episode.rrd) and joins the run's files.
     "status",  # completed, setup_error or error (:func:`status`): whether the episode can be scored.
     "spec",  # The episode spec as run (scene id and version, robot, start, objects, actions, grants, budget, seed).
     "task",  # The task's public part: goal and description.
@@ -39,6 +40,7 @@ KEYS = (
     "planner",  # Arm planner backend and its startup/warmup times, or None.
     "narration",  # The skills' step lines.
     "runtime",  # The runtime's own result: ticks, events, status.
+    "recording",  # The recording (phygs.recording.log): status (complete, failed, off), file, error, schema.
 )
 # Grants a client uses without a call naming them (the report lists them as implicit).
 IMPLICIT = {
@@ -51,6 +53,7 @@ IMPLICIT = {
 # What ended an episode the framework cannot vouch for: the simulator or the World broke.
 ERRORS = ("environment_error", "runtime_failed")
 STATUSES = ("completed", "setup_error", "error")
+RUNNING = "running"  # The status of the report a run writes at its start (stub); a crash leaves it.
 
 
 def status(ended_by: str, runtime_failed: bool = False) -> str:
@@ -67,6 +70,12 @@ def status(ended_by: str, runtime_failed: bool = False) -> str:
 def implicit_grants(grants: tuple[str, ...]) -> dict[str, str]:
     """The granted channels a client reads without a call naming them, with what each one does."""
     return {grant: IMPLICIT[grant] for grant in grants if grant in IMPLICIT}
+
+
+def stub(**fields) -> dict:
+    """The report a run writes when its episode starts (:data:`RUNNING`): ``fields`` (run id, spec,
+    provenance, recording). The final report replaces it; a crashed run leaves it."""
+    return dict(status=RUNNING, **fields)
 
 
 def compose(**fields) -> dict:

@@ -19,9 +19,7 @@ Writes into ``<run>/replay`` (or ``--output``):
   ``front_depth``, ``hand``, ``hand_depth``, ``navigation``, ``arm_planner``;
 - ``trace.json``: the timeline and the path the strip is drawn from.
 
-The run folder needs ``state.npz`` (every run since PhyGS 0.7.0 writes it), ``report.json`` and
-``audit.jsonl``. The navigation and arm planner panels need a state log of PhyGS 0.9.0 or later
-(Nav2's costmap and the arm plans); an older one shows them without the costmap and the plans.
+The run folder needs ``report.json`` and the recording ``episode.rrd`` (PhyGS 0.12.0 and later).
 The floor plan is the scene release's, else one rendered once and cached (docs/world.md).
 ``phygs replay`` is this command.
 """
@@ -58,9 +56,9 @@ parser.add_argument("--robot", default=None, help="Replace the run's robot (same
 AppLauncher.add_app_launcher_args(parser)
 parser.set_defaults(device="cpu", enable_cameras=True)
 args = parser.parse_args()
-for name in ("report.json", "state.npz"):
+for name in ("report.json", "episode.rrd"):
     if not (args.run / name).is_file():
-        parser.error(f"{args.run} has no {name}; replay needs a finished run with a state log")
+        parser.error(f"{args.run} has no {name}; replay needs a finished run with its recording")
 if args.speed < 1:
     parser.error("--speed takes a whole number of samples per frame, 1 or more")
 output = args.output or args.run / "replay"

@@ -235,9 +235,12 @@ def jsonable(value: Any) -> Any:
 class Audit:
     """One JSON line per agent call (``audit.jsonl``) and the totals for the report."""
 
-    def __init__(self, path: Path | None, time_seconds: Callable[[], float]) -> None:
+    def __init__(
+        self, path: Path | None, time_seconds: Callable[[], float], sink: Callable[[dict], None] | None = None
+    ) -> None:
         self._file = None if path is None else path.open("w")
         self._time = time_seconds
+        self._sink = sink  # Also given every line (the episode's recording, phygs.recording.log).
         self.calls: Counter[str] = Counter()
         self.privileged: Counter[str] = Counter()
         self.levels: set[str] = set()
@@ -259,6 +262,8 @@ class Audit:
         if self._file is not None:
             self._file.write(json.dumps(line) + "\n")
             self._file.flush()
+        if self._sink is not None:
+            self._sink(line)
 
     def mark(self, call: str, **fields) -> None:
         """Write one line that is not a call (a step marker): not counted in the totals."""
@@ -267,6 +272,8 @@ class Audit:
         if self._file is not None and not self._file.closed:  # A step the agent leaves after the episode.
             self._file.write(json.dumps(line) + "\n")
             self._file.flush()
+        if self._sink is not None:
+            self._sink(line)
 
     def summary(self) -> dict:
         return dict(

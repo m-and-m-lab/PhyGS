@@ -114,6 +114,13 @@ class Recorder:
         """:meth:`contact_report` now, as if the current hold ended (copies; the hold goes on)."""
         return _report(_sorted({key: dict(record) for key, record in self.contacts.items()}, self._hold, self._pinched))
 
+    def write_stub(self, stub: dict) -> Path:
+        """Write ``report.json`` at the episode's start (:func:`phygs.world.report.stub`): a run that
+        dies before its report still says what ran and where its recording is."""
+        path = self.output / "report.json"
+        path.write_text(json.dumps(stub, indent=2) + "\n")
+        return path
+
     def write(self, report: dict, commands: Sequence[dict] = ()) -> Path:
         """Write ``report.json``, and the state log with the command timeline's spans ``commands``."""
         path = self.output / "report.json"

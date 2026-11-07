@@ -62,7 +62,7 @@ if args.seed is not None:
     spec = spec.with_seed(args.seed)
 agent_name, agent = load_agent(args.agent, agents_dir=PROJECT / "examples" / "agents")
 if (args.output / "report.json").exists():
-    parser.error(f"{args.output} holds a finished episode; choose a fresh output folder")
+    parser.error(f"{args.output} holds an episode; choose a fresh output folder")
 app = AppLauncher(args).app
 
 from phygs.robots.description import load_robot  # noqa: E402 (numpy before Kit can crash its start)

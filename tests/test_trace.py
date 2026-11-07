@@ -8,15 +8,18 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 
 from phygs.recording import trace
+from phygs.recording.log import EpisodeLog
 from phygs.recording.overview import ROBOT, Overview
-from phygs.recording.state_log import StateLog
 from phygs.scene.plan import Floor, Plan
+
+SPOT_URDF = Path(__file__).resolve().parents[1] / "phygs" / "robots" / "spot" / "assets" / "spot.urdf"
 
 COMMANDS = [  # In the timeline's order: a command a skill issues opens before the skill's own span.
     dict(lane="arm", name="move_joints", start=0.0, end=0.5, status="succeeded"),
@@ -53,21 +56,28 @@ AUDIT = [
 ]
 
 
-def write_run(folder):
+def write_run(folder, audit=AUDIT):
+    """A run's report and recording: the robot walks, Nav2 routes it, the agent's ``audit`` lines."""
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "report.json").write_text(json.dumps(REPORT))
-    (folder / "audit.jsonl").write_text("".join(json.dumps(line) + "\n" for line in AUDIT))
-    log = StateLog(folder / "state.npz", joint_names=("j",), body_names=("cup",), meta=dict(period=0.5))
+    log = EpisodeLog(folder / "episode.rrd", run_id="run")
+    log.properties(replay=dict(period=0.5))
+    log.robot_model(SPOT_URDF, ("j",))
+    log.scene([], ("cup",))
     for k in range(17):
         t = 0.5 * k
         x = min(max(t - 1.0, 0.0), 4.0)  # Walks 1 m/s from t = 1 s to 5 s.
-        root = np.array([x, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0])
-        log.sample(t, root, [0.0], [[4.0, 1.0, 0.8, 0, 0, 0, 1]], holding=6.5 <= t < 7.5)
+        log.at(125 * k, t)
+        log.robot_state(np.array([x, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0]), [0.0], holding=6.5 <= t < 7.5)
+        log.body_poses([[4.0, 1.0, 0.8, 0, 0, 0, 1]])
         if t == 1.0:
-            log.route(t, (4.0, 1.0, 0.0), ((0.0, 1.0), (2.0, 1.0), (4.0, 1.0)))
+            log.route((4.0, 1.0, 0.0), ((0.0, 1.0), (2.0, 1.0), (4.0, 1.0)))
         if t == 5.0:
-            log.route(t, None, ())
-    log.write(COMMANDS)
+            log.route(None, ())
+    for line in audit:
+        log.agent_call(line)
+    log.commands(COMMANDS)
+    assert log.close()["status"] == "complete"
     return folder
 
 
@@ -96,9 +106,7 @@ def test_the_trace_has_the_agents_steps_the_commands_and_the_contacts(tmp_path):
 
 
 def test_a_run_without_steps_or_audit_still_has_its_commands(tmp_path):
-    run = write_run(tmp_path / "run")
-    (run / "audit.jsonl").unlink()
-    built = trace.build(run)
+    built = trace.build(write_run(tmp_path / "run", audit=()))
     assert built["lanes"][0]["items"] == [] and built["path"]["target"] is None
     assert len(built["lanes"][1]["items"]) == 1
 

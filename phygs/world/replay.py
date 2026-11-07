@@ -35,7 +35,7 @@ from phygs.recording.panels import (
     navigation_image,
     planner_image,
 )
-from phygs.recording.state_log import States
+from phygs.recording.reader import Recording
 from phygs.recording.video import FOCAL_LENGTH, Chase
 from phygs.robots.description import RobotDescription, load_robot
 from phygs.scene import plan as plans
@@ -56,7 +56,7 @@ VIEWS = ("front", "front_depth", "hand", "hand_depth", "navigation", "arm_planne
 
 
 class Replay:
-    """The run in folder ``run`` (its ``state.npz``), ready to render sample by sample.
+    """The run in folder ``run`` (its recording, ``episode.rrd``), ready to render sample by sample.
 
     ``robot`` replaces the run's robot (a description, a name or a ``robot.yaml``); it must have the
     same joints. ``views`` are the robot's views to render (:data:`VIEWS`; the cameras are rendered
@@ -75,7 +75,7 @@ class Replay:
         fixed: bool = False,
         device: str = "cpu",
     ) -> None:
-        self.states = states = States.load(run)
+        self.states = states = Recording(run).states()
         meta = states.meta
         if not isinstance(robot, RobotDescription):
             robot = load_robot(meta["robot"] if robot is None else robot)

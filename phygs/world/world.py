@@ -32,6 +32,9 @@ import numpy as np
 import torch
 from isaaclab.scene import InteractiveScene
 
+from phygs.recording.blueprint import episode_blueprint
+from phygs.recording.log import FILE as LOG_FILE
+from phygs.recording.log import EpisodeLog, new_run_id
 from phygs.recording.panels import PanelFeed
 from phygs.recording.state_log import FILE as STATE_FILE
 from phygs.recording.state_log import StateLog
@@ -129,7 +132,7 @@ class World:
         self.task, self.target = task, target
         output = Path(output)
         if (output / "report.json").exists():
-            raise FileExistsError(f"{output} holds a finished episode; choose a fresh output folder.")
+            raise FileExistsError(f"{output} holds an episode; choose a fresh output folder.")
         output.mkdir(parents=True, exist_ok=True)
         self.spec, self.output, self.clock, self._record = spec, output, clock, record
         self.viewer, self._hold_clock = viewer, hold_clock
@@ -229,6 +232,7 @@ class World:
             self._chase = Chase(period)
         self._trace, self._trace_time, self._audit = None, -math.inf, None  # The recording's live trace.
         self.recorder = self._open_recorder(output, view)
+        self.log = self._open_log(output, view)
         self.report: dict | None = None
         self._during: Callable[[World], None] | None = None  # The robot test's per-tick call (run).
         self._reset_done = False
@@ -240,33 +244,36 @@ class World:
         self._outcome: tuple[str, str] | None = None
         self._last_render = 0.0
 
+    def _replay_meta(self, view) -> dict:
+        """What phygs replay needs to build the scene again, beside the states (world/replay.py)."""
+        spec, settings = self.spec, self.settings
+        return dict(
+            period=settings["camera_period"],
+            physics_dt=settings["physics_dt"],
+            robot=self.robot.name,
+            scene=dict(
+                name=spec.scene.name,
+                id=spec.scene.id,
+                version=spec.scene.version,
+                usd=str(spec.scene.usd),
+                sha256=self.provenance["scene_usd"]["sha256"],
+                ground=spec.scene.ground,
+            ),
+            objects=spec.objects,
+            parts=spec.parts,
+            start=list(spec.robot.start),
+            light=settings["light"],
+            record_view=[list(map(float, point)) for point in view],
+        )
+
     def _open_recorder(self, output: Path, view) -> Recorder:
         """The episode folder's recorder, with the state log ``phygs replay`` reads."""
-        spec, robot, settings = self.spec, self.robot, self.settings
-        dt, period = settings["physics_dt"], settings["camera_period"]
-        # What phygs replay needs to build the scene again, beside the states (recording.state_log).
+        robot, settings, period = self.robot, self.settings, self.settings["camera_period"]
         state = StateLog(
             output / STATE_FILE,
             joint_names=self._robot_asset.joint_names,
             body_names=self._bodies.names,
-            meta=dict(
-                period=period,
-                physics_dt=dt,
-                robot=robot.name,
-                scene=dict(
-                    name=spec.scene.name,
-                    id=spec.scene.id,
-                    version=spec.scene.version,
-                    usd=str(spec.scene.usd),
-                    sha256=self.provenance["scene_usd"]["sha256"],
-                    ground=spec.scene.ground,
-                ),
-                objects=spec.objects,
-                parts=spec.parts,
-                start=list(spec.robot.start),
-                light=settings["light"],
-                record_view=[list(map(float, point)) for point in view],
-            ),
+            meta=self._replay_meta(view),
         )
         return Recorder(
             output,
@@ -277,6 +284,20 @@ class World:
             state=state,
             plan=self._plan,
         )
+
+    def _open_log(self, output: Path, view) -> EpisodeLog:
+        """The episode's recording (``episode.rrd``, :mod:`phygs.recording.log`) with what does not
+        change while it runs: the properties (spec, provenance, what replay needs), the robot model,
+        the scene's colliders and the viewer's layout."""
+        settings = self.settings["recording"]
+        log = EpisodeLog(output / LOG_FILE, run_id=new_run_id(), level=settings["level"], live=settings["live"])
+        log.properties(spec=self.spec.summary(), provenance=self.provenance, replay=self._replay_meta(view))
+        log.robot_model(self.robot.urdf, self._robot_asset.joint_names)
+        log.scene([(body, center, size) for _, body, center, size in self.scene_def.colliders], self._bodies.names)
+        if log.robot is not None:
+            log.blueprint(episode_blueprint(log.robot, log.root))
+        self._logged_contacts: set[tuple[str, str]] = set()
+        return log
 
     def next_episode(self, output: Path, *, seed: int | None = None) -> None:
         """Get ready for another episode of the same spec in ``output`` (a fresh folder), with
@@ -290,13 +311,16 @@ class World:
             raise RuntimeError("Run this episode before the next one.")
         output = Path(output)
         if (output / "report.json").exists():
-            raise FileExistsError(f"{output} holds a finished episode; choose a fresh output folder.")
+            raise FileExistsError(f"{output} holds an episode; choose a fresh output folder.")
         output.mkdir(parents=True, exist_ok=True)
         self.recorder.close()
+        self.log.close()  # Closed by run() unless it raised.
         if seed is not None:
             self.spec = self.spec.with_seed(seed)
         self.output = output
-        self.recorder = self._open_recorder(output, build.record_view(self.spec))
+        view = build.record_view(self.spec)
+        self.recorder = self._open_recorder(output, view)
+        self.log = self._open_log(output, view)
         if self.planner is not None:
             self.planner.set_output(output)
         self.report, self._reset_done, self.start_check = None, False, None
@@ -372,6 +396,7 @@ class World:
         check the settled world (:mod:`phygs.world.start`; a failure stops the episode before the agent)."""
         torch.manual_seed(self.spec.seed)
         np.random.seed(self.spec.seed)
+        self.log.phase("settle")
         self.control.reset(settling_seconds=self.settings["settling_seconds"])
         if self.control.narration is not None:
             self.control.narration.log.clear()  # This episode's step lines only.
@@ -399,6 +424,8 @@ class World:
         self._services_ready = True
         openings = {name: float(part["opening"]) for name, part in self.spec.parts.items()}
         self.start_check = check_start(self.truth(), self.robot.fallen_height, self.settings["start_check"], openings)
+        passed = self.start_check["passed"]
+        self.log.phase("start_check", "passed" if passed else "; ".join(self.start_check["problems"]))
         if not self.start_check["passed"]:
             print("Start check failed: " + "; ".join(self.start_check["problems"]), flush=True)
         self._reset_done = True
@@ -421,7 +448,16 @@ class World:
             self.reset()
         runtime = self.control.runtime
         main = MainThread()
-        audit = self._audit = Audit(self.output / "audit.jsonl", lambda: runtime.time_seconds)
+        audit = self._audit = Audit(self.output / "audit.jsonl", lambda: runtime.time_seconds, sink=self.log.agent_call)
+        self.recorder.write_stub(
+            report.stub(
+                schemas=dict(spec=SCHEMA, report=report.REPORT_SCHEMA),
+                run_id=self.log.run_id,
+                spec=self.spec.summary(),
+                provenance=self.provenance,
+                recording=dict(status=self.log.status, file=LOG_FILE),
+            )
+        )
         clients = dict(
             navigation=self.control.navigation if "navigation" in self.spec.actions else None,
             manipulation=self.control.manipulation if "manipulation" in self.spec.actions else None,
@@ -449,6 +485,8 @@ class World:
         if self.start_check["passed"]:
             self.task.reset(self.truth())
             self._evaluate_ticks = max(1, round(self.settings["evaluation_period_seconds"] / runtime.physics_dt))
+            self.log.at(runtime.tick, runtime.time_seconds)
+            self.log.phase("agent")
             thread.start()
         else:
             ended_by, reason = "setup_error", "; ".join(self.start_check["problems"])
@@ -493,10 +531,19 @@ class World:
         if self._outcome is None:  # Ended by the World while the agent was still running.
             self._outcome = ("agent_stopped", "")
         stopped = None
+        self.log.phase("end", f"{ended_by}: {reason}"[:500])
         if broken is None and runtime.status == EpisodeStatus.RUNNING and ended_by != "setup_error":
+            self.log.phase("stop")
             stopped = self._stop_all()
+            self.log.phase("end_settle")
             for _ in range(round(self.settings["end_settle_seconds"] / runtime.physics_dt)):
                 self._tick()
+        if broken is not None:
+            self.log.anomaly(f"The World broke:\n{reason}")
+        elif runtime.status in (EpisodeStatus.FAILED, EpisodeStatus.INTERRUPTED):
+            events = runtime.result()["events"]
+            self.log.anomaly(f"runtime {runtime.status.value}: {events[-1]['detail'] if events else ''}")
+        self.log.phase("evaluation")
         self._during = None
         self._evaluate_ticks = None
         audit.close()
@@ -512,6 +559,8 @@ class World:
             if broken is None and runtime.status != EpisodeStatus.FAILED and ended_by != "setup_error"
             else {"outcome": "not_evaluated", "reason": f"the episode ended with {ended_by}"}
         )
+        spans = [asdict(span) for span in self.control.timeline.spans]
+        self.log.commands(spans)
         self.report = report.compose(
             schemas=dict(spec=SCHEMA, report=report.REPORT_SCHEMA),
             status=report.status(ended_by, runtime_failed=runtime.status == EpisodeStatus.FAILED),
@@ -541,8 +590,10 @@ class World:
             ),
             narration=self.control.narration.log,
             runtime=self.control.runtime.result(),
+            run_id=self.log.run_id,
+            recording=self.log.close(),
         )
-        self.recorder.write(self.report, commands=[asdict(span) for span in self.control.timeline.spans])
+        self.recorder.write(self.report, commands=spans)
         if broken is not None:
             raise broken
         return self.report
@@ -611,7 +662,9 @@ class World:
     def _tick(self) -> None:
         """One physics tick with everything the World owns."""
         control, runtime = self.control, self.control.runtime
+        started = time.perf_counter()
         control.step()
+        self.log.at(runtime.tick, runtime.time_seconds)
         if self.planner is not None:
             self.planner.poll()
             if self.planner.failure is not None and runtime.status == EpisodeStatus.RUNNING:
@@ -626,9 +679,14 @@ class World:
             closed = control.manipulation is not None and control.manipulation.gripper_closed
             contacts = self.scene_def.contacts(self.settings["contact_record_n"])
             self.recorder.contacts_tick(runtime.time_seconds, contacts, step, gripper_closed=closed)
+            for link, body, force in contacts:
+                if (link, body) not in self._logged_contacts:
+                    self._logged_contacts.add((link, body))
+                    self.log.contact(link, body, force, step)
         fallen = self.robot.fallen_height
         if fallen is not None and float(self.base.pose()[2]) < fallen:
             runtime.emergency_stop("The robot fell")
+            self.log.anomaly("The robot fell")
         if self._evaluate_ticks is not None and runtime.tick % self._evaluate_ticks == 0:
             self.task.update(self.truth())
         if self._during is not None:
@@ -647,6 +705,7 @@ class World:
                 duration=live_axis(now),
             )
             aim_camera(THIRD_PERSON_PATH, *self._chase.aim(self.base.pose().cpu().numpy()))  # The next frame's.
+        self.log.tick_done(time.perf_counter() - started)
 
     def _live_trace(self, now: float) -> dict:
         """The recording's trace so far (recording.trace), composed again every LIVE_TRACE_SECONDS."""
@@ -664,31 +723,35 @@ class World:
         return self._trace
 
     def _log_state(self) -> None:
-        """One state log sample (recording.state_log): the robot, the scene's bodies, whether the
-        gripper holds something, the base's commanded velocity; Nav2's route and global costmap when
-        they changed, and the arm planner's latest plan display. Arrays only, nothing rendered."""
-        control, runtime, data = self.control, self.control.runtime, self._robot_asset.data
+        """One state sample, to the state log (recording.state_log) and the recording
+        (recording.log): the robot, the scene's bodies, whether the gripper holds something, the
+        base's commanded velocity; Nav2's route and global costmap when they changed, and the arm
+        planner's latest plan display. Arrays only, nothing rendered."""
+        control, runtime, data, log = self.control, self.control.runtime, self._robot_asset.data, self.log
         state, now = self.recorder.state, runtime.time_seconds
         controller = getattr(control.locomotion, "controller", None)
-        state.sample(
-            now,
-            data.root_link_pose_w.torch[0].cpu().numpy(),
-            data.joint_pos.torch[0].cpu().numpy(),
-            self._bodies.poses().cpu().numpy(),
-            holding=control.manipulation is not None and control.manipulation.holding,
-            command=getattr(controller, "applied_command", None),
-        )
+        root, joints = data.root_link_pose_w.torch[0].cpu().numpy(), data.joint_pos.torch[0].cpu().numpy()
+        bodies = self._bodies.poses().cpu().numpy()
+        holding = control.manipulation is not None and control.manipulation.holding
+        command = getattr(controller, "applied_command", None)
+        state.sample(now, root, joints, bodies, holding=holding, command=command)
+        log.at(runtime.tick, now)
+        log.robot_state(root, joints, holding=holding, command=command)
+        log.body_poses(bodies)
         backend = getattr(control.navigation, "backend", None)
         if hasattr(backend, "route"):
             route = backend.route()
             goal, points = (None, ()) if route is None else ((route[0].x, route[0].y, route[0].heading), route[1])
             state.route(now, goal, points)
+            log.route(goal, points)
         if hasattr(backend, "costmap") and state.wants_costmap(now):
             costmap = backend.costmap()  # Nav2's newest published one, already received.
             if costmap is not None:
                 state.costmap(now, *costmap)
+                log.costmap(*costmap)
         if self.planner is not None and self.planner.last_view is not None:
             state.plan(now, self.planner.last_view)
+            log.plan(self.planner.last_view)
 
     def _view_idle(self) -> None:
         """Keep the viewer updated, once per camera period of wall time, while time stands still."""
@@ -726,6 +789,7 @@ class World:
         if self.planner is not None:
             self.planner.close()
         self.recorder.close()
+        self.log.close()
         self.control.close()
         if self._nav2 is not None:
             self._nav2.close()

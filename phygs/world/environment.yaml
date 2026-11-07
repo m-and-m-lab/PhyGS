@@ -30,6 +30,9 @@ start_check:
 contact_read_ticks: 5
 light: {intensity: 2500.0, color: [0.85, 0.85, 0.85]}  # The dome light.
 record: {width: 800, height: 450}  # Third-person video (--record), from the scene's record view.
+# The episode's recording (phygs.recording.log, episode.rrd): level full or report_only; live: also
+# stream it to a Rerun viewer you started at this address (rerun+http://127.0.0.1:9876/proxy), or null.
+recording: {level: full, live: null}
 # The navigation map over every episode's scene: its bounds are the scene USD's colliders in the
 # height band [m] (floors and ceilings are out) and the robot's start, grown by margin [m]; cell
 # size and the known-box map's clearance [m]. Arm contact is recorded against the bodies in it.
