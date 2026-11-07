@@ -140,7 +140,12 @@ def simulation_cfg(dt: float, **kwargs) -> sim_utils.SimulationCfg:
     PhysX applies gravity in every TGS position iteration: applied once per step, a step's gravity
     stayed in the reported velocities of Spot standing on PhysX leg drives (0.04 rad/s at arm
     joints and 0.01 rad/s body pitch while still; 2026-10-22).
+
+    Explicit actuators run on Isaac Lab's own actuator path (``use_newton_actuators=False``, the
+    default before Isaac Lab main): the native path translates only Isaac Lab's actuator classes, and
+    robots bring their own (Spot's fused legs).
     """
     from isaaclab_physx.physics import PhysxCfg
 
+    kwargs.setdefault("use_newton_actuators", False)
     return sim_utils.SimulationCfg(dt=dt, physics=PhysxCfg(enable_external_forces_every_iteration=True), **kwargs)

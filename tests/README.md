@@ -7,7 +7,7 @@ Two kinds of tests: pure Python unit tests (`tests/test_*.py`, no Isaac Sim) and
 ## Unit tests
 
 ```bash
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest scripts/PhyGS/tests -q \
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest scripts/PhyGS/tests -q \
   --ignore=scripts/PhyGS/phygs_robot_tests -p no:cacheprovider
 ```
 
@@ -82,10 +82,10 @@ them. Component tests show the cameras the control observes, and the planner whe
 ```bash
 # The ladder up to a rung (ROS 2 Jazzy and explore_lite sourced for rungs 6, 7, 11-15). --record adds
 # the videos; open <folder>/index.html for the results and every video.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
+isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
 
 # One test.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_house_drawer.yaml \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_retrieve_house
 ```
@@ -114,7 +114,7 @@ One entry point runs an episode spec with an agent ([docs/world.md](../docs/worl
 running while the agent thinks.
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
+isaaclab -p scripts/PhyGS/examples/run_world.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml --agent template \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
 ```
@@ -138,13 +138,13 @@ command's raw inputs and feedback (also from a click on the log or timeline). Th
 gets `telemetry.jsonl` (5 Hz of sim time).
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/ui/cli.py \
+isaaclab -p scripts/PhyGS/phygs/ui/cli.py \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
 # Open the printed http://127.0.0.1:8765/?token=... in a browser on this machine.
 # Remote machine: ssh -L 8765:127.0.0.1:8765 <host>, then open the same URL locally.
 
 # Replay an episode in the browser (no Isaac Sim):
-./isaaclab.sh -p scripts/PhyGS/phygs/ui/replay_cli.py \
+isaaclab -p scripts/PhyGS/phygs/ui/replay_cli.py \
   scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_ui_grid
 ```
 

@@ -12,7 +12,7 @@ The test side checks that the box reached Nav2's costmap, the route was replanne
 never touched the box, the walk ended blocked or at the goal with the robot stopped, and that the box
 put in view was marked and, once taken away, cleared. Thresholds: ``configs/dynamic_obstacle.yaml``.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
 """
 

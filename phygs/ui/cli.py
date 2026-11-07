@@ -21,7 +21,7 @@ plays back. ``phygs/ui/configs/house_drawer.yaml`` runs the Bear house. The epis
 budget or E-stop. ``--demo tour`` starts at once, drives a short fixed route through the public
 locomotion API and then navigates back with Nav2, so there is something to watch.
 
-    ./isaaclab.sh -p scripts/PhyGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \\
+    isaaclab -p scripts/PhyGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \\
       --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
 """
 

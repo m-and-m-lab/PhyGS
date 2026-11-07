@@ -5,8 +5,8 @@
 
 """Fetch and verify ForageBench scene releases into the local scene cache (``phygs.scene.fetch``).
 
-    ./isaaclab.sh -p -m phygs.scene.fetch list
-    ./isaaclab.sh -p -m phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.0.0
+    isaaclab -p -m phygs.scene.fetch list
+    isaaclab -p -m phygs.scene.fetch fetch --scene_id bear_loop_house --scene_version 1.0.0
 
 Releases land under ``~/.cache/phygs/scenes`` (or ``--cache_dir``), with a ``<scene_id>.json`` record
 the scene registry (:mod:`phygs.scene.registry`) reads, so a spec says ``scene: {id: bear_loop_house}``.

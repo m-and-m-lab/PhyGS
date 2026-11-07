@@ -285,9 +285,9 @@ def test_fabric_pose_writes_only_in_the_step_before_each_capture():
     # The camera, a child of the robot body, follows the body's write one step late.
     assert [tick for tick, on in enumerate(written, 1) if on] == [7, 8, 15, 16, 23, 24, 31, 32]
     assert not FabricTransformWrites.applies(SimpleNamespace(has_gui=False), cameras=False)
-    viewer = SimpleNamespace(has_gui=True, has_active_visualizers=lambda: False)
+    viewer = SimpleNamespace(has_gui=True, cfg=SimpleNamespace(visualizer_cfgs=[]))
     assert not FabricTransformWrites.applies(viewer, cameras=True)
-    visualizer = SimpleNamespace(has_gui=False, has_active_visualizers=lambda: True)
+    visualizer = SimpleNamespace(has_gui=False, cfg=SimpleNamespace(visualizer_cfgs=[object()]))
     assert not FabricTransformWrites.applies(visualizer, cameras=True)
-    headless = SimpleNamespace(has_gui=False, has_active_visualizers=lambda: False)
+    headless = SimpleNamespace(has_gui=False, cfg=SimpleNamespace(visualizer_cfgs=[]))
     assert FabricTransformWrites.applies(headless, cameras=True)

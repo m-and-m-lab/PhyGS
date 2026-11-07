@@ -19,10 +19,10 @@ From the repository root, with ROS Jazzy sourced (MoveIt only):
 ```bash
 source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=47
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_arm_planning_moveit
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place_moveit
 ```
@@ -67,12 +67,12 @@ cuRobo V2 goes in its own folder, which `planner.curobo_dependencies` in
 ```bash
 git clone https://github.com/NVlabs/curobo.git /tmp/curobo
 git -C /tmp/curobo checkout 78fd485fa82d9b9a063fb4985e371814587e666a
-./isaaclab.sh -p -m pip install --target /opt/curobo_deps --no-deps \
+isaaclab -p -m pip install --target /opt/curobo_deps --no-deps \
   /tmp/curobo yourdfpy==0.0.60 numpy-quaternion==2024.0.13 \
   setuptools_scm==10.3.4 'cuda-core[cu12]==1.2.1'
 ```
 
-This reuses the simulator's existing Torch 2.10/CUDA 12.8 and Warp 1.13. A missing
+This reuses the simulator's existing Torch 2.11 (CUDA 13.0) and Warp 1.17. A missing
 folder stops the run with an error; there is no fallback.
 
 ## Where the code lives
@@ -448,7 +448,7 @@ recent failures. The shared validator keeps its `require_observed` option.
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-ROS_DOMAIN_ID=47 ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
+ROS_DOMAIN_ID=47 isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach_depth.yaml --planner moveit --record \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_depth_reach
 ```

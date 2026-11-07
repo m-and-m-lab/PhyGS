@@ -9,7 +9,7 @@ locomotion-only spec (``motion_grid``: a body velocity). Each run is its own pro
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code
 and ``report.json`` (and the video with ``--record``).
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_entry_point.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_entry_point.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_entry_point
 """
 
@@ -46,11 +46,12 @@ REPORT_KEYS = (
 )
 
 
-def run(spec: str, output: Path, record: bool) -> tuple[int, dict]:
+def run(spec: str, output: Path, record: bool, kit_args: str | None = None) -> tuple[int, dict]:
     """One episode through the public entry point; its exit code and report (empty if none)."""
     command = [sys.executable, str(PROJECT / "examples" / "run_world.py"), "--spec", str(SPECS / f"{spec}.yaml")]
     command += ["--agent", "template", "--task_loader", "phygs_robot_tests.tasks:load_task"]
     command += ["--output", str(output), *(["--record"] if record else [])]
+    command += [f"--kit_args={kit_args}"] if kit_args else []
     with (output.parent / f"{spec}.log").open("w") as log:
         code = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=1800).returncode
     path = output / "report.json"
@@ -61,7 +62,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", type=Path, required=True, help="Fresh folder for check.json and the runs")
     parser.add_argument("--record", action="store_true", help="Each run's video (third_person.mp4)")
-    args, _ = parser.parse_known_args()  # The suite's app flags have no use here: no simulator in this process.
+    parser.add_argument("--kit_args", default=None, help="Kit arguments for each run (one string)")
+    args, _ = parser.parse_known_args()  # The suite's other app flags have no use here: no simulator in this process.
     if (args.output / "check.json").exists():
         raise SystemExit(f"{args.output} holds a finished check; choose a fresh output folder")
     args.output.mkdir(parents=True, exist_ok=True)
@@ -73,7 +75,7 @@ def main() -> int:
 
     try:
         for spec, (levels, clients) in RUNS.items():
-            code, report = run(spec, args.output / spec, args.record)
+            code, report = run(spec, args.output / spec, args.record, args.kit_args)
             measure(f"{spec}_exit", code, code == 0)
             missing = [key for key in REPORT_KEYS if key not in report]
             measure(f"{spec}_report", missing or "complete", not missing)

@@ -1,0 +1,80 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# PhyGS's container: Isaac Lab's base image plus ROS 2 (Dockerfile.phygs), as the profile `ros2` of
+# Isaac Lab's own container script (Isaac Lab main has no ros2 profile). The script builds Isaac Lab's
+# base image first, names the container isaac-lab-ros2-<suffix>, and asks once whether to forward X11
+# (windows on your screen; the answer is kept in docker/.container.cfg). From IsaacLab/docker:
+#   cp ../scripts/PhyGS/docker/env.ros2 .env.ros2          # once; the script reads .env.<profile>
+#   ./container.py start ros2 --suffix <name> --files ../scripts/PhyGS/docker/docker-compose.phygs.yaml [your.yaml]
+#   ./container.py enter ros2 --suffix <name>
+# Relative paths are relative to IsaacLab/docker (the first compose file). Your own mounts go in your
+# own file after this one (docker/README.md).
+#
+# The project name carries the suffix. Without it every Isaac Lab container is in the project `docker`,
+# and the script's `up --remove-orphans` would recreate or remove another suffix's container of the same
+# service. Named volumes are therefore this project's own (phygs-<suffix>_...).
+name: phygs${DOCKER_NAME_SUFFIX-}
+services:
+  isaac-lab-ros2:
+    init: true
+    profiles: ["ros2"]
+    env_file: .env.base
+    build:
+      context: ../
+      dockerfile: scripts/PhyGS/docker/Dockerfile.phygs
+      args:
+        - DOCKER_NAME_SUFFIX=${DOCKER_NAME_SUFFIX-}
+        - ROS2_APT_PACKAGE=${ROS2_APT_PACKAGE:-ros-base}
+    image: isaac-lab-ros2${DOCKER_NAME_SUFFIX-}
+    container_name: isaac-lab-ros2${DOCKER_NAME_SUFFIX-}
+    network_mode: host
+    shm_size: 8gb                    # Nav2 and the planner workers; Docker's 64 MB default crashes them.
+    stdin_open: true
+    tty: true
+    environment:
+      - ISAACSIM_PATH=${DOCKER_ISAACLAB_PATH}/_isaac_sim
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}   # From .env.ros2: one per person or container (host network).
+      # X11 as Isaac Lab's docker/x11.yaml does for its own profiles; the xauth file exists only when
+      # you answered yes to the script's question.
+      - DISPLAY
+      - TERM
+      - QT_X11_NO_MITSHM=1
+      - XAUTHORITY=${__ISAACLAB_TMP_XAUTH:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      # Isaac Lab's default volumes (docker-compose.yaml, x-default-isaac-lab-volumes).
+      - {type: volume, source: isaac-cache-kit, target: "${DOCKER_ISAACSIM_ROOT_PATH:-/isaac-sim}/kit/cache"}
+      - {type: volume, source: isaac-data-kit, target: "${DOCKER_ISAACSIM_ROOT_PATH:-/isaac-sim}/kit/data"}
+      - {type: volume, source: isaac-cache-ov, target: "${DOCKER_USER_HOME}/.cache/ov"}
+      - {type: volume, source: isaac-cache-pip, target: "${DOCKER_USER_HOME}/.cache/pip"}
+      - {type: volume, source: isaac-cache-gl, target: "${DOCKER_USER_HOME}/.cache/nvidia/GLCache"}
+      - {type: volume, source: isaac-cache-compute, target: "${DOCKER_USER_HOME}/.nv/ComputeCache"}
+      - {type: volume, source: isaac-logs, target: "${DOCKER_USER_HOME}/.nvidia-omniverse/logs"}
+      - {type: volume, source: isaac-carb-logs, target: "${DOCKER_ISAACSIM_ROOT_PATH:-/isaac-sim}/kit/logs/Kit/Isaac-Sim"}
+      - {type: volume, source: isaac-data, target: "${DOCKER_USER_HOME}/.local/share/ov/data"}
+      - {type: volume, source: isaac-docs, target: "${DOCKER_USER_HOME}/Documents"}
+      - {type: bind, source: ../source, target: "${DOCKER_ISAACLAB_PATH}/source"}
+      - {type: bind, source: ../scripts, target: "${DOCKER_ISAACLAB_PATH}/scripts"}
+      - {type: bind, source: ../apps, target: "${DOCKER_ISAACLAB_PATH}/apps"}
+      - {type: volume, source: isaac-cache-uv, target: "${DOCKER_USER_HOME}/.cache/uv"}
+      - {type: volume, source: isaac-cache-warp, target: "${DOCKER_USER_HOME}/.cache/warp"}
+      - {type: bind, source: ../docs, target: "${DOCKER_ISAACLAB_PATH}/docs"}
+      - {type: bind, source: ../tools, target: "${DOCKER_ISAACLAB_PATH}/tools"}
+      - {type: volume, source: isaac-lab-docs, target: "${DOCKER_ISAACLAB_PATH}/docs/_build"}
+      - {type: volume, source: isaac-lab-logs, target: "${DOCKER_ISAACLAB_PATH}/logs"}
+      - {type: volume, source: isaac-lab-data, target: "${DOCKER_ISAACLAB_PATH}/data_storage"}
+      - {type: bind, source: .isaac-lab-docker-history, target: "${DOCKER_USER_HOME}/.bash_history"}
+      # X11 (Isaac Lab's docker/x11.yaml). Without forwarding the xauth folder falls back to an unused
+      # path, so the mount list stays valid.
+      - {type: bind, source: /tmp/.X11-unix, target: /tmp/.X11-unix}
+      - {type: bind, source: "${__ISAACLAB_TMP_DIR:-/tmp/.X11-unix}", target: "${__ISAACLAB_TMP_DIR:-/run/phygs/no-x11}"}
+      - {type: bind, source: /etc/localtime, target: /etc/localtime, read_only: true}

@@ -101,7 +101,7 @@ class ArmKinematics:
         forearm and wrist rolled by half a turn, whose wrist roll then meets its limit).
         """
         position = np.asarray(pose_xyzw[:3], dtype=float)
-        rotation = Rotation.from_quat(pose_xyzw[3:]).as_matrix()
+        rotation = Rotation.from_quat(np.array(pose_xyzw[3:], dtype=float)).as_matrix()
 
         def residual(joints: np.ndarray) -> np.ndarray:
             tip = self.forward(joints)

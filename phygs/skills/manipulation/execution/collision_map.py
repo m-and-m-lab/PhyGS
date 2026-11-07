@@ -14,7 +14,7 @@ def boxes_in_body(boxes: list[dict], world_from_body: np.ndarray) -> list[dict]:
     result = []
     for box in boxes:
         pose = np.eye(4)
-        pose[:3, :3] = Rotation.from_quat(box["pose"][3:]).as_matrix()
+        pose[:3, :3] = Rotation.from_quat(np.array(box["pose"][3:], dtype=float)).as_matrix()
         pose[:3, 3] = box["pose"][:3]
         pose = inverse @ pose
         result.append(

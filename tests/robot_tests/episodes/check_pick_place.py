@@ -14,7 +14,7 @@ The plan is the framework's composite pick and place (``phygs.skills.composite``
 a scripted manipulation agent. The test side checks the grasp, the lift, that neither the arm nor the held
 object touched the furniture, where the object rests and the stow. Thresholds: ``configs/pick_place.yaml``.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place
 """
@@ -189,8 +189,7 @@ def main() -> None:
                 target, lift_m=held_thresholds["held_lift_m"], reach_m=held_thresholds["held_reach_m"]
             )
             check.measure("released", not held, not held, "still in the hand")
-            error = truth.stow_error_rad()
-            check.measure("stow_error_rad", round(error, 4), error <= SETTINGS["stow_tolerance_rad"], "not stowed")
+            check.measure("stow_error_rad", round(truth.stow_error_rad(), 4), truth.stowed(), "not stowed")
             touched = episode.unintended_contacts(report, allowed=(target,))
             check.measure("arm_contacts", len(touched), not touched, f"first {touched[:1]}")
 

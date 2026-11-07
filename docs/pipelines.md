@@ -180,17 +180,17 @@ existing manual inspection modes. There are no duplicate scripts or YAML files.
 
 ```bash
 # Observations and direct-motion interface, without supplied localization or mapping.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
   --preset observations --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_observations
 
 # Observations with ground-truth localization, without a mapper/navigation stack.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
   --preset localized --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_localized
 
 # Runtime-managed navigation on Nav2's camera costmap, driven through the agent session.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_nav2
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pipeline_nav2
 
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest \
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest \
   scripts/PhyGS/tests/test_pipeline.py -q
 ```
 

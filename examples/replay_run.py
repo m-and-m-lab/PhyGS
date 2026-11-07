@@ -5,8 +5,8 @@
 
 """Render a finished run again from its state log: the run itself renders nothing it does not need.
 
-    ./isaaclab.sh -p scripts/PhyGS/examples/replay_run.py \
-        scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_grid_table --headless
+    isaaclab -p scripts/PhyGS/examples/replay_run.py \
+        scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_grid_table
 
 Writes into ``<run>/replay`` (or ``--output``):
 

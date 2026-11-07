@@ -7,7 +7,7 @@
 explicit), and contact with a barrier. ``--manual`` drives Spot from the keyboard while the arm
 changes pose from a library.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_locomotion
 """
 

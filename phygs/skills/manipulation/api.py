@@ -98,7 +98,12 @@ class MotionFeedback(CommandFeedback):
 class SkillFeedback(MotionFeedback):
     """Skill outcome from robot-sensed signals; not evidence of task success.
 
-    ``reason`` is one sentence for the agent; ``failure`` is the actionable code.
+    ``reason`` is one sentence for the agent; ``failure`` is the actionable code. The lags cover the
+    arm moves the skill made: ``max_joint_lag`` [rad] each arm joint's largest over its joint moves
+    and trajectories (not its gripper commands, which do not check the arm), ``max_trajectory_lag``
+    [rad] over its trajectories alone (planned moves and straight lines, the moves
+    ``trajectory_tracking_tolerance`` checks), ``max_tool_lag`` [m] the wrist's over its trajectories
+    (None without kinematics or trajectories).
     """
 
     skill: str = ""
@@ -106,6 +111,16 @@ class SkillFeedback(MotionFeedback):
     attempts: int = 0
     holding: bool = False
     step: str = ""  # What the skill does now (or did last), e.g. "look_at: moving to the view".
+    max_trajectory_lag: dict[str, float] = field(default_factory=dict)
+
+
+def _largest_lag(feedbacks) -> dict[str, float]:
+    """Each joint's largest ``max_joint_lag`` [rad] over the finished commands ``feedbacks``."""
+    largest: dict[str, float] = {}
+    for feedback in feedbacks:
+        for joint, lag in feedback.max_joint_lag.items():
+            largest[joint] = max(lag, largest.get(joint, 0.0))
+    return largest
 
 
 @dataclass
@@ -144,6 +159,7 @@ class ManipulationClient(CommandClient):
         self._gripper_joints, self._gripper_joint = robot.gripper.joints, robot.gripper.primary
         self._open_angle, self._closed_angle = robot.gripper.open, robot.gripper.closed
         self._outcomes: dict[int, MotionFeedback] = {}
+        self._moves: dict[int, str] = {}  # Finished command -> "trajectory", "joints" or "gripper".
         self._skills: DirectSkills | None = None
         self._skill: _ActiveSkill | None = None
         self._kinematics: ArmKinematics | None = None
@@ -306,6 +322,9 @@ class ManipulationClient(CommandClient):
         failure = skill.run.failure
         status = "succeeded" if failure is None else "cancelled" if failure == SkillFailure.CANCELLED else "failed"
         measured = self._controller.reader.positions()
+        moves = [(self._moves[c], self._outcomes[c]) for c in skill.run.commands if c in self._moves]
+        trajectories = [f for kind, f in moves if kind == "trajectory"]
+        tool = [f.max_tool_lag for f in trajectories if f.max_tool_lag is not None]
         self._outcomes[skill.command_id] = SkillFeedback(
             skill.command_id,
             skill.episode_id,
@@ -321,6 +340,9 @@ class ManipulationClient(CommandClient):
             attempts=self._skills.attempts,
             holding=self.holding,
             step=self._skills.step,
+            max_joint_lag=_largest_lag(f for kind, f in moves if kind != "gripper"),
+            max_tool_lag=max(tool) if tool else None,
+            max_trajectory_lag=_largest_lag(trajectories),
         )
 
     def move_joints(self, positions: dict[str, float], *, duration: float = 3.0) -> int:
@@ -395,7 +417,7 @@ class ManipulationClient(CommandClient):
             raise ValueError("Pose quaternion must be normalized.")
         wrist_from_tool = self._tool(tool)
         world_from_tool = np.eye(4)
-        world_from_tool[:3, :3] = Rotation.from_quat(pose_xyzw[3:]).as_matrix()
+        world_from_tool[:3, :3] = Rotation.from_quat(np.array(pose_xyzw[3:], dtype=float)).as_matrix()
         world_from_tool[:3, 3] = pose_xyzw[:3]
         wrist = world_from_tool @ np.linalg.inv(wrist_from_tool)
         return (*wrist[:3, 3].tolist(), *Rotation.from_matrix(wrist[:3, :3]).as_quat().tolist())
@@ -545,6 +567,9 @@ class ManipulationClient(CommandClient):
         controller.start(dict(zip(trajectory.names, trajectory.positions[-1], strict=True)), duration)
         controller.trajectory = trajectory
         controller.mode = "trajectory"
+        # Tracked against its own samples from the first tick: the plan starts where the arm is, which
+        # a held load keeps a few hundredths of a radian off the held targets start() begins from.
+        controller.reference.update(trajectory.sample(0.0))
         controller.time_scale = time_scale
         if end_check and self._kinematics is not None:
             controller.end_error = self._wrist_distance(controller.target)
@@ -649,6 +674,14 @@ class ManipulationClient(CommandClient):
                 max_tool_lag=controller.max_tool_lag if controller.tool_lag is not None else None,
             )
             self._records[self._current] = self._outcomes[self._current]
+            commanded = controller.commanded
+            self._moves[self._current] = (
+                "trajectory"
+                if controller.trajectory is not None
+                else "gripper"
+                if commanded and commanded <= set(self._gripper_joints)
+                else "joints"
+            )
             self._runtime.release(self._name)
 
     def _end_episode(self) -> None:

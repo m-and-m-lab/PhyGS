@@ -48,8 +48,6 @@ if TYPE_CHECKING:
 
 LOG = logging.getLogger("phygs.skills.manipulation")
 
-# Within this [rad] (every arm joint) of the stow posture, the arm counts as stowed.
-STOW_TOLERANCE_RAD = 0.2
 # Refused before the arm moved (or stopped as the scene changed): another view, or a lifted hand, may work.
 REFUSED = frozenset(
     {
@@ -226,7 +224,7 @@ class DirectSkills:
 
     def _stowed(self) -> bool:
         joints = zip(self._arm_joints(), self._config.stow_posture, strict=True)
-        return max(abs(measured - stowed) for measured, stowed in joints) <= STOW_TOLERANCE_RAD
+        return max(abs(measured - stowed) for measured, stowed in joints) <= self._config.stow_tolerance
 
     def _go_to_view(self, pose: list[float], joints: list[float]) -> SkillSequence:
         """Move straight to the view's IK joints [rad]."""
@@ -268,7 +266,7 @@ class DirectSkills:
     def _ik(self, pose: list[float], seed: list[float], body: np.ndarray) -> list[float] | None:
         """Arm joints [rad] for a world wrist pose [m, xyzw], from the injected IK (joint limits only)."""
         world = np.eye(4)
-        world[:3, :3] = Rotation.from_quat(pose[3:]).as_matrix()
+        world[:3, :3] = Rotation.from_quat(np.array(pose[3:], dtype=float)).as_matrix()
         world[:3, 3] = pose[:3]
         local = np.linalg.inv(body) @ world
         return self._solve_ik(

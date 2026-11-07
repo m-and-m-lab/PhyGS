@@ -3,29 +3,20 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-# PhyGS's container: Isaac Lab's base image (Isaac Sim 6.0.1, Isaac Lab 3.0.0, Ubuntu 24.04, Python 3.12)
-# plus what the framework runs on: ROS 2 Jazzy with Nav2 (navigation), explore_lite (exploration),
-# MoveIt (the optional arm planner), cuRobo V2 (the default arm planner) and PhyGS itself.
-# It replaces Isaac Lab's ros2 image through docker-compose.phygs.patch.yaml; docker/README.md has
-# the commands.
-
+# PhyGS's image: Isaac Lab's base image (Isaac Lab main: Isaac Sim 6.2.0, Ubuntu 24.04, Python 3.12)
+# plus what the framework and its tools use. Isaac Lab main has no ROS 2 image, so ROS 2 is added
+# here. The projects are not copied in: scripts/ is mounted at run time and phygs_entry.sh installs
+# them (editable) at the first start (docker/README.md).
 ARG DOCKER_NAME_SUFFIX=""
-
 FROM isaac-lab-base${DOCKER_NAME_SUFFIX} AS phygs
-
-# The ROS 2 apt metapackage (ros-base from Isaac Lab's .env.ros2).
 ARG ROS2_APT_PACKAGE=ros-base
-# Pinned versions: the ones the robot tests pass on (docs/nav2.md, docs/manipulation_planners.md).
 ARG EXPLORE_LITE_COMMIT=326cf8a0b487c34246bb8f3326afbcd69576dc60
 ARG CUROBO_COMMIT=78fd485fa82d9b9a063fb4985e371814587e666a
-# Where cuRobo V2 is installed, beside the simulator's own Torch and Warp (world/environment.yaml
-# planner.curobo_dependencies names it).
 ARG CUROBO_DEPENDENCIES=/opt/curobo_deps
-
 USER root
 
-# ROS 2 Jazzy with Nav2, as Isaac Lab's Dockerfile.ros2 installs it, plus MoveIt (its Python API and
-# OMPL; the MoveIt worker runs in this system Python) and colcon for the explore_lite overlay.
+# ROS 2 Jazzy with Nav2, MoveIt and the RViz tools; the build tools; ffmpeg (videos), tmux; the
+# libraries Playwright's Chromium needs (page screenshots).
 RUN set -eu; \
     . /etc/os-release; \
     test "${VERSION_CODENAME}" = noble; \
@@ -47,40 +38,59 @@ RUN set -eu; \
       ros-jazzy-rmw-fastrtps-cpp \
       ros-jazzy-moveit-py \
       ros-jazzy-moveit-planners-ompl \
+      ros-jazzy-moveit-task-constructor-core \
+      ros-jazzy-moveit-ros-perception \
+      ros-jazzy-pointcloud-to-laserscan \
+      ros-jazzy-rviz2 \
+      ros-jazzy-grid-map-msgs \
+      ros-jazzy-grid-map-rviz-plugin \
       python3-colcon-common-extensions \
-      ros-dev-tools; \
-    "${ISAACLAB_PATH}/isaaclab.sh" -p "${ISAACLAB_PATH}/tools/install_deps.py" rosdep "${ISAACLAB_PATH}/source"; \
+      ros-dev-tools \
+      build-essential cmake wget ffmpeg tmux mesa-utils \
+      libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 libcairo2 libcups2t64 \
+      libdbus-1-3 libdrm2 libgbm1 libglib2.0-0t64 libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 \
+      libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 xvfb \
+      fonts-noto-color-emoji fonts-unifont libfontconfig1 libfreetype6 xfonts-cyrillic xfonts-scalable \
+      fonts-liberation fonts-ipafont-gothic fonts-wqy-zenhei fonts-tlwg-loma-otf fonts-freefont-ttf; \
     rm -f /tmp/ros2-apt-source.deb; \
     rm -rf /var/lib/apt/lists/*
 
-COPY --chown=isaaclab:isaaclab docker/.ros/ ${DOCKER_USER_HOME}/.ros/
-
-# explore_lite (frontier exploration on Nav2's costmap) has no Jazzy apt package: an overlay in
-# /opt/explore_ws. Sourcing its setup.bash sources Jazzy too.
+# explore_lite (navigation.explore) as an overlay at a pinned commit.
 RUN set -eu; \
     git clone https://github.com/robo-friends/m-explore-ros2.git /opt/explore_ws/src/m-explore-ros2; \
     git -C /opt/explore_ws/src/m-explore-ros2 checkout "${EXPLORE_LITE_COMMIT}"; \
-    . /opt/ros/jazzy/setup.sh; \
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; unset VIRTUAL_ENV; \
+    set +u; . /opt/ros/jazzy/setup.sh; set -u; \
     cd /opt/explore_ws; \
     colcon build --packages-select explore_lite_msgs explore_lite \
       --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF; \
     rm -rf /opt/explore_ws/build /opt/explore_ws/log
 
-# cuRobo V2 for the arm planner's worker (a separate Isaac Python process), with its own few
-# dependencies; it reuses the simulator's Torch and Warp, so it goes in its own folder, not site-packages.
+# cuRobo V2 at a pinned commit, beside the simulator's Torch (planner.curobo_dependencies).
 RUN set -eu; \
     git clone https://github.com/NVlabs/curobo.git /tmp/curobo; \
     git -C /tmp/curobo checkout "${CUROBO_COMMIT}"; \
-    "${ISAACLAB_PATH}/isaaclab.sh" -p -m pip install --no-cache-dir --target "${CUROBO_DEPENDENCIES}" --no-deps \
+    isaaclab -p -m pip install --no-cache-dir --target "${CUROBO_DEPENDENCIES}" --no-deps \
       /tmp/curobo yourdfpy==0.0.60 numpy-quaternion==2024.0.13 setuptools_scm==10.3.4 'cuda-core[cu12]==1.2.1'; \
     rm -rf /tmp/curobo
 
-# PhyGS, editable: scripts/ is bind-mounted at the same path at run time, so the install follows the
-# checkout. huggingface_hub fetches scene releases (phygs scenes).
-RUN "${ISAACLAB_PATH}/isaaclab.sh" -p -m pip install --no-cache-dir huggingface_hub==0.36.2 && \
-    "${ISAACLAB_PATH}/isaaclab.sh" -p -m pip install --no-cache-dir --no-deps -e "${ISAACLAB_PATH}/scripts/PhyGS"
+# Python packages in Isaac Sim's Python: scene releases (Hugging Face), the pre-commit hooks, Rerun,
+# imageio's ffmpeg backend (run videos and phygs replay; Isaac Lab main's environment lacks it).
+RUN set -eu; \
+    isaaclab -p -m pip install --no-cache-dir pre-commit==4.6.2 imageio-ffmpeg==0.6.0; \
+    isaaclab -p -c "import rerun" 2> /dev/null \
+      || isaaclab -p -m pip install --no-cache-dir rerun-sdk==0.38.1
 
-# Every shell: ROS 2 Jazzy with explore_lite. ROS_DOMAIN_ID stays per person (docker/README.md).
-RUN echo "source /opt/explore_ws/install/setup.bash" >> "${DOCKER_USER_HOME}/.bashrc"
+# Every interactive shell: ROS 2 and explore_lite. DDS over UDP only (shared memory between processes
+# needs a large /dev/shm and fails across containers on the host network).
+COPY scripts/PhyGS/docker/fastdds_udp.xml /opt/phygs/fastdds_udp.xml
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+    FASTRTPS_DEFAULT_PROFILES_FILE=/opt/phygs/fastdds_udp.xml
+RUN echo '. /opt/ros/jazzy/setup.bash; [ -f /opt/explore_ws/install/setup.bash ] && . /opt/explore_ws/install/setup.bash' \
+      >> /etc/bash.bashrc
 
+COPY scripts/PhyGS/docker/phygs_entry.sh /usr/local/bin/phygs_entry
+RUN chmod +x /usr/local/bin/phygs_entry
 WORKDIR ${ISAACLAB_PATH}
+ENTRYPOINT ["/usr/local/bin/phygs_entry"]
+CMD ["bash"]

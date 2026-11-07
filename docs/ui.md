@@ -4,7 +4,7 @@ A person runs the robot from a browser while the simulation runs headless. The p
 every action is an audited session call within the spec's actions and grants, like any agent's.
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \
+isaaclab -p scripts/PhyGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
 ```
 
@@ -77,7 +77,7 @@ its wall time.
 Replay without Isaac Sim, read-only, on the same page (pause, ×0.5 to ×8, restart):
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs/ui/replay_cli.py <output folder>
+isaaclab -p scripts/PhyGS/phygs/ui/replay_cli.py <output folder>
 ```
 
 ## Protocol

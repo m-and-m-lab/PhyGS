@@ -13,7 +13,7 @@ The test side checks the views, the reached poses, the cancel, the stow and that
 the furniture, plus the planner itself: its robot model matches the physical links, it refuses a
 start inside an obstacle, and every camera frame arrived. Thresholds: ``configs/arm_planning.yaml``.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach_depth.yaml \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_arm_planning_depth
 """
@@ -191,8 +191,8 @@ def main() -> None:
             check.measure(
                 "cancel_speed_radps", round(cancel["speed_radps"], 4), cancel["speed_radps"] <= limits["speed_radps"]
             )
-            error = world.truth().stow_error_rad()
-            check.measure("stow_error_rad", round(error, 4), error <= SETTINGS["stow_tolerance_rad"], "not stowed")
+            truth = world.truth()
+            check.measure("stow_error_rad", round(truth.stow_error_rad(), 4), truth.stowed(), "not stowed")
             walked = float(np.linalg.norm(np.subtract(snaps["walked"]["base_xy"], snaps["walk"]["base_xy"])))
             check.measure("walk_distance_m", round(walked, 3), walked >= SETTINGS["walk"]["minimum_distance_m"])
 

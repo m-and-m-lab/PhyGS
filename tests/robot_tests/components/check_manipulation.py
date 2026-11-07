@@ -7,7 +7,7 @@
 cancel mid-motion and reset. ``--manual`` drives it from the keyboard; ``--record`` saves a
 third-person video. No planner, collision avoidance, object grasping or physical attachment.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_manipulation.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_manipulation.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_manipulation
 """
 

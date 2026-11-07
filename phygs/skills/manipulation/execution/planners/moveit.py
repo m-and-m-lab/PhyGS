@@ -266,7 +266,7 @@ class Planner:
         points = (rays * depth[rows, cols]).T
         stamp = self.node.get_clock().now().to_msg()
         camera = np.eye(4)
-        camera[:3, :3] = Rotation.from_quat(image.pose[3:]).as_matrix()
+        camera[:3, :3] = Rotation.from_quat(np.array(image.pose[3:], dtype=float)).as_matrix()
         camera[:3, 3] = image.pose[:3]
         base = self.config["base_link"]
         frames = [transform(stamp, base, name, matrix) for name, matrix in links.items()]

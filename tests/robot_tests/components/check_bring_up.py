@@ -8,7 +8,7 @@ with the arm stowed, the base drives forward, sideways and turns, then stops, th
 while driving and reaches the pre-stow, the gripper closes and opens, every camera gives depth, and
 localization follows the base link. Robot-neutral: every value comes from the description.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_bring_up.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_bring_up.py \
         --robot ridgeback_franka --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_bring_up
 """
 

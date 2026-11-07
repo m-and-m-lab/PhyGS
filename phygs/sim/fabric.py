@@ -37,7 +37,7 @@ class FabricTransformWrites:
     @staticmethod
     def applies(sim: SimulationContext, cameras: bool) -> bool:
         """Return whether only camera captures render: cameras, no GUI and no visualizer."""
-        return cameras and not sim.has_gui and not sim.has_active_visualizers()
+        return cameras and not sim.has_gui and not sim.cfg.visualizer_cfgs
 
     @property
     def enabled(self) -> bool:

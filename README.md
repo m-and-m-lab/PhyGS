@@ -64,19 +64,19 @@ PhyGS/
 ├── tests/robot_tests/           # The robot tests (importable): 15 rungs, test tasks, fixture scenes, run_suite.py
 ├── tests/                       # Unit tests (no simulator) and the import guards
 ├── examples/                    # run_world.py (one episode spec with an agent); agents/ (template, depth example)
-├── docker/                      # Isaac Lab container patch (cuRobo)
+├── docker/                      # PhyGS image on Isaac Lab main (ROS 2, Nav2, MoveIt, cuRobo)
 └── docs/                        # Topic guides and the docs/README.md index
 ```
 
 ## 🛠️ Installation
 
-PhyGS runs inside the [Isaac Lab](https://github.com/isaac-sim/IsaacLab) Docker container. Validated against Isaac Sim 6.0.1 and Isaac Lab 3.0.0 (Ubuntu 24.04, Python 3.12) on Linux x86_64 with an NVIDIA GPU.
+PhyGS runs inside the [Isaac Lab](https://github.com/isaac-sim/IsaacLab) Docker container. Validated against Isaac Sim 6.2.0 and Isaac Lab main (3.0.0, `isaaclab` 44.0.1; Ubuntu 24.04, Python 3.12) on Linux x86_64 with an NVIDIA GPU.
 
 | Step | Command or guide | When |
 | --- | --- | --- |
 | Clone with submodules | `cd IsaacLab/scripts && git clone --recursive -b develop https://github.com/m-and-m-lab/PhyGS.git` | Always (`--recursive` brings Spot's meshes). |
-| Build and enter the container | From `IsaacLab/docker`: `./container.py start ros2 --files ../scripts/PhyGS/docker/docker-compose.phygs.patch.yaml`, then `./container.py enter ros2` | Always. The image adds ROS 2 Jazzy with Nav2, explore_lite, MoveIt, cuRobo V2 and the editable PhyGS install to Isaac Lab's base image ([docker/README.md](docker/README.md)). |
-| Without the container | Install as `docker/Dockerfile.phygs` does: [docs/nav2.md](docs/nav2.md#ros-2-jazzy-setup) (ROS 2, Nav2, explore_lite), [docs/manipulation_planners.md](docs/manipulation_planners.md#dependencies) (cuRobo, MoveIt), then `./isaaclab.sh -p -m pip install -e scripts/PhyGS --no-deps` | Only outside Docker. |
+| Build and enter the container | From `IsaacLab/docker`: `./container.py start ros2 --suffix <name> --files ../scripts/PhyGS/docker/docker-compose.phygs.yaml`, then `./container.py enter ros2 --suffix <name>` (one-time setup in [docker/README.md](docker/README.md)) | Always. The image adds ROS 2 Jazzy with Nav2, explore_lite, MoveIt and cuRobo V2 to Isaac Lab main's base image; the container installs PhyGS (editable) at its first start ([docker/README.md](docker/README.md)). |
+| Without the container | Install as `docker/Dockerfile.phygs` does: [docs/nav2.md](docs/nav2.md#ros-2-jazzy-setup) (ROS 2, Nav2, explore_lite), [docs/manipulation_planners.md](docs/manipulation_planners.md#dependencies) (cuRobo, MoveIt), then `isaaclab -p -m pip install -e scripts/PhyGS --no-deps` | Only outside Docker. |
 | CPU governor | `sudo cpupower frequency-set -g performance` on the host | Recommended; `powersave` costs about 20% real-time factor. |
 
 In every shell that runs an episode or a navigation test:
@@ -89,25 +89,25 @@ export PHYGS=scripts/PhyGS                  # The checkout, relative to the Isaa
 
 ## 🚀 Quick start
 
-All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container). The first three need no download: the grid storage scene is a fixture in the repository. With the package installed, `phygs <command>` (or `./isaaclab.sh -p -m phygs <command>`) runs the same scripts: `phygs run`, `phygs ui`, `phygs scenes`, `phygs tests`, `phygs version`.
+All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container). The first three need no download: the grid storage scene is a fixture in the repository. With the package installed, `phygs <command>` (or `isaaclab -p -m phygs <command>`) runs the same scripts: `phygs run`, `phygs ui`, `phygs scenes`, `phygs tests`, `phygs version`.
 
 ```bash
 # 1. Run a world with the template agent (it looks around and finishes). The report lands in --output.
-./isaaclab.sh -p $PHYGS/examples/run_world.py \
+isaaclab -p $PHYGS/examples/run_world.py \
   --spec $PHYGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
   --agent template --task_loader phygs_robot_tests.tasks:load_task \
   --output $PHYGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
 
 # 2. Drive the robot yourself: the robot UI in a browser (headless simulator; open the printed URL).
-./isaaclab.sh -p $PHYGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \
+isaaclab -p $PHYGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \
   --output $PHYGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
 
 # 3. The first five robot tests (no ROS needed): spawn and reset, sensors, walking, footprint, arm.
-./isaaclab.sh -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 5
+isaaclab -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 5
 
 # 4. Fetch a released scene (the dataset is private for now; authenticate once with `hf auth login`).
-./isaaclab.sh -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench
-./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
+isaaclab -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench
+isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
 ```
 
 `--task_loader` names the function that turns a spec's task block into a task object (its brief, its privileged target, its evaluation). PhyGS knows no task; the robot tests ship a retrieve task for their own use, and a benchmark ships its own. A spec with `task: {goal: none}` needs no loader.
@@ -170,11 +170,11 @@ Every robot test spawns a scene and has the robot do one thing, measures it agai
 | 15 | The template agent through `examples/run_world.py` | ROS 2, cuRobo |
 
 ```bash
-./isaaclab.sh -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest $PHYGS/tests -q -p no:cacheprovider   # Unit tests, no simulator.
+isaaclab -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest $PHYGS/tests -q -p no:cacheprovider   # Unit tests, no simulator.
 ```
 
-Rungs that use the house need its release fetched once: `./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0`.
+Rungs that use the house need its release fetched once: `isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0`.
 
 ## 📚 Documentation
 

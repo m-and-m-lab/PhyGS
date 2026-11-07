@@ -13,7 +13,7 @@ The test side judges arrival from ground truth (the robot within the goal's tole
 never overlapped a box, and that a velocity command is refused while navigation drives. Nav2 runs
 as the episode harness starts it (``phygs/world/environment.yaml``, ``phygs/skills/navigation/execution/launch/``).
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_course.yaml \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
 """

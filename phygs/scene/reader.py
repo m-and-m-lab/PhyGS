@@ -44,7 +44,7 @@ SUPPORT_GAP_M = 0.03  # An object rests on the body whose top is at most this fa
 def pose_matrix(pose) -> np.ndarray:
     """4x4 transform from a pose [x, y, z, qx, qy, qz, qw] [m]."""
     matrix = np.eye(4)
-    matrix[:3, :3] = Rotation.from_quat(pose[3:]).as_matrix()
+    matrix[:3, :3] = Rotation.from_quat(np.array(pose[3:], dtype=float)).as_matrix()
     matrix[:3, 3] = pose[:3]
     return matrix
 

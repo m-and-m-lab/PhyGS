@@ -17,8 +17,11 @@ Each test writes ``<folder>/<name>/check.json`` and its log ``<folder>/<name>.lo
 ``--record`` the videos). The folder is ``output_check/<YYYYMMDD-HHMM>_<label>``. The last line names
 the first failing rung.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pick_place_known
+    isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
+    isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pick_place_known
+
+``--kit_args`` goes to every test, for example to leave GPU 0 to another run (``phygs/sim/gpu.py``):
+``--kit_args "--/renderer/activeGpu=1 --/physics/cudaDevice=1 --/renderer/multiGpu/enabled=false"``.
 """
 
 from __future__ import annotations
@@ -121,6 +124,7 @@ def main() -> int:
     parser.add_argument("--label", default=None, help="Folder label (default: the groups)")
     parser.add_argument("--timeout", type=float, default=3600.0, help="Per test [s wall]")
     parser.add_argument("--record", action="store_true", help="Each test's video (third_person.mp4)")
+    parser.add_argument("--kit_args", default=None, help="Kit arguments for every test (one string)")
     args = parser.parse_args()
     rungs = {rung for group in args.groups for rung in GROUPS[group] if args.first <= rung <= args.upto}
     tests = [test for test in LADDER if test[0] in rungs and (not args.only or test[1] in args.only)]
@@ -139,6 +143,7 @@ def main() -> int:
             continue
         command = [sys.executable, str(ROOT / script), *map(str, extra), "--output", str(folder / name)]
         command += ["--record"] if args.record else []
+        command += [f"--kit_args={args.kit_args}"] if args.kit_args else []
         started = time.monotonic()
         with (folder / f"{name}.log").open("w") as log:
             try:

@@ -7,7 +7,7 @@
 emergency stop and episode isolation, over several episodes (no walking policy: the legs hold a
 fixed posture).
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_world_lifecycle.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_world_lifecycle.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_world_lifecycle
 """
 

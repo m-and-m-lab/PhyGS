@@ -10,7 +10,7 @@ velocity tracking and stopping. A passed run writes the profile navigation needs
 ``phygs/robots/spot/navigation/transit.json``). ``--robot`` picks the robot (default
 spot); ``--manual`` drives from a window.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
 """
 

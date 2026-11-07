@@ -127,7 +127,11 @@ def create_control(
         robot_description.usd,
         base_controller_class(robot_description).files(robot_description),
     )
-    navigation = NavigationConfig(**config["navigation"], arm_posture=robot_description.arm.transit_posture)
+    navigation = NavigationConfig(
+        **config["navigation"],
+        arm_posture=robot_description.arm.transit_posture,
+        arm_tolerance=robot_description.arm.stow_tolerance,
+    )
     validate_transit(footprint, navigation, dt)
     capture = ObservationConfig(
         **{

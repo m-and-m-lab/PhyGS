@@ -8,7 +8,7 @@ and edit run(). Skills (``navigation``, ``manipulation``) walk to a point and st
 tier adds ``locomotion`` (a body velocity).
 
 Run it with:
-    ./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
+    isaaclab -p scripts/PhyGS/examples/run_world.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
         --agent template --output <folder>
 """

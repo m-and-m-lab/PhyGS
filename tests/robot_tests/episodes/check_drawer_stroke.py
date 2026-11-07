@@ -10,7 +10,7 @@ composite skills' stances, computed from the drawer).
 The opening after the pull is read through the part hint the spec grants (the plan runs on, so
 ground truth cannot be read then); the closed drawer is judged with ground truth.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_drawer_stroke.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_drawer_stroke.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_drawer_stroke
 """
 

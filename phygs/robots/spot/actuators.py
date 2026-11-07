@@ -29,7 +29,7 @@ class SpotLegActuator(IdealPDActuator):
     """Spot's hip and knee actuators in one group, equal to IsaacLab's two groups.
 
     Hips behave as :class:`~isaaclab.actuators.DelayedPDActuator`: delayed position, velocity
-    and effort set-points, PD torque, clipped to :attr:`effort_limit`. Knees behave as
+    and effort set-points, PD torque, clipped to :attr:`actuator_effort_limit`. Knees behave as
     :class:`~isaaclab.actuators.RemotizedPDActuator`: the same delayed PD, clamped to the
     joint-angle-dependent limit of :attr:`SpotLegActuatorCfg.joint_parameter_lookup`. Hips and
     knees draw separate delays at reset, as the two IsaacLab groups do, in the same order.
@@ -58,8 +58,8 @@ class SpotLegActuator(IdealPDActuator):
         self._knee_cols = self._knee.nonzero().flatten()
         # As RemotizedPDActuator: knees have no velocity box; hips keep the joint's value. A copy:
         # without a configured limit, IsaacLab shares this tensor with the simulation limit.
-        self.velocity_limit = self.velocity_limit.clone()
-        self.velocity_limit[:, self._knee_cols] = torch.inf
+        self.actuator_velocity_limit = self.actuator_velocity_limit.clone()
+        self.actuator_velocity_limit[:, self._knee_cols] = torch.inf
         lookup = torch.tensor(cfg.joint_parameter_lookup, device=self._device)
         self._knee_torque_limit = LinearInterpolation(lookup[:, 0], lookup[:, 2], device=self._device)
         self._history = torch.zeros((3, cfg.max_delay + 1, self._num_envs, self.num_joints), device=self._device)
@@ -136,7 +136,7 @@ class SpotLegActuator(IdealPDActuator):
 class SpotLegActuatorCfg(IdealPDActuatorCfg):
     """Configuration of :class:`SpotLegActuator`.
 
-    ``effort_limit`` [N·m] clips the hips; give the knees ``inf``, their limit is the lookup.
+    ``actuator_effort_limit`` [N·m] clips the hips; give the knees ``inf``, their limit is the lookup.
     """
 
     class_type: type = SpotLegActuator
@@ -181,7 +181,17 @@ def spot_actuator_cfgs(groups: str, physics_dt: float) -> dict:
     Newton-native actuators, which translate only IsaacLab's classes.
     """
     min_delay, max_delay = actuator_delay_steps(physics_dt)
-    hips = dict(effort_limit=45.0, stiffness=60.0, damping=1.5, min_delay=min_delay, max_delay=max_delay)
+    # The solver's joint limit stays out of the way, as for every explicit actuator before Isaac Lab main
+    # (Isaac Lab 2.3: 1e9 unless set): the actuator clips, and the stand's PhysX drives are not capped
+    # at the USD's 45 / 115 N·m.
+    hips = dict(
+        actuator_effort_limit=45.0,
+        joint_effort_limit=1.0e9,
+        stiffness=60.0,
+        damping=1.5,
+        min_delay=min_delay,
+        max_delay=max_delay,
+    )
     arm = ["arm_sh0", "arm_sh1", "arm_el0", "arm_el1", "arm_wr0", "arm_wr1"]
     # URDF arm_f1x limit [N·m] bounds the squeeze on a grasped object. PhysX (TGS) leaks the squeeze
     # into the arm (the real squeeze is internal to the hand), holding arm_wr0 off target by about
@@ -190,8 +200,8 @@ def spot_actuator_cfgs(groups: str, physics_dt: float) -> dict:
     # stopping from 1 m/s and did not stop backwards (world lifecycle, footprint checks); the USD's
     # 120 / 20 passes both (2026-10-17, output_check/20261017-1443_stop_fall_crosscheck).
     hold = dict(
-        arm=dict(effort_limit_sim=300.0, stiffness=400.0, damping=60.0),
-        gripper=dict(effort_limit_sim=15.32, stiffness=120.0, damping=20.0),
+        arm=dict(joint_effort_limit=300.0, stiffness=400.0, damping=60.0),
+        gripper=dict(joint_effort_limit=15.32, stiffness=120.0, damping=20.0),
     )
     if groups == "isaaclab":
         return {
@@ -199,7 +209,8 @@ def spot_actuator_cfgs(groups: str, physics_dt: float) -> dict:
             "spot_knee": RemotizedPDActuatorCfg(
                 joint_names_expr=[".*_knee"],
                 joint_parameter_lookup=joint_parameter_lookup,
-                effort_limit=None,
+                actuator_effort_limit=None,
+                joint_effort_limit=hips["joint_effort_limit"],
                 stiffness=hips["stiffness"],
                 damping=hips["damping"],
                 min_delay=hips["min_delay"],
@@ -215,7 +226,8 @@ def spot_actuator_cfgs(groups: str, physics_dt: float) -> dict:
         "spot_legs": SpotLegActuatorCfg(
             joint_names_expr=[".*_hip_[xy]", ".*_knee"],
             # Knees: no box limit, as RemotizedPDActuator; the lookup limits them.
-            effort_limit={".*_hip_[xy]": hips["effort_limit"], ".*_knee": float("inf")},
+            actuator_effort_limit={".*_hip_[xy]": hips["actuator_effort_limit"], ".*_knee": float("inf")},
+            joint_effort_limit=hips["joint_effort_limit"],
             stiffness=hips["stiffness"],
             damping=hips["damping"],
             joint_parameter_lookup=joint_parameter_lookup,

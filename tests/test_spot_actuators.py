@@ -31,10 +31,13 @@ def build(cfgs: dict) -> dict:
     for name, cfg in cfgs.items():
         ids = [i for i, joint in enumerate(JOINTS) if any(re.fullmatch(e, joint) for e in cfg.joint_names_expr)]
         n = len(ids)
+        # As Isaac Lab main's actuator collection: implicit groups take the solver limit, explicit ones
+        # their clip limit (both from the authored joint limit).
+        limit = "joint_effort_limit" if cfg.class_type.is_implicit_model else "actuator_effort_limit"
         out[name] = cfg.class_type(
             cfg, joint_names=[JOINTS[i] for i in ids], joint_ids=torch.tensor(ids, dtype=torch.int32),
             num_envs=ENVS, device="cpu", stiffness=torch.zeros(ENVS, n), damping=torch.zeros(ENVS, n),
-            effort_limit=torch.full((ENVS, n), 1.0e9), velocity_limit=torch.full((ENVS, n), 12.0),
+            actuator_velocity_limit=torch.full((ENVS, n), 12.0), **{limit: torch.full((ENVS, n), 1.0e9)},
         )  # fmt: skip
     return out
 
@@ -57,10 +60,18 @@ def layouts():
 def test_both_layouts_configure_every_joint_alike(layouts):
     lab, fused = layouts
     assert set(fused) == {"spot_legs", "arm_and_gripper"}
-    for attribute in ("stiffness", "damping", "effort_limit", "effort_limit_sim", "velocity_limit",
-                      "velocity_limit_sim", "armature", "friction"):  # fmt: skip
+    for attribute in ("stiffness", "damping", "actuator_effort_limit", "actuator_velocity_limit"):
         assert per_joint(lab, attribute) == per_joint(fused, attribute), attribute
-    assert per_joint(fused, "effort_limit")["fl_knee"] == float("inf")  # Knees: the lookup limits them.
+    assert per_joint(fused, "actuator_effort_limit")["fl_knee"] == float("inf")  # Knees: the lookup limits them.
+    # The articulation's joint properties: configuration values (Isaac Lab main keeps them in the articulation).
+    lab_cfgs, fused_cfgs = spot_actuator_cfgs("isaaclab", 0.004), spot_actuator_cfgs("fused", 0.004)
+    for attribute in ("joint_effort_limit", "joint_velocity_limit", "armature", "friction"):
+        legs = getattr(fused_cfgs["spot_legs"], attribute)
+        assert getattr(lab_cfgs["spot_hip"], attribute) == getattr(lab_cfgs["spot_knee"], attribute) == legs, attribute
+    implicit = {name: group for name, group in lab.items() if name.endswith("_hold")}
+    assert per_joint(implicit, "joint_effort_limit") == per_joint(
+        {"arm": fused["arm_and_gripper"]}, "joint_effort_limit"
+    )
 
 
 def step_inputs(generator: torch.Generator, legs: tuple[str, ...]) -> tuple[torch.Tensor, ...]:

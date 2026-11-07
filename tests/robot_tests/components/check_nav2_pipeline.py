@@ -9,7 +9,7 @@ SLAM, AMCL or BT navigator is started. The simulation's result is ``<output>/sim
 and obstacle avoidance are agent tests (``episodes/check_navigation.py``,
 ``episodes/check_dynamic_obstacle.py``), with Nav2 started by the episode harness.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
 """
 
@@ -38,6 +38,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--ros_domain_id", type=int, default=47, help="ROS domain for Nav2, Spot and optional RViz (default: 47)"
     )
     parser.add_argument("--output", type=Path, required=True, help="Fresh folder for check.json and the logs")
+    parser.add_argument("--kit_args", default=None, help="Kit arguments for the simulation (one string)")
     args = parser.parse_args(argv)
     if not 0 <= args.ros_domain_id <= 101:
         parser.error("--ros_domain_id must be between 0 and 101")
@@ -62,6 +63,8 @@ def commands(args: argparse.Namespace) -> tuple[list[str], list[str]]:
         simulation.extend(("--viz", "kit"))
     if args.record:
         simulation.append("--record")
+    if args.kit_args:
+        simulation.append(f"--kit_args={args.kit_args}")
     return launch, simulation
 
 

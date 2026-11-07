@@ -469,6 +469,6 @@ def private_ros_domain() -> tuple[int, Any]:
 
 def _matrix(pose) -> np.ndarray:
     matrix = np.eye(4)
-    matrix[:3, :3] = Rotation.from_quat(pose[3:7]).as_matrix()
+    matrix[:3, :3] = Rotation.from_quat(np.array(pose[3:7], dtype=float)).as_matrix()
     matrix[:3, 3] = pose[:3]
     return matrix

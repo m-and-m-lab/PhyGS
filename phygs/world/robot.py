@@ -105,9 +105,10 @@ class RobotControl:
         allowed_actions: tuple[str, ...] = ("motion", "navigation"),
     ) -> RobotControl:
         """Bind ``robot`` (its description) to one initialized scene: its base controller and, with
-        ``manipulation``, the arm and gripper controller. The arm and the
-        gripper start (and every reset returns them) at their configured start, ``arm.stow`` and
-        ``initial_joints``: Isaac Lab spawns joints at the USD's own positions."""
+        ``manipulation``, the arm and gripper controller. The robot starts (and every reset returns
+        it) at rest at its spawn pose, every joint at its configured start (``initial_joints``, the
+        arm at its transit posture): Isaac Lab writes neither, so the robot would keep the USD's joint
+        state (Spot: straight legs, feet in the floor) and the motion of ``sim.reset()``'s steps."""
         from phygs.sim.state import IsaacLabWorld
 
         if not allowed_actions or not set(allowed_actions) <= {"motion", "navigation", "manipulation"}:
@@ -139,10 +140,15 @@ class RobotControl:
                 localization=localization_estimator,
             )
         articulation = scene["robot"]
-        start = [articulation.joint_names.index(name) for name in (*robot.arm.joints, *robot.gripper.joints)]
-        articulation.write_joint_position_to_sim_index(
-            position=articulation.data.default_joint_pos.torch[:, start], joint_ids=start
-        )
+        import torch
+
+        data = articulation.data
+        root_pose = data.default_root_pose.torch.clone()
+        root_pose[:, :3] += scene.env_origins
+        articulation.write_root_pose_to_sim_index(root_pose=root_pose)
+        articulation.write_root_velocity_to_sim_index(root_velocity=torch.zeros_like(data.default_root_vel.torch))
+        articulation.write_joint_position_to_sim_index(position=data.default_joint_pos.torch.clone())
+        articulation.write_joint_velocity_to_sim_index(velocity=torch.zeros_like(data.default_joint_vel.torch))
         scene.update(0.0)  # The world below snapshots this state for every reset.
         # A walking policy keeps its trained period at the scene's timestep, or rejects it.
         locomotion = base_controller(robot, articulation, physics_dt=sim.get_physics_dt(), source=mode)
@@ -179,7 +185,9 @@ class RobotControl:
         if factory is not None and navigation_config is None:
             from phygs.skills.navigation.api import NavigationConfig
 
-            navigation_config = NavigationConfig(arm_posture=robot.arm.transit_posture)
+            navigation_config = NavigationConfig(
+                arm_posture=robot.arm.transit_posture, arm_tolerance=robot.arm.stow_tolerance
+            )
         controller = None
         controllers = (locomotion,)
         limits = articulation.data.soft_joint_pos_limits.torch[0].tolist()

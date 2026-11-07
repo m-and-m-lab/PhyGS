@@ -23,7 +23,7 @@ Pick a robot by name or by path. An episode spec names its robot (`robot.model`)
 the same episode, test or UI with another one:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/examples/run_world.py \
+isaaclab -p scripts/PhyGS/examples/run_world.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
   --agent template --robot /path/to/my_robot/robot.yaml \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_my_robot
@@ -54,7 +54,7 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
    the URDF and the USD (joints, links, chain order, limits, camera prims, tool frames).
 
    ```bash
-   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest \
+   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest \
      scripts/PhyGS/tests/test_robot_description.py -q -p no:cacheprovider
    ```
 
@@ -65,17 +65,18 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
    gripper, reads every camera and checks that localization follows the base link.
 
    ```bash
-   ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_bring_up.py \
+   isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_bring_up.py \
      --robot R --record --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_bring_up
    ```
 
 6. **Measure the footprint.** Navigation refuses to start without it. The check drives the robot
    with the arm stowed and writes `transit.json`; copy it into the robot's folder and set
-   `navigation.footprint_profile` to it.
+   `navigation.footprint_profile` to it. `arm.stow_tolerance` (when the arm counts as stowed, for
+   the skills, navigation and the evaluators) must not exceed the drives' `criteria.arm_tolerance`.
 
    ```bash
    OUT=scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
-   ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py \
+   isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py \
      --robot R --record --output $OUT
    ROBOT=scripts/PhyGS/phygs/robots/my_robot
    mkdir -p $ROBOT/navigation && cp $OUT/transit.json $ROBOT/navigation/
@@ -86,7 +87,7 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
    wall and in a closed pen, a cancel. Needs ROS 2 Jazzy sourced (`source /opt/ros/jazzy/setup.bash`).
 
    ```bash
-   ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
+   isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
      --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_course.yaml \
      --robot R --record --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
    ```

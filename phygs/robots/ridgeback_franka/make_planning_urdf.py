@@ -11,7 +11,7 @@ link, so the model matches the simulated robot. The Franka links get the collisi
 get boxes around their USD colliders. Run once after fetching the assets (``fetch.py``), with any
 Python that has ``pxr`` (Isaac Sim's)::
 
-    ./isaaclab.sh -p scripts/PhyGS/phygs/robots/ridgeback_franka/make_planning_urdf.py
+    isaaclab -p scripts/PhyGS/phygs/robots/ridgeback_franka/make_planning_urdf.py
 """
 
 from __future__ import annotations

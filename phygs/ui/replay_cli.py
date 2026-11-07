@@ -8,7 +8,7 @@
 Give the output folder of ``cli.py`` (or its ``recording`` folder). Open the printed URL;
 the page shows what the person saw, read-only, with pause, speed and restart.
 
-    ./isaaclab.sh -p scripts/PhyGS/phygs/ui/replay_cli.py \\
+    isaaclab -p scripts/PhyGS/phygs/ui/replay_cli.py \\
       scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_ui_grid
 """
 

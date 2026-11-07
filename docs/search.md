@@ -33,10 +33,10 @@ From `/workspace/isaaclab`:
 ```bash
 source /opt/explore_ws/install/setup.bash
 # explore() over the unexplored kitchen, then a coverage pass, until the detector sees the cube.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
 
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 ./isaaclab.sh -p -m pytest \
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest \
   scripts/PhyGS/tests/test_object_search.py -q
 ```
 

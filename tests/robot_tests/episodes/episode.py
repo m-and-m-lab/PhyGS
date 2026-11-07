@@ -168,7 +168,7 @@ def wrist_pose(world) -> np.ndarray:
     wrist = robot.body_names.index(world.robot.arm.wrist_link)
     pose = robot.data.body_link_pose_w.torch[0, wrist].cpu().numpy()
     matrix = np.eye(4)
-    matrix[:3, :3], matrix[:3, 3] = Rotation.from_quat(pose[3:]).as_matrix(), pose[:3]
+    matrix[:3, :3], matrix[:3, 3] = Rotation.from_quat(np.array(pose[3:], dtype=float)).as_matrix(), pose[:3]
     return matrix
 
 
@@ -177,7 +177,9 @@ def pose_error(achieved: np.ndarray, goal) -> tuple[float, float]:
     from scipy.spatial.transform import Rotation
 
     goal = np.asarray(goal, dtype=float)
-    rotation = (Rotation.from_matrix(achieved[:3, :3]).inv() * Rotation.from_quat(goal[3:])).magnitude()
+    rotation = (
+        Rotation.from_matrix(achieved[:3, :3]).inv() * Rotation.from_quat(np.array(goal[3:], dtype=float))
+    ).magnitude()
     return float(np.linalg.norm(achieved[:3, 3] - goal[:3])), float(rotation)
 
 
@@ -208,7 +210,11 @@ def link_alignment(world) -> dict:
         actual = robot.data.body_link_pose_w.torch[0, robot.body_names.index(name)].cpu().numpy()
         predicted = body @ frame
         position = float(np.linalg.norm(predicted[:3, 3] - actual[:3]))
-        rotation = float((Rotation.from_matrix(predicted[:3, :3]).inv() * Rotation.from_quat(actual[3:])).magnitude())
+        rotation = float(
+            (
+                Rotation.from_matrix(predicted[:3, :3]).inv() * Rotation.from_quat(np.array(actual[3:], dtype=float))
+            ).magnitude()
+        )
         if position > worst["position_m"]:
             worst.update(position_m=round(position, 5), link=name)
         worst["rotation_rad"] = round(max(worst["rotation_rad"], rotation), 5)

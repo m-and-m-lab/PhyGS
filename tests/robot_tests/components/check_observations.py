@@ -7,7 +7,7 @@
 to reveal the background, permissions (a restricted view leaks nothing), and reset. ``--manual``
 shows the cameras live while the occluder is launched every 4 s.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_observations.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations
 """
 

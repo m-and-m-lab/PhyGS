@@ -9,7 +9,7 @@ The plan, with the framework's composite skills: stow; if the target is in a dra
 walk to where the robot reaches into it, otherwise walk to where it reaches the target; pick it and
 stow holding it.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_grid_drawer.yaml \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_retrieve_grid_drawer
 

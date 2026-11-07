@@ -57,7 +57,7 @@ arm_link_fngr
 Drawer open/close check (an episode robot test with a scripted plan):
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/phygs_robot_tests/episodes/check_drawer_stroke.py \
+isaaclab -p scripts/PhyGS/phygs_robot_tests/episodes/check_drawer_stroke.py \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_drawer_stroke
 ```
 

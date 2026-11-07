@@ -10,7 +10,7 @@ closed drawer, upright.
 It runs under a retrieve spec (dev_grid_table) for its scene and target; the retrieve evaluator does
 not describe this task, so its verdict is marked not applicable.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_drawer_place.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_drawer_place.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_drawer_place
 """
 

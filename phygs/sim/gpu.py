@@ -7,7 +7,7 @@
 camera readers and the arm planner's worker, goes to the same GPU, so a run can leave another GPU
 free, for example for a model server:
 
-    ./isaaclab.sh -p ... --kit_args="--/renderer/activeGpu=1 --/physics/cudaDevice=1 --/renderer/multiGpu/enabled=false"
+    isaaclab -p ... --kit_args="--/renderer/activeGpu=1 --/physics/cudaDevice=1 --/renderer/multiGpu/enabled=false"
 
 Physics stays where the run puts it (the CPU by default). Showing the process only one GPU
 (``CUDA_VISIBLE_DEVICES``) does not work: the renderer then finds no device (2026-10-31).

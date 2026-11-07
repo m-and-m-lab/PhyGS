@@ -75,7 +75,7 @@ def pose_error(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
 
 def _matrix(pose_xyzw: np.ndarray) -> np.ndarray:
     matrix = np.eye(4)
-    matrix[:3, :3] = Rotation.from_quat(pose_xyzw[3:]).as_matrix()
+    matrix[:3, :3] = Rotation.from_quat(np.array(pose_xyzw[3:], dtype=float)).as_matrix()
     matrix[:3, 3] = pose_xyzw[:3]
     return matrix
 

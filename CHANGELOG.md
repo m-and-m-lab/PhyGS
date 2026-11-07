@@ -13,6 +13,67 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.11.0 (not tagged yet)
 
+Added (2026-11-06):
+
+- `SkillFeedback` (`stow`, `look_at`, `unstow`) reports the lag of the arm moves the skill made:
+  `max_joint_lag` [rad] over its joint moves and trajectories (not its gripper commands),
+  `max_trajectory_lag` [rad] (new) over its trajectories alone, the moves
+  `trajectory_tracking_tolerance` checks, and `max_tool_lag` [m]. Before, a skill's feedback left
+  them empty, so the planned moves inside stow and look_at were never measured.
+- `RobotInfo.stow_tolerance` and `Truth.stowed()`: the robot's stowed limit, and whether the arm is
+  within it.
+
+Changed (2026-11-06):
+
+- **Breaking:** one stowed limit, `arm.stow_tolerance` in robot.yaml (required; Spot and
+  Ridgeback-Franka 0.18 rad): every arm joint within it of the stow. The stow skill (was 0.2 rad),
+  the composite skills (was `Tuning.stow_tolerance_rad`, 0.2 rad, removed: use
+  `RobotInfo.stow_tolerance`), navigation (`NavigationConfig.arm_tolerance`, was a 0.18 default; now
+  the robot's, required with `arm_posture`), the robot UI (was 0.2 rad, its `stow_tolerance` argument
+  removed) and the robot tests' evaluators (were 0.05 rad, `stow_tolerance_rad` removed from their
+  configs) all use it. An arm 0.18-0.2 rad off counted as stowed for the skills while navigation
+  refused to walk; a held object sags the stowed wrist 0.040-0.051 rad, so 0.05 scored a done stow
+  "not stowed". 0.18 is what the transit footprint's drives allowed; the prestow is 0.3 rad away.
+- Docker for Isaac Lab main (Isaac Sim 6.2.0), which has no ROS 2 profile: `docker/Dockerfile.phygs`
+  builds on Isaac Lab's base image and adds ROS 2 Jazzy (Nav2, MoveIt, RViz, grid-map), explore_lite,
+  cuRobo V2, `huggingface_hub`, `pre-commit`, `rerun-sdk`, ffmpeg and tmux; `docker/docker-compose.phygs.yaml`
+  is the profile `ros2` of Isaac Lab's container script (`./container.py start ros2 --suffix <name>
+  --files ...`: Isaac Lab's volumes, X11 question and naming; Compose project `phygs-<suffix>`; 8 GB
+  `/dev/shm`; `ROS_DOMAIN_ID` from `docker/env.ros2`, copied to `IsaacLab/docker/.env.ros2`). It replaces
+  `docker-compose.phygs.patch.yaml` (removed; it patched Isaac Lab's removed `ros2` service). The image no
+  longer contains PhyGS: `scripts/` is mounted and `docker/phygs_entry.sh` installs the projects (editable)
+  at the first start; Isaac Lab's `.dockerignore` gets `docker/dockerignore.phygs`. Fast DDS uses UDP only
+  (`docker/fastdds_udp.xml`). See `docker/README.md`.
+- Runs on Isaac Lab main (isaaclab 44.0.1, Isaac Sim 6.2.0): commands are `isaaclab -p ...` (was
+  `./isaaclab.sh -p ...`; headless is the default, `--viz kit` opens a window). Spot's actuator groups
+  use Isaac Lab main's limit names (`actuator_effort_limit`, was `effort_limit`; `joint_effort_limit`,
+  was `effort_limit_sim`; `SpotLegActuator.actuator_velocity_limit`, was `velocity_limit`); the legs keep
+  the solver's joint limit at 1e9 as before (Isaac Lab main would take the USD's 45 / 115 N·m, which also
+  caps the stand's PhysX drives). `simulation_cfg` keeps Isaac Lab's actuator path
+  (`use_newton_actuators=False`, Isaac Lab main's default is True and runs only Isaac Lab's classes).
+  The image adds `imageio-ffmpeg` (videos and replay; Isaac Lab main's environment lacks it).
+  `requires-python` is `>=3.12` (Isaac Sim 6.2's Python; was `>=3.11`). Isaac Lab main has no
+  `--headless` or `--enable_cameras` option: leave them out of commands.
+
+Fixed (2026-11-06):
+
+- The robot starts at rest at its spawn pose with every joint at its configured start
+  (`initial_joints`, the arm's transit posture); `RobotControl.create` wrote only the arm and gripper
+  joints, so the legs kept the USD's joint state (Spot: straight legs, feet 0.2 m in the floor) and every
+  reset restored the motion of `sim.reset()`'s steps (joint speeds up to 42 rad/s, the base moving up).
+  PhysX on the CPU recovered in the settle; on the GPU the robot was thrown 0.25 m up and fell.
+- Camera capture on Isaac Lab main: `RenderCameras.render` forces the Kit update
+  (`ensure_isaac_rtx_render_update(force=True)`; Isaac Lab pumps Kit only for its own camera sensors,
+  so the cameras delivered no images), the tile cutter passes the tiled image as rows x columns x
+  channels (`reshape_tiled_image`'s new signature), and the visualizer check reads
+  `SimulationContext.cfg.visualizer_cfgs` (`has_active_visualizers()` was removed).
+- Quaternions from read-only arrays (planned trajectories, camera poses, scene poses) are copied before
+  SciPy: SciPy 1.17's `Rotation.from_quat` refuses read-only input.
+- A trajectory is tracked against its own samples from its first tick. Its first tick compared the
+  arm with the previous move's held targets, which a load keeps the arm off: a plan that started
+  where the arm was failed with "Trajectory tracking error" when that offset exceeded
+  `trajectory_tracking_tolerance` (0.08 rad on Spot).
+
 Added (2026-11-05):
 
 - `MotionFeedback.max_joint_lag` [rad] and `max_tool_lag` [m]: each arm joint's and the wrist's largest lag behind the reference while a joint move or trajectory ran (the wrist sampled every 20 ms; None for a joint move or without kinematics). They are measurements for setting the tracking limits from data; nothing checks them yet.

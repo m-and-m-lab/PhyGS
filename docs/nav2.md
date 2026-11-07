@@ -117,15 +117,15 @@ or in furniture, and a cancelled walk, on the course (`nav_course`) and in the h
 `--viz kit` opens Kit to watch; the footprint check has keyboard control with `--manual`:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py --manual --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint_manual
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py --manual --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint_manual
 ```
 
 Automated checks (the default, headless) use the same scripts and YAML files:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_house.yaml --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation_house
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_footprint.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_footprint
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_house.yaml --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation_house
 ```
 
 The footprint check writes the transit profile to `DIR/transit.json`. To adopt a new
@@ -171,7 +171,7 @@ and set `ROS_DOMAIN_ID` (one per person or simulator on the machine). Check that
 loads the ROS bindings and finds explore_lite:
 
 ```bash
-./isaaclab.sh -p -c "import rclpy, nav2_msgs, tf2_ros, explore_lite_msgs; print('ROS ok')"
+isaaclab -p -c "import rclpy, nav2_msgs, tf2_ros, explore_lite_msgs; print('ROS ok')"
 ```
 
 The Nav2 install follows the [official binary installation instructions](https://docs.nav2.org/jazzy/getting_started/build_and_install/local_installation/).
@@ -185,7 +185,7 @@ Verify imports using the actual IsaacLab interpreter after sourcing ROS:
 ```bash
 cd /workspace/isaaclab
 source /opt/ros/jazzy/setup.bash
-./isaaclab.sh -p -c "import sys, rclpy, tf2_ros, rosgraph_msgs; from nav2_msgs.action import ComputePathToPose, FollowPath; from nav2_msgs.srv import GetCostmap; from geometry_msgs.msg import TwistStamped; print(sys.executable); print(rclpy.__file__); print('ROS/Nav2 imports passed')"
+isaaclab -p -c "import sys, rclpy, tf2_ros, rosgraph_msgs; from nav2_msgs.action import ComputePathToPose, FollowPath; from nav2_msgs.srv import GetCostmap; from geometry_msgs.msg import TwistStamped; print(sys.executable); print(rclpy.__file__); print('ROS/Nav2 imports passed')"
 ros2 pkg prefix nav2_planner
 ros2 pkg prefix nav2_controller
 ```
@@ -266,7 +266,7 @@ are agent tests: the episode harness starts Nav2 for them.
 
 ```bash
 source /opt/explore_ws/install/setup.bash  # Jazzy plus explore_lite (the house search explores).
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py --viz kit --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_house_search
 ```
 
 Runs are automatic and headless unless `--viz kit` is given.
@@ -303,7 +303,7 @@ or stopped for without contact, and a box put in view, then taken away, must be 
 
 ```bash
 source /opt/explore_ws/install/setup.bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_dynamic_obstacle.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_dynamic_obstacle
 ```
 
 Nav2 maps the cameras in a 3D voxel grid, the standard for depth cameras (since 2026-10-26;
@@ -391,7 +391,7 @@ The diagnostic normally opens only Isaac Sim. Add `--rviz` to start RViz2 with
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py \
   --rviz --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_nav2_rviz_check
 ```
 

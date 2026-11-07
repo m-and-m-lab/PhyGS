@@ -92,13 +92,13 @@ The checkpoint is packaged with its existing YAML files; no model download occur
 From the IsaacLab workspace root:
 
 ```bash
-./isaaclab.sh -p -m pytest \
+isaaclab -p -m pytest \
   scripts/PhyGS/tests/test_episode_runtime.py \
   scripts/PhyGS/tests/test_locomotion_runtime.py \
   scripts/PhyGS/tests/test_spot_locomotion_api.py \
   scripts/PhyGS/tests/test_locomotion_launcher.py -q
 
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py \
   --device cpu --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_locomotion
 ```
 
@@ -106,7 +106,7 @@ Add `--viz kit` to display the automated diagnostic on a machine with a GUI. Wit
 `--manual`, the same launcher opens Kit for keyboard control:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py --manual \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_locomotion.py --manual \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_locomotion_manual
 ```
 

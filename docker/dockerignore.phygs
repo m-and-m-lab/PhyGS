@@ -1,0 +1,17 @@
+# --- PhyGS (appended by scripts/_persist/migrate.sh) ---
+# Projects and data under scripts/ are mounted at run time, never copied into an image. Only
+# PhyGS's docker/ folder is needed to build docker/Dockerfile.phygs.
+**/output_check
+scripts/_persist
+scripts/.gpu_hold
+scripts/.scene_usd
+scripts/.baseline_interactive_search
+scripts/interactive-search
+scripts/traversability_interaction_potential
+scripts/spot_sim_policy
+scripts/ForageBench
+scripts/ForageBench-gh-pages
+scripts/PhyGS-gh-pages
+scripts/PhyGS/*
+!scripts/PhyGS/docker
+# --- end PhyGS ---

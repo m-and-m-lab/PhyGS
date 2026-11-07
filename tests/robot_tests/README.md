@@ -66,13 +66,13 @@ source /opt/explore_ws/install/setup.bash  # ROS 2 Jazzy plus explore_lite, for 
 # The house rungs need its release fetched once: phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
 
 # The ladder up to a rung, with videos; open <folder>/index.html for results and videos.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
+isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
 
 # A group (base, nav2, manipulation, episodes) or single tests by suite name.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pick_place_known
+isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pick_place_known
 
 # One test directly.
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
+isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place --record
 ```

@@ -11,7 +11,7 @@ camera must see the target with depth in at least one of them, and the arm ends 
 The target's box is read through the target hint the spec grants (the plan runs on, so ground truth
 cannot be read then); what a view sees is measured on that view's own observation.
 
-    ./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/episodes/check_look.py \
+    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_look.py \
         --spec scripts/PhyGS/tests/robot_tests/configs/episodes/dev_house_drawer.yaml \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_look_house
 """
@@ -77,8 +77,8 @@ def main() -> None:
             best = max(views.values(), default=0)
             least = settings["look_min_points"]
             check.measure("target_points_seen", views, best >= least, f"no view saw {least} of the target's 13 points")
-            stowed = world.truth().stow_error_rad()
-            check.measure("stow_error_rad", round(stowed, 4), stowed <= settings["stow_tolerance_rad"], "not stowed")
+            truth = world.truth()
+            check.measure("stow_error_rad", round(truth.stow_error_rad(), 4), truth.stowed(), "not stowed")
 
     check.run(body)
 

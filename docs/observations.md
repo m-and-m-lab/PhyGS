@@ -117,7 +117,7 @@ RGB-D sensors. It adds no object tracks, detector, mapping, or navigation planne
 From the IsaacLab root, inspect the live scene and RGB/depth panels:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py --manual \
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_observations.py --manual \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations_manual
 ```
 
@@ -129,7 +129,7 @@ manual inspection is recorded separately from an automated pass.
 Run the assertions headlessly (the default), or add `--viz kit` to watch:
 
 ```bash
-./isaaclab.sh -p scripts/PhyGS/tests/robot_tests/components/check_observations.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations
+isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_observations.py --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_observations
 ```
 
 A camera-equipped runtime renders at its scheduled capture ticks; it does not
@@ -174,5 +174,5 @@ It intentionally uses evaluator access to the obstacle position when computing t
 surface error; that object state is never inserted into the public packet.
 
 ```bash
-./isaaclab.sh -p -m pytest scripts/PhyGS/tests/test_observations.py -q
+isaaclab -p -m pytest scripts/PhyGS/tests/test_observations.py -q
 ```

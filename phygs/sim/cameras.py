@@ -164,8 +164,9 @@ class RenderCameras:
         from isaaclab_physx.renderers.isaac_rtx_renderer_utils import ensure_isaac_rtx_render_update
 
         sim_utils.SimulationContext.instance().render()
-        # IsaacLab's camera update: physics results to Fabric, then one Kit app update.
-        ensure_isaac_rtx_render_update()
+        # IsaacLab's camera update: physics results to Fabric, then one Kit app update. Forced: Isaac Lab
+        # pumps Kit by itself only for its own camera sensors, and these cameras render on demand.
+        ensure_isaac_rtx_render_update(force=True)
         RenderCameras._renders += 1
 
     def read(self, name: str) -> Frame:
@@ -216,7 +217,15 @@ class RenderCameras:
             wp.launch(
                 kernel=reshape_tiled_image,
                 dim=(count, cfg.height, cfg.width),
-                inputs=[buffer.flatten(), wp.from_torch(out), cfg.height, cfg.width, channels, columns],
+                # The tiled image as (rows of tiles x height, columns x width, channels).
+                inputs=[
+                    buffer.flatten().reshape((math.ceil(count / columns) * cfg.height, columns * cfg.width, channels)),
+                    wp.from_torch(out),
+                    cfg.height,
+                    cfg.width,
+                    channels,
+                    columns,
+                ],
                 device=str(out.device) if out.is_cuda else "cpu",
             )
         group.cut_at = RenderCameras._renders
@@ -274,7 +283,7 @@ class RenderCameras:
         import isaaclab.sim as sim_utils
 
         sim = sim_utils.SimulationContext.instance()
-        if sim.has_gui or sim.has_active_visualizers():
+        if sim.has_gui or sim.cfg.visualizer_cfgs:
             return
         try:
             from omni.kit.viewport.utility import get_active_viewport

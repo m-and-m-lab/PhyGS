@@ -36,10 +36,10 @@ result names the exact scene it ran in.
 ## Fetching
 
 ```bash
-./isaaclab.sh -p -m huggingface_hub.cli.hf auth login                      # once; the dataset is private
-./isaaclab.sh -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench     # ids, versions, sizes, the commit
-./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
-./isaaclab.sh -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --all  # every catalogued release
+isaaclab -p -m huggingface_hub.cli.hf auth login                      # once; the dataset is private
+isaaclab -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench     # ids, versions, sizes, the commit
+isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
+isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --all  # every catalogued release
 ```
 
 The fetcher resolves the dataset's `main` to a commit (or takes `--revision`), downloads the
