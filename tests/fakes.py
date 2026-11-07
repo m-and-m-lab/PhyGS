@@ -516,6 +516,7 @@ def nav2_transport(config=None, **attributes):
     state = dict(
         _config=config,
         _geometry={},
+        _cloud_device=torch.device("cpu"),
         _poisoned=False,
         _raw_map=None,
         _acknowledged_map=-1,

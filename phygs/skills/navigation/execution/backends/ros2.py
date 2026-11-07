@@ -11,6 +11,7 @@ external processes must use simulation time and a dedicated ROS domain.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import math
@@ -59,6 +60,16 @@ def voxel_filter(points: torch.Tensor, size: float, marking: torch.Tensor) -> tu
     return sums / totals[:, None], marked
 
 
+def cloud_device() -> torch.device:
+    """Where the Nav2 point clouds are built: the GPU Isaac Sim renders on (phygs.sim.gpu), else the
+    CPU. The image goes over once and only the filtered points come back: a camera's publish took
+    5.4-5.8 ms with the clouds built on the CPU and 1.9 ms on the GPU (depth-track retrieve, 2026-11-07)."""
+    from phygs.sim.gpu import render_gpu
+
+    gpu = render_gpu()
+    return torch.device(f"cuda:{gpu}") if gpu is not None and torch.cuda.is_available() else torch.device("cpu")
+
+
 def point_cloud(points: np.ndarray, frame: str, stamp):
     """A ``sensor_msgs/PointCloud2`` of xyz ``points`` [m] in ``frame`` at ``stamp``."""
     from sensor_msgs.msg import PointCloud2, PointField
@@ -100,6 +111,7 @@ class RclpyNav2Transport:
 
         self._rclpy, self._config = rclpy, config
         self._geometry = geometry
+        self._cloud_device = cloud_device()
         self._poisoned = False
         self._raw_map = None
         self._context = Context()
@@ -312,6 +324,13 @@ class RclpyNav2Transport:
         sensor_pixel_stride-th row and column, from 5 cm, one per voxel. A voxel marks when a point of
         the image above its bottom sensor_mark_margin lies in it."""
         stride = self._config.sensor_pixel_stride
+        if camera.depth.device != self._cloud_device:  # One copy of the image there, one of the points back.
+            camera = dataclasses.replace(
+                camera,
+                depth=camera.depth.to(self._cloud_device),
+                depth_valid=camera.depth_valid.to(self._cloud_device),
+                intrinsics=camera.intrinsics.to(self._cloud_device),
+            )
         points = camera.points(stride).detach()
         if not bool(torch.isfinite(points).all()):
             raise ValueError("Valid depth pixels produced nonfinite points")

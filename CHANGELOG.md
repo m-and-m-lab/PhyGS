@@ -11,6 +11,59 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+### 0.12.0 (not tagged yet)
+
+Added (2026-11-07, logging):
+
+- Every episode writes a Rerun recording, `episode.rrd` (`phygs.recording.log.EpisodeLog`, layout
+  `phygs.recording.blueprint`), on four timelines (`tick`, `sim_time`, `wall_time`, `seq`). Every
+  camera period: the robot (its URDF's collision geometry once, then base pose and joints), whether
+  the gripper holds something, the base's commanded velocity, and each scene body's pose when it
+  moved (collider boxes once). Also Nav2's route and costmap when they change, each arm plan's
+  display, arm contacts as they start, the agent's calls and steps, the command spans, the
+  episode's phases and anomalies, and RTF, tick time and machine load once per second. Truth is
+  under `/truth`. `rerun episode.rrd` opens it; `recording.live` in `world/environment.yaml`
+  streams it to a viewer. Logging never fails or changes the episode; its first error closes the
+  recording and is reported. The file is safe on disk at every phase.
+- `phygs.recording.reader.Recording` reads a recording back: its properties, the audit lines and
+  the states (`States`, as the state log's); a recording cut short by a dead run is repaired with
+  Rerun's own `rrd merge`.
+- `report.json` (schema 3) has `run_id` (the recording's id) and `recording` (status, file, error,
+  schema); a run writes it at the start with `status: running` (`phygs.world.report.stub`), so a run
+  that dies still says what ran. `Audit` takes a `sink` that gets every line.
+
+Changed (2026-11-07, logging):
+
+- `phygs replay` and `phygs.recording.trace.build` read `report.json` and `episode.rrd`, not
+  `state.npz` and `audit.jsonl`; runs from before 0.12.0 do not replay (`trace.read_audit` is gone).
+  `state.npz` and `audit.jsonl` are still written until their other readers move.
+- `rerun-sdk` 0.42.0 is pinned in `docker/Dockerfile.phygs` (was "0.38.1 unless Rerun is already
+  there", which kept Isaac Lab's 0.31.4).
+
+Fixed (2026-11-07):
+
+- A spec pinned to a fetched release that is not the id's last fetch finds it again
+  (`phygs.scene.registry.scene_file`): the registry read only `<cache>/<id>.json`, the last fetch, so
+  fetching `bear_loop_house` 1.2.0 made every spec pinned to 1.1.0 fail ("holds bear_loop_house 1.2.0,
+  the spec wants 1.1.0"). It now takes the pinned release's own record,
+  `<cache>/records/<commit>/<id>-<version>.json`, which the fetcher already writes.
+
+Changed (2026-11-07, speed):
+
+- cuRobo is pinned to `5e4f23d` (v0.9.0 and later, "cuRoboV2-Fast"; was `78fd485`).
+  `docker/Dockerfile.phygs`, `docs/manipulation_planners.md` and the adapter name the new commit.
+  - Warm plans take 0.05-0.07 s instead of 0.3-0.4 s. On 20 recorded house plans (six gripper
+    angles, one holding the object) the results and the goal joints are the same.
+  - Its trajectories are time-optimal and about 30% shorter, so the arm moves faster: house
+    retrieve episodes took 4-7% less simulated time.
+  - The worker's start-up grew from about 12 s to about 41 s (compiles); it is outside the episode
+    clock.
+  - Robot-test ladder 27/27 with it.
+- Nav2's camera point clouds are unprojected and voxel-filtered on the GPU Isaac Sim renders on
+  (`ros2.cloud_device`), not on the CPU; only the filtered points come back. A camera's publish took
+  1.9 ms instead of 5.4-5.8 ms: 4-6 s instead of 11-12 s of a depth-track house episode. The points
+  are the same; the voxel centroids can differ in the last float bits (summation order).
+
 ### 0.11.0 (2026-11-07)
 
 Changed (2026-11-07, speed):

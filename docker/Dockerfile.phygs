@@ -11,7 +11,7 @@ ARG DOCKER_NAME_SUFFIX=""
 FROM isaac-lab-base${DOCKER_NAME_SUFFIX} AS phygs
 ARG ROS2_APT_PACKAGE=ros-base
 ARG EXPLORE_LITE_COMMIT=326cf8a0b487c34246bb8f3326afbcd69576dc60
-ARG CUROBO_COMMIT=78fd485fa82d9b9a063fb4985e371814587e666a
+ARG CUROBO_COMMIT=5e4f23d63d9ec58aca4ce8277a75d20f7b02cc7d
 ARG CUROBO_DEPENDENCIES=/opt/curobo_deps
 USER root
 
@@ -74,12 +74,14 @@ RUN set -eu; \
       /tmp/curobo yourdfpy==0.0.60 numpy-quaternion==2024.0.13 setuptools_scm==10.3.4 'cuda-core[cu12]==1.2.1'; \
     rm -rf /tmp/curobo
 
-# Python packages in Isaac Sim's Python: scene releases (Hugging Face), the pre-commit hooks, Rerun,
-# imageio's ffmpeg backend (run videos and phygs replay; Isaac Lab main's environment lacks it).
+# Python packages in Isaac Sim's Python: scene releases (Hugging Face), the pre-commit hooks,
+# imageio's ffmpeg backend (run videos and phygs replay; Isaac Lab main's environment lacks it), and
+# Rerun, which writes and shows each episode's recording (phygs.recording.log). Rerun replaces the
+# older release Isaac Lab's visualizers bring (it needs >=0.29); --no-deps keeps Isaac Sim's psutil
+# 5.9.8 (Rerun asks for >=7 for its own tracing only); its other dependencies are already there.
 RUN set -eu; \
     isaaclab -p -m pip install --no-cache-dir pre-commit==4.6.2 imageio-ffmpeg==0.6.0; \
-    isaaclab -p -c "import rerun" 2> /dev/null \
-      || isaaclab -p -m pip install --no-cache-dir rerun-sdk==0.38.1
+    isaaclab -p -m pip install --no-cache-dir --no-deps rerun-sdk==0.42.0
 
 # Every interactive shell: ROS 2 and explore_lite. DDS over UDP only (shared memory between processes
 # needs a large /dev/shm and fails across containers on the host network).

@@ -1,7 +1,7 @@
 # Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-"""cuRobo V2 adapter, qualified against commit 78fd485fa82d9b9a063fb4985e371814587e666a."""
+"""cuRobo V2 adapter, qualified against commit 5e4f23d63d9ec58aca4ce8277a75d20f7b02cc7d."""
 
 import copy
 import hashlib

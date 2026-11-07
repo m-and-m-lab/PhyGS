@@ -60,13 +60,13 @@ apt-get install -y --no-install-recommends \
 ```
 
 The planners are qualified with MoveIt 2.12.4 and cuRobo V2 commit
-`78fd485fa82d9b9a063fb4985e371814587e666a`. V1 configuration/API is different.
+`5e4f23d63d9ec58aca4ce8277a75d20f7b02cc7d`. V1 configuration/API is different.
 cuRobo V2 goes in its own folder, which `planner.curobo_dependencies` in
 `phygs/world/environment.yaml` names (`/opt/curobo_deps`):
 
 ```bash
 git clone https://github.com/NVlabs/curobo.git /tmp/curobo
-git -C /tmp/curobo checkout 78fd485fa82d9b9a063fb4985e371814587e666a
+git -C /tmp/curobo checkout 5e4f23d63d9ec58aca4ce8277a75d20f7b02cc7d
 isaaclab -p -m pip install --target /opt/curobo_deps --no-deps \
   /tmp/curobo yourdfpy==0.0.60 numpy-quaternion==2024.0.13 \
   setuptools_scm==10.3.4 'cuda-core[cu12]==1.2.1'
