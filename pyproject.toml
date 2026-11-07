@@ -7,7 +7,7 @@ name = "phygs"
 version = "0.10.0"
 description = "PhyGS: physically grounded simulation framework for mobile manipulation in Isaac Lab (robot, world, runtime, skills, measurement)."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "BSD-3-Clause" }
 # Runs inside the Isaac Lab container; Isaac Sim, Isaac Lab, torch, numpy, yaml and warp come with it.
 dependencies = []
