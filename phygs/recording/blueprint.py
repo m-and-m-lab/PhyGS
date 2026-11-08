@@ -5,9 +5,10 @@
 
 """The viewer's layout for an episode's recording (:mod:`phygs.recording.log`): the world in 3D with
 Nav2's route; beside it the agent's calls and own records, what the agent saw, the images of its own
-records, Nav2's costmap, the last arm plan and the joint targets and efforts (tabs) over the events
-and contacts; plots under it (joints, contact forces, base command, real-time factor). Sent with the
-recording, so ``rerun episode.rrd`` opens in this layout."""
+records, Nav2's costmap, the last arm plan, the joint targets and efforts and the joint velocities
+(tabs) over the events and contacts; plots under it (joints,
+contact forces, base command and velocity, real-time factor). Sent with the recording, so ``rerun
+episode.rrd`` opens in this layout."""
 
 from __future__ import annotations
 
@@ -28,7 +29,8 @@ def episode_blueprint(robot: str, root: str):
                     rrb.TimeSeriesView(name="Joints [rad, m]", origin=f"{entity}/joint_positions"),
                     rrb.TimeSeriesView(name="Contact forces [N]", origin="/truth/contact_forces"),
                     rrb.TimeSeriesView(
-                        name="Base command, holding", contents=["/control/base_command", "/estimate/holding"]
+                        name="Base command, velocity, holding",
+                        contents=["/control/base_command", f"{entity}/base_velocity", "/estimate/holding"],
                     ),
                     rrb.TimeSeriesView(name="Real-time factor", origin="/perf/rtf"),
                 ),
@@ -44,6 +46,7 @@ def episode_blueprint(robot: str, root: str):
                     rrb.TimeSeriesView(
                         name="Joint targets, efforts", contents=["/control/joint_targets", f"{entity}/joint_efforts"]
                     ),
+                    rrb.TimeSeriesView(name="Joint velocities [rad/s, m/s]", origin=f"{entity}/joint_velocities"),
                 ),
                 rrb.TextLogView(name="Events and contacts", contents=["/events/**", "/truth/contact_events"]),
                 row_shares=[3, 1],

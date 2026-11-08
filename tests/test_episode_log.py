@@ -17,6 +17,7 @@ rr = pytest.importorskip("rerun")
 
 from phygs.recording import log as episode_log  # noqa: E402
 from phygs.recording.log import EpisodeLog  # noqa: E402
+from phygs.recording.reader import Recording  # noqa: E402
 
 PROJECT = Path(__file__).resolve().parents[1]
 SPOT_URDF = PROJECT / "phygs" / "robots" / "spot" / "assets" / "spot.urdf"
@@ -39,10 +40,11 @@ def test_a_recording_holds_the_robot_the_scene_the_calls_and_the_phases(tmp_path
     for tick in range(400):  # 1.6 s of physics ticks: one batch sent on the way, one at close.
         log.at(tick, tick * 0.004)
         positions = torch.tensor([0.1, -1.2, 0.001 * tick])
-        log.joint_state(positions, positions + 0.01, torch.full((3,), 2.0))
-        log.joint_state(positions, positions, positions)  # Again in the same tick: ignored.
+        log.joint_state(positions, torch.full((3,), 0.25), positions + 0.01, torch.full((3,), 2.0))
+        log.joint_state(positions, positions, positions, positions)  # Again in the same tick: ignored.
         if tick % 8 == 0:  # A state sample every camera period.
-            log.robot_state(np.array([tick * 0.001, 0, 0.5, 0, 0, 0, 1]), positions.numpy())
+            velocity = None if tick == 0 else [0.25, 0, 0, 0, 0, 0.1]  # Not known at the first sample.
+            log.robot_state(np.array([tick * 0.001, 0, 0.5, 0, 0, 0, 1]), positions.numpy(), velocity=velocity)
             log.body_poses(np.array([[1.0 + (0.01 if tick >= 200 else 0.0), 0, 0.4, 0, 0, 0, 1]]))
     log.agent_call(dict(t=0.4, call="navigation.navigate_to", args={"x": 1.0}, result="accepted"))
     log.phase("agent")
@@ -52,19 +54,41 @@ def test_a_recording_holds_the_robot_the_scene_the_calls_and_the_phases(tmp_path
     report = log.close()
     assert report == dict(status="complete", file=episode_log.FILE, error=None, schema=1, run_id="run-1")
     rows = entities(path)
-    for entity in ("/truth/spot/joint_positions", "/truth/spot/joint_efforts", "/control/joint_targets"):
-        assert rows[entity] == 400 + 1, entity  # Every physics tick (and the lines' names, once).
+    for series in ("joint_positions", "joint_velocities", "joint_efforts"):
+        assert rows[f"/truth/spot/{series}"] == 400 + 1, series  # Every physics tick (and the lines' names, once).
+    assert rows["/control/joint_targets"] == 400 + 1
     assert rows["/truth/spot/joints/arm_sh0"] == 50 and "/truth/spot/joints/not_in_the_urdf" not in rows
     assert not [name for name in rows if "visual_geometries" in name]  # The collision geometry only.
     assert any("collision_geometries" in name for name in rows)
     # Only robot_state moves the joints: nothing fixes them at zero (Rerun's URDF logging would).
     assert "/tf_static" not in rows and rows["/truth/spot/joints/front_rail_joint"] == 1  # A fixed joint, once.
-    assert rows["/truth/spot/base"] == 50
+    assert rows["/truth/spot/base"] == 50 and rows["/truth/spot/base_velocity"] == 50 + 1  # (And its names.)
+    velocities = [row["Scalars:scalars"] for *_, row in Recording(path).rows("truth", "spot", "base_velocity")]
+    assert np.isnan(velocities[0]).all() and velocities[1] == pytest.approx([0.25, 0, 0, 0, 0, 0.1])
     body = next(name for name in rows if name.startswith("/truth/scene/bodies/") and not name.endswith("colliders"))
     assert rows[body] == 2  # The start, then the 1 cm move.
     assert rows["/agent/calls"] == 1 and rows["/events/phase"] == 1 and rows["/truth/contact_events"] == 1
     assert rows["/truth/contact_forces/arm_link_fngr/\\/World\\/box"] == 3  # 12.5 N, 14 N, then 0 N.
     assert rows["/control/commands"] == 1
+
+
+def test_each_tick_s_joint_series_read_back_in_their_own_entities(tmp_path):
+    path = tmp_path / episode_log.FILE
+    log = EpisodeLog(path, run_id="run-1")
+    log.robot_model(SPOT_URDF, ("arm_sh0",))
+    for tick in range(3):
+        log.at(tick, tick * 0.004)
+        log.joint_state(*(torch.tensor([value + tick]) for value in (0.1, 0.2, 0.3, 0.4)))
+    log.close()
+    recording = Recording(path)
+    for entity, value in (
+        (("truth", "spot", "joint_positions"), 0.1),
+        (("truth", "spot", "joint_velocities"), 0.2),
+        (("control", "joint_targets"), 0.3),
+        (("truth", "spot", "joint_efforts"), 0.4),
+    ):
+        scalars = [row["Scalars:scalars"][0] for _, _, row in recording.rows(*entity)]
+        assert scalars == pytest.approx([value, value + 1, value + 2]), entity
 
 
 def test_the_joint_transforms_equal_rerun_s_own_urdf_computation():

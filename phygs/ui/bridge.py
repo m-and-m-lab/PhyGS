@@ -13,11 +13,9 @@ queues the person's requests for the runner. Nothing here refers to simulation o
 from __future__ import annotations
 
 import collections
-import json
 import queue
 import threading
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -40,7 +38,7 @@ class MapImage:
 class Bridge:
     """Latest values per stream with version counters, a bounded event list, and a request queue."""
 
-    def __init__(self, hello: dict, *, log_path: Path | None = None, max_events: int = 4000) -> None:
+    def __init__(self, hello: dict, *, max_events: int = 4000) -> None:
         self.hello = hello  # Static episode information sent when a client connects.
         self._lock = threading.Lock()
         self._frames: dict[str, CameraFrame] = {}
@@ -50,7 +48,6 @@ class Bridge:
         self._events: collections.deque[tuple[int, dict]] = collections.deque(maxlen=max_events)
         self._next_event = 1
         self._requests: queue.Queue[dict] = queue.Queue(maxsize=64)
-        self._log = None if log_path is None else log_path.open("a")
 
     # Runner side.
     def publish_frame(self, frame: CameraFrame) -> None:
@@ -65,13 +62,13 @@ class Bridge:
         with self._lock:
             self._map = image
 
-    def push_event(self, event: dict) -> None:
+    def push_event(self, event: dict) -> int:
+        """Add an event for the page; returns its number (the page asks for the events after a number)."""
         with self._lock:
-            self._events.append((self._next_event, event))
+            number = self._next_event
+            self._events.append((number, event))
             self._next_event += 1
-        if self._log is not None:
-            self._log.write(json.dumps(event, separators=(",", ":")) + "\n")
-            self._log.flush()
+        return number
 
     def take_requests(self) -> list[dict]:
         """Requests queued since the last call, oldest first."""
@@ -107,8 +104,3 @@ class Bridge:
         except queue.Full:
             return False
         return True
-
-    def close(self) -> None:
-        if self._log is not None:
-            self._log.close()
-            self._log = None

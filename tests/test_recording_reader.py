@@ -77,7 +77,7 @@ def record(tmp_path: Path) -> Recording:
         time = tick * 0.004
         root, joints, bodies, holding, command = sample(index, time)
         log.at(tick, time)
-        log.joint_state(torch.as_tensor(joints), torch.as_tensor(joints) + 0.01, torch.zeros(3))
+        log.joint_state(torch.as_tensor(joints), torch.zeros(3), torch.as_tensor(joints) + 0.01, torch.zeros(3))
         log.robot_state(root, joints, holding=holding, command=command)
         log.body_poses(bodies)
         if 12 <= index <= 15:  # A finger touches the cup harder at each read, then lets go.
@@ -250,7 +250,7 @@ def test_a_run_that_died_reads_back_to_its_last_whole_chunk(tmp_path):
     log.scene([], BODIES[:1])
     for k in range(300):
         log.at(8 * k, 0.032 * k)
-        log.joint_state(torch.tensor([0.001 * k]), torch.zeros(1), torch.zeros(1))
+        log.joint_state(torch.tensor([0.001 * k]), torch.zeros(1), torch.zeros(1), torch.zeros(1))
         log.robot_state(pose(0.01 * k, z=0.5), [0.001 * k], holding=k > 150)
         log.body_poses([pose(1.0 + (0.01 if k > 50 else 0.0))])
         if k == 200:

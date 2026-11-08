@@ -11,6 +11,32 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+Added (2026-11-08, recording):
+
+- The recording kept the base link's measured velocity at every state sample
+  (`/truth/<robot>/base_velocity`, in that link's frame) and each physics tick's joint velocities
+  (`/truth/<robot>/joint_velocities`); the viewer's layout showed them. Recordings made before this
+  change do not have them.
+- The robot UI kept its side of a run in the recording, through the agent session's `log`: each
+  request it received (`/agent/log/ui/request`; the launcher's own carry `source`) and each event
+  the page was told, with its number (`/agent/log/ui/event`). `Recording.agent_log("ui/event")`
+  reads them.
+- Rung 15 (`entry_point`) checked that each run's recording has the measured velocities beside the
+  joint and base samples.
+
+Changed (2026-11-08, recording):
+
+- `EpisodeLog.joint_state(positions, velocities, targets, efforts)` took the joint velocities
+  second, and `EpisodeLog.robot_state` the base link's `velocity`. `Bridge.push_event` returned the
+  event's number.
+
+Removed (2026-11-08, recording):
+
+- The robot UI's `ui_log.jsonl` and `telemetry.jsonl`: use the recording, which keeps the UI's
+  requests and events and, for the telemetry, the robot's pose and velocities, its joints, the
+  commands' feedback and the real-time factor (`docs/ui.md`). `Bridge`'s `log_path`, `UiSession`'s
+  `telemetry_path` and `telemetry_period`, and `Bridge.close` and `UiSession.close` are gone.
+
 Changed (2026-11-08, docs):
 
 - The README's reference sections moved into the guides that own them: the agent contract (the

@@ -69,7 +69,7 @@ def write_run(folder, audit=AUDIT):
         t = 0.5 * k
         x = min(max(t - 1.0, 0.0), 4.0)  # Walks 1 m/s from t = 1 s to 5 s.
         log.at(125 * k, t)
-        log.joint_state(torch.zeros(1), torch.zeros(1), torch.zeros(1))
+        log.joint_state(torch.zeros(1), torch.zeros(1), torch.zeros(1), torch.zeros(1))
         log.robot_state(np.array([x, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0]), [0.0], holding=6.5 <= t < 7.5)
         if t in (6.0, 6.5, 7.0):  # The jaws on the cup, squeezing harder, then open.
             log.contacts([("jaw", "cup", 4.0 * t)] if t < 7.0 else [], "close_gripper")

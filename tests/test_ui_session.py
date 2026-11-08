@@ -158,6 +158,29 @@ def test_cancel_and_rejections_show_the_raw_api_result():
     assert commands[-1]["skill"] == "navigate_to" and commands[-1]["state"] == "cancelled"
 
 
+def test_the_recording_keeps_every_page_request_and_every_event_the_page_was_told(tmp_path):
+    pytest.importorskip("rerun")
+    from phygs.recording.log import FILE, EpisodeLog
+    from phygs.recording.reader import Recording
+
+    log = EpisodeLog(tmp_path / FILE, run_id="ui-run")
+    control = fake_control()
+    control.locomotion = Locomotion()
+    bridge = Bridge({"views": ["front"]})
+    session = Ui(control, bridge, cameras=(), log=log.agent_log)  # The session's log into a recording.
+    requests = (START, {"type": "drive", "v_x": 0.3}, {"type": "run", "skill": "dance", "inputs": {}})
+    for request in requests:
+        bridge.request(request)
+    session.update()
+    assert log.close()["status"] == "complete"
+    recording = Recording(tmp_path)
+    assert [record.record for record in recording.agent_log("ui/request")] == list(requests)
+    events = json.loads(json.dumps(bridge.events_after(0)))  # [number, event] as the page reads them.
+    assert {event["type"] for _, event in events} >= {"episode", "command", "step"}
+    assert [[record.record["number"], record.record["event"]] for record in recording.agent_log("ui/event")] == events
+    assert {record.topic for record in recording.agent_log()} == {"ui/request", "ui/event"}
+
+
 def test_estop_request_ends_the_episode_once():
     control = fake_control()
     bridge = Bridge({"views": ["front"]})

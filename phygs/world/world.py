@@ -673,9 +673,11 @@ class World:
         return packet
 
     def _log_joints(self) -> None:
-        """The joints after this physics tick to the recording: positions, targets sent, applied efforts."""
+        """The joints after this physics tick to the recording: positions, velocities, targets sent,
+        applied efforts."""
         data = self._robot_asset.data
-        self.log.joint_state(data.joint_pos.torch[0], data.joint_pos_target.torch[0], data.applied_torque.torch[0])
+        joints = (data.joint_pos, data.joint_vel, data.joint_pos_target, data.applied_torque)
+        self.log.joint_state(*(values.torch[0] for values in joints))
 
     def _log_spans(self, *, final: bool = False) -> None:
         """The command spans that ended (or reopened and ended again) since the last call; ``final``
@@ -689,9 +691,9 @@ class World:
 
     def _log_state(self) -> None:
         """One state sample to the recording (recording.log): the robot, the scene's bodies, whether
-        the gripper holds something, the base's commanded velocity; Nav2's route and each global costmap Nav2
-        published, the arm planner's latest plan display and the command spans that ended. Arrays
-        only, nothing rendered."""
+        the gripper holds something, the base's commanded and measured velocity; Nav2's route and each
+        global costmap Nav2 published, the arm planner's latest plan display and the command spans that
+        ended. Arrays only, nothing rendered."""
         control, runtime, data, log = self.control, self.control.runtime, self._robot_asset.data, self.log
         now = runtime.time_seconds
         controller = getattr(control.locomotion, "controller", None)
@@ -699,9 +701,10 @@ class World:
         bodies = self._bodies.poses().cpu().numpy()
         holding = control.manipulation is not None and control.manipulation.holding
         command = getattr(controller, "applied_command", None)
+        velocity = torch.cat((self.base.linear_velocity_b(), self.base.angular_velocity_b())).cpu().numpy()
         log.at(runtime.tick, now)
         self._log_joints()  # This tick's, when no physics tick logged them (the agent's start).
-        log.robot_state(root, joints, holding=holding, command=command)
+        log.robot_state(root, joints, holding=holding, command=command, velocity=velocity)
         log.body_poses(bodies)
         backend = getattr(control.navigation, "backend", None)
         if hasattr(backend, "route"):

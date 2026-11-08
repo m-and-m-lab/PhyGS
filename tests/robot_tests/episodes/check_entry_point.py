@@ -8,9 +8,10 @@
 locomotion-only spec (``motion_grid``: a body velocity). Each run is its own process
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code,
 ``report.json`` and the recording ``episode.rrd`` (complete, of this run, holding no secret from
-the environment, with every observation and camera image the agent received and the record it
-kept, ``session.log``). A third run (``motion_grid``) is killed with SIGKILL a second into its
-episode: its report still says it ran and its recording still reads back.
+the environment, with the joints' and the base's velocities beside every joint and base sample,
+every observation and camera image the agent received and the record it kept, ``session.log``). A
+third run (``motion_grid``) is killed with SIGKILL a second into its episode: its report still says
+it ran and its recording still reads back.
 
     isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_entry_point.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_entry_point
@@ -20,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import signal
 import subprocess
@@ -125,6 +127,17 @@ def main() -> int:
             measure(f"{spec}_recording", (*entry, len(recording.states())), entry == ("complete", True))
             leaked = episode.recording_secrets(args.output / spec)
             measure(f"{spec}_recording_secrets", leaked or "none", not leaked)
+            # The robot's velocities beside its samples, measured: the joints' every physics tick, the
+            # base link's every state sample.
+            robot = recording.properties["robot_layout"]["entity"]
+            series = {name: recording.rows("truth", robot, name) for name in ("joint_velocities", "base_velocity")}
+            rows = {name: len(recording.rows("truth", robot, name)) for name in ("joint_positions", "base")}
+            rows.update({name: len(found) for name, found in series.items()})
+            measured = all(
+                all(math.isfinite(v) for v in row["Scalars:scalars"]) for found in series.values() for *_, row in found
+            )
+            ok = rows["joint_velocities"] == rows["joint_positions"] > 0 and rows["base_velocity"] == rows["base"] > 0
+            measure(f"{spec}_recording_velocities", dict(rows, measured=measured), ok and measured)
             # The template observes once and streams 1 s: what it received is in the recording.
             seen = recording.observations()
             cameras = sorted({name for _, summary in seen for name in summary["cameras"]})

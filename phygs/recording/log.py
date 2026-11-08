@@ -20,9 +20,12 @@ public copy is the recording without it):
 
 - ``/truth/<robot>``: the robot's URDF, logged once: its collision geometry (what the physics
   simulates; the visual meshes are 45 times larger) and its fixed joints (``joints/<joint>``). Every
-  state sample (each camera period): ``base`` (its root link in the world) and ``joints/<joint>``
-  (each moving joint's transform). Every physics tick: ``joint_positions`` [rad or m] and
-  ``joint_efforts`` [N·m or N] (applied), one plot line per joint.
+  state sample (each camera period): ``base`` (its root link in the world), ``base_velocity`` (the
+  measured velocity of its base link, robot.yaml's ``base_link``, in that link's frame: ``vx``, ``vy``,
+  ``vz`` [m/s] and ``wx``, ``wy``, ``wz`` [rad/s] about its axes) and ``joints/<joint>`` (each moving
+  joint's transform). Every physics tick: ``joint_positions`` [rad or m],
+  ``joint_velocities`` [rad/s or m/s] and ``joint_efforts`` [N·m or N] (applied), one plot line per
+  joint.
 - ``/truth/scene/static``: colliders fixed to the world (boxes, once).
 - ``/truth/scene/bodies/<body path>``: each scene body's pose, logged at the first sample and then
   when it moved more than 1 mm or 0.25 degrees; its colliders below it (boxes in its frame, once).
@@ -138,8 +141,8 @@ class EpisodeLog:
         self._seq = itertools.count()  # next() is atomic: the agent's thread logs its calls too.
         self._urdf_joints: dict[str, _Joint] = {}
         self._robot = self._root = None
-        self._joint_buffer: list[tuple] = []  # (tick, sim time, base pose, joints, holding, command)
-        self._tick_buffer: list[tuple] = []  # (tick, sim time, joint positions, targets, efforts) tensors
+        self._joint_buffer: list[tuple] = []  # (tick, sim time, base pose, joints, holding, command, velocity)
+        self._tick_buffer: list[tuple] = []  # (tick, sim time, joint positions, velocities, targets, efforts)
         self._joint_tick: int | None = None  # The tick whose joints were logged last.
         self._contact_forces: dict[tuple[str, str], float] = {}  # Touching at the last contact read.
         self._camera_stamps: dict[tuple[str, str], int] = {}  # (branch, camera) -> last logged capture tick.
@@ -228,9 +231,11 @@ class EpisodeLog:
                 )
                 stream.log(_path("truth", self._robot, "joints", joint.name), transform, static=True)
         self._joint_names = tuple(joint_names)
-        for entity in (("truth", self._robot, "joint_positions"), ("truth", self._robot, "joint_efforts")):
-            stream.log(_path(*entity), rr.SeriesLines(names=self._joint_names), static=True)
+        for series in ("joint_positions", "joint_velocities", "joint_efforts"):
+            stream.log(_path("truth", self._robot, series), rr.SeriesLines(names=self._joint_names), static=True)
         stream.log("/control/joint_targets", rr.SeriesLines(names=self._joint_names), static=True)
+        names = ["vx", "vy", "vz", "wx", "wy", "wz"]  # The base link's, in its frame (robot_state).
+        stream.log(_path("truth", self._robot, "base_velocity"), rr.SeriesLines(names=names), static=True)
         moving = {joint.name: joint for joint in tree.joints() if joint.joint_type != "fixed"}
         self._urdf_joints = {name: _Joint.of(moving[name]) for name in self._joint_names if name in moving}
         self.properties(robot_layout=dict(entity=self._robot, root=self._root, joints=list(self._joint_names)))
@@ -242,29 +247,34 @@ class EpisodeLog:
         *,
         holding: bool = False,
         command: Sequence[float] | None = None,
+        velocity: Sequence[float] | None = None,
     ) -> None:
         """The robot at a state sample: its root link's world pose [x, y, z, qx, qy, qz, qw], the joint
         positions in :meth:`robot_model`'s order (drawn: the joints' transforms; :meth:`joint_state`
-        logs them), whether the gripper holds an object and the base's commanded velocity [m/s, m/s,
-        rad/s] (None: none). Buffered and sent once per simulated second."""
+        logs them), whether the gripper holds an object, the base's commanded velocity [m/s, m/s,
+        rad/s] (None: none) and the base link's measured velocity in its own frame [m/s x3, rad/s x3]
+        (None: not known). Buffered and sent once per simulated second."""
         if self._stream is None or self._robot is None:
             return
         command = np.full(3, np.nan) if command is None else np.asarray(command, dtype=float).reshape(3)
+        velocity = np.full(6, np.nan) if velocity is None else np.asarray(velocity, dtype=float).reshape(6)
         base, joints = np.array(base_pose, dtype=float), np.array(joint_positions, dtype=float)  # Copies.
-        self._joint_buffer.append((self._tick, self._sim_time, base, joints, float(bool(holding)), command))
+        sample = (self._tick, self._sim_time, base, joints, float(bool(holding)), command, velocity)
+        self._joint_buffer.append(sample)
         if len(self._joint_buffer) > 1 and self._sim_time - self._joint_buffer[0][1] >= 1.0:
             self._send_robot_states()
 
-    def joint_state(self, positions, targets, efforts) -> None:
-        """The joints after a physics tick, in :meth:`robot_model`'s order: positions, the position
-        targets sent and the applied efforts (tensors, kept on their device and copied once per
-        simulated second). A second call in the same tick is ignored."""
+    def joint_state(self, positions, velocities, targets, efforts) -> None:
+        """The joints after a physics tick, in :meth:`robot_model`'s order: positions, velocities, the
+        position targets sent and the applied efforts (tensors, kept on their device and copied once
+        per simulated second). A second call in the same tick is ignored."""
         if self._stream is None or self._robot is None:
             return
         if self._joint_tick == self._tick:
             return
         self._joint_tick = self._tick
-        self._tick_buffer.append((self._tick, self._sim_time, positions.clone(), targets.clone(), efforts.clone()))
+        tensors = (positions, velocities, targets, efforts)
+        self._tick_buffer.append((self._tick, self._sim_time, *(tensor.clone() for tensor in tensors)))
         if self._sim_time - self._tick_buffer[0][1] >= 1.0:
             self._send_joint_states()
 
@@ -280,10 +290,10 @@ class EpisodeLog:
             rr.TimeColumn("tick", sequence=np.array([row[0] for row in buffer])),
             rr.TimeColumn("sim_time", duration=np.array([row[1] for row in buffer])),
         ]
-        values = torch.stack([torch.stack(row[2:]) for row in buffer]).cpu().numpy().astype(float)  # [N, 3, J]
+        values = torch.stack([torch.stack(row[2:]) for row in buffer]).cpu().numpy().astype(float)  # [N, 4, J]
         for index, entity in enumerate(
-            (_path("truth", self._robot, "joint_positions"), "/control/joint_targets",
-             _path("truth", self._robot, "joint_efforts"))
+            (_path("truth", self._robot, "joint_positions"), _path("truth", self._robot, "joint_velocities"),
+             "/control/joint_targets", _path("truth", self._robot, "joint_efforts"))
         ):  # fmt: skip
             stream.send_columns(entity, indexes=indexes, columns=rr.Scalars.columns(scalars=values[:, index]))
 
@@ -303,6 +313,12 @@ class EpisodeLog:
         stream.send_columns("/estimate/holding", indexes=indexes, columns=rr.Scalars.columns(scalars=holding))
         commands = np.stack([row[5] for row in buffer])
         stream.send_columns("/control/base_command", indexes=indexes, columns=rr.Scalars.columns(scalars=commands))
+        velocities = np.stack([row[6] for row in buffer])
+        stream.send_columns(
+            _path("truth", self._robot, "base_velocity"),
+            indexes=indexes,
+            columns=rr.Scalars.columns(scalars=velocities),
+        )
         stream.send_columns(
             _path("truth", self._robot, "base"),
             indexes=indexes,
@@ -552,7 +568,8 @@ class EpisodeLog:
     def agent_log(self, topic: str, record: dict, images: dict) -> None:
         """A record the agent kept (``session.log``; ``topic`` checked there): its JSON under
         ``/agent/log/<topic>``, each image under ``/agent/log_images/<topic>/<name>`` with the same
-        ``seq``. Called from the agent's thread."""
+        ``seq``. Called from the agent's thread, and from the main thread by an agent that is also
+        the episode's viewer (the robot UI)."""
         rr, stream = self._rr, self._stream
         self._stamp()
         parts = topic.split("/")

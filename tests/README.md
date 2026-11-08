@@ -134,8 +134,8 @@ cameras (the core `ArmPlanner`, `skills/manipulation/execution/arm_planner.py`).
 Look around (one turn on the spot; unknown floor is blocked, so start with it). The Telemetry
 button (key T) opens a drawer over the status column: health (speed vs real time, runner and map
 timing, planner, cameras, link), base and arm charts, joint limit margins, the mission, and any
-command's raw inputs and feedback (also from a click on the log or timeline). The output folder
-gets `telemetry.jsonl` (5 Hz of sim time).
+command's raw inputs and feedback (also from a click on the log or timeline). The run's
+`episode.rrd` keeps the requests the UI received and the page's events (`ui/request`, `ui/event`).
 
 ```bash
 isaaclab -p scripts/PhyGS/phygs/ui/cli.py \

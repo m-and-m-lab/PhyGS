@@ -68,11 +68,22 @@ drag sets the heading.
 
 ## What a run leaves
 
-In the output folder: the World's `report.json` and `episode.rrd`, as for every agent; `ui_summary.json`
-(commands and failures per skill, Drive time, the evaluation); `ui_log.jsonl` (the session's events);
-`telemetry.jsonl` (every 0.2 s of simulated time: pose, arm, base velocity, joint speeds, hand, the
-running arm command, camera rates, the loop's health). The person's episode is recorded like any
-agent's: `rerun episode.rrd` shows it, and `phygs replay` renders its videos.
+In the output folder: the World's `report.json` and `episode.rrd`, as for every agent;
+`ui_summary.json` (commands and failures per skill, Drive time, the evaluation); `url.txt` (the
+page's link) and `timing.json` (times, map updates, how it ended). The person's episode
+is recorded like any agent's: `rerun episode.rrd` shows it, and `phygs replay` renders its videos.
+The recording also keeps the page's side, as the UI's own records (`session.log`, from the agent's
+first pass until the recording closes): each request the UI received (`/agent/log/ui/request`: the
+page's, and the launcher's own, autostart, Ctrl+C or SIGTERM and the time limit, which carry
+`source`) and each event the page was told, with its number (`/agent/log/ui/event`: command changes with their raw
+feedback, previews, step lines, errors, the episode's start and end); `Recording.agent_log("ui/event")`
+reads them. The result card shown after the episode is in `ui_summary.json`. The telemetry drawer's
+data is recorded where it comes from: the robot's pose and its base link's measured velocity at every
+state sample (each camera period), the joints' positions, velocities and efforts every physics tick, the commands'
+feedback among the agent calls, each arm plan's request and result under `/planner`, and the
+real-time factor and tick time under `/perf`. The drawer's hand position follows from the base
+pose, the joints and the robot's hand tool, and its camera rates from the capture settings (the recording's `observation` property); neither is
+recorded.
 
 ## Protocol
 

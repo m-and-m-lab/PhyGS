@@ -16,7 +16,9 @@ The episode is an episode spec (docs/world.md) run by the same
 agent (:class:`~phygs.ui.session.UiSession`, every action an audited session call
 within the spec's actions and grants) and the page is its viewer. The World writes the episode
 report (``report.json``, with the task's evaluation) and the recording (``episode.rrd``, ``rerun
-episode.rrd`` shows it); the UI adds ``ui_summary.json``, ``ui_log.jsonl`` and ``telemetry.jsonl``.
+episode.rrd`` shows it), which also keeps the requests the UI received (the page's, and this
+launcher's own, which carry ``source``) and what the page was told (``ui/request``, ``ui/event``);
+the UI adds ``ui_summary.json``, ``url.txt`` and ``timing.json``.
 ``phygs/ui/configs/house_drawer.yaml`` runs the Bear house. The episode ends with End, the
 budget or E-stop. ``--demo tour`` starts at once, drives a short fixed route through the public
 locomotion API and then navigates back with Nav2, so there is something to watch.
@@ -163,7 +165,7 @@ def main() -> int:
         scene=spec.scene.name,
         skills=None,
     )
-    bridge = Bridge(hello, log_path=args.output / "ui_log.jsonl")
+    bridge = Bridge(hello)
     ui = UiSession(
         bridge,
         robot=robot,
@@ -172,7 +174,6 @@ def main() -> int:
         held_object_size_m=tuple(config["held_object_size_m"]),
         task=dict(goal=task.goal, description=task.description),
         budget_seconds=spec.sim_seconds,
-        telemetry_path=args.output / "telemetry.jsonl",
         demo=tour if args.demo == "tour" else None,
     )
     target = args.target or getattr(task, "target", None)
@@ -237,15 +238,17 @@ def main() -> int:
         )
         (args.output / "url.txt").write_text(server.url + "\n")
 
-        def stop(*_):  # Ctrl+C, SIGTERM or the time limit: End when running, else E-stop.
-            bridge.request(dict(type="episode", action="end") if ui.phase == RUNNING else dict(type="estop"))
+        def stop(signum=None, _frame=None):  # Ctrl+C, SIGTERM or the time limit: End when running, else E-stop.
+            request = dict(type="episode", action="end") if ui.phase == RUNNING else dict(type="estop")
+            why = signal.Signals(signum).name if signum is not None else "time limit"
+            bridge.request(dict(request, source=f"launcher: {why}"))  # Recorded apart from the page's.
 
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGINT, stop)
         if args.max_wall_seconds is not None:
             threading.Timer(args.max_wall_seconds, stop).start()
         if args.autostart or args.demo != "none":
-            bridge.request(dict(type="episode", action="start"))
+            bridge.request(dict(type="episode", action="start", source="launcher: autostart"))
         report = world.run(ui.agent, name="robot_ui")
         shown = ui.show_report(report)
         (args.output / "ui_summary.json").write_text(json.dumps(shown, indent=1))
@@ -276,9 +279,7 @@ def main() -> int:
     finally:
         if server is not None:
             server.stop()
-        ui.close()
         world.close()
-        bridge.close()
     return exit_code
 
 

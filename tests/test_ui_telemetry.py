@@ -3,10 +3,9 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The telemetry the page's drawer shows and the launcher saves, and a clean stop with a page connected."""
+"""The telemetry the page's drawer shows, and a clean stop with a page connected."""
 
 import asyncio
-import json
 import math
 import threading
 import time
@@ -27,7 +26,7 @@ def turned(yaw):
     return matrix
 
 
-def test_telemetry_comes_from_the_agent_view_and_is_saved_every_period(tmp_path):
+def test_telemetry_comes_from_the_agent_view():
     control = fake_control()
     packet = control.observe()
     packet.localization.linear_velocity = torch.tensor([0.3, -0.1, 0.0])
@@ -42,8 +41,6 @@ def test_telemetry_comes_from_the_agent_view_and_is_saved_every_period(tmp_path)
         cameras=("hand",),
         health=lambda: health,
         forward=lambda joints: {"arm_link_wr1": wrist},  # The robot's model: joints -> body-frame links.
-        telemetry_path=tmp_path / "telemetry.jsonl",
-        telemetry_period=0.5,
     )
     bridge.request(START)
     session.track("manipulation", "move_to_pose", 1)
@@ -55,7 +52,6 @@ def test_telemetry_comes_from_the_agent_view_and_is_saved_every_period(tmp_path)
         if step == 1:
             telemetry = bridge.state()[1]["telemetry"]
             assert telemetry["base"]["yaw_rate"] == pytest.approx(0.5)  # 0.05 rad in 0.1 s.
-    session.close()
     telemetry = bridge.state()[1]["telemetry"]
     assert telemetry["base"]["vx"] == pytest.approx(0.3) and telemetry["base"]["vy"] == pytest.approx(-0.1)
     assert telemetry["joint_speeds"]["arm_sh0"] == pytest.approx(0.1)
@@ -64,9 +60,6 @@ def test_telemetry_comes_from_the_agent_view_and_is_saved_every_period(tmp_path)
     assert telemetry["tracking"]["skill"] == "move_to_pose"  # The running arm command.
     assert telemetry["cameras"]["hand"]["fps"] == pytest.approx(31.25)
     assert telemetry["health"] == health and "commands" in telemetry and "failures" in telemetry
-    lines = [json.loads(line) for line in (tmp_path / "telemetry.jsonl").read_text().splitlines()]
-    assert [line["sim_time"] for line in lines] == [12.5, 13.1]  # Every 0.5 s of sim time.
-    assert lines[-1]["base"]["vx"] == pytest.approx(0.3) and "commands" not in lines[-1]
 
 
 def test_the_server_stops_cleanly_with_a_page_still_connected():

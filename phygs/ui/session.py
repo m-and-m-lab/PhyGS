@@ -25,7 +25,6 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import asdict, is_dataclass
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -91,9 +90,8 @@ class UiSession:
     and the state with ``telemetry`` for the page's telemetry drawer: base velocity (body frame)
     and turn rate, arm joint speeds, the hand position, the running arm command's latest feedback,
     each camera's frame rate and age, the counts of commands and failures, and ``health()`` (the
-    runner's timing and the planner). Every ``telemetry_period`` [s of sim time] the telemetry is
-    also appended to ``telemetry_path`` (JSON lines). The arm is reported stowed when every arm joint
-    is within the robot's ``arm.stow_tolerance`` [m or rad] of its stow.
+    runner's timing and the planner). The arm is reported stowed when every arm joint is within the
+    robot's ``arm.stow_tolerance`` [m or rad] of its stow.
 
     Agent side (:meth:`agent`): requests from the page are ``episode`` (start or end), ``run`` (a
     skill from :mod:`phygs.ui.schema` with its inputs), ``preview``, ``drive`` (v_x,
@@ -116,6 +114,11 @@ class UiSession:
     ``demo`` (session -> iterator of steps) runs a scripted route as soon as the episode starts.
     The page's requests are read every pass of the agent (``AGENT_PERIOD_S``); the commands'
     feedback, which is an audited call each, and the demo's steps every ``feedback_period`` [s wall].
+    The run's recording keeps the page's side, through the agent session's ``log`` from the agent's
+    first pass until the recording closes: each request received (``ui/request``: the page's, and the
+    launcher's own, which say so in ``source``) and each event the page was told with its number
+    (``ui/event``: command changes, previews, step lines, errors, the episode's start and end; the
+    result card after the episode is :meth:`show_report`'s).
     """
 
     def __init__(
@@ -131,8 +134,6 @@ class UiSession:
         task: dict | None = None,
         budget_seconds: float | None = None,
         health: Callable[[], dict] | None = None,
-        telemetry_path: Path | None = None,
-        telemetry_period: float = 0.2,
         feedback_period: float = 0.25,
         demo: Callable[[Any], Iterator[None]] | None = None,
         clock: Callable[[], float] = time.monotonic,
@@ -152,11 +153,9 @@ class UiSession:
         self._forward, self._demo_script, self._demo = forward, demo, None
         self._task, self._budget, self._health = dict(task or {}), budget_seconds, health
         self._clock, self._started = clock, clock()
-        self._telemetry_period = telemetry_period
         # Each feedback read is an audited agent call: polled at 20 Hz a 3-minute run logged ~1,600.
         self._feedback_period, self._last_feedback = feedback_period, -math.inf
-        self._telemetry_file = None if telemetry_path is None else telemetry_path.open("a")
-        self._telemetry_written = -math.inf
+        self._record: Callable[[str, dict], None] | None = None  # The agent session's log, once it runs.
         # Shared by the agent thread (commands) and the main thread (state): under the lock.
         self._lock = threading.RLock()
         self._commands: dict[str, dict] = {}  # UI command id -> its record.
@@ -192,6 +191,17 @@ class UiSession:
         if health is not None:
             self._health = health
 
+    def _push(self, event: dict) -> None:
+        """Tell the page ``event``; it is also kept in the run's recording with its number, which
+        orders the events as the page got them (the agent and main threads both push)."""
+        number = self._bridge.push_event(event)
+        self._keep("ui/event", dict(number=number, event=event))
+
+    def _keep(self, topic: str, record: dict) -> None:
+        """Keep ``record`` in the run's recording (``/agent/log/<topic>``), from the agent's first pass."""
+        if self._record is not None:
+            self._record(topic, record)
+
     # ------------------------------------------------------------------------------------------
     # Agent side (agent thread): every robot call goes through the session.
     def agent(self, session: Any) -> None:
@@ -202,6 +212,7 @@ class UiSession:
     def agent_step(self, session: Any) -> bool:
         """One pass: the page's requests, the commands' feedback, finished previews and the demo.
         Returns False once the episode has ended."""
+        self._record = session.log  # The page's side of the run goes into its recording.
         try:
             self._handle_requests(session)
             due = self._clock() - self._last_feedback >= self._feedback_period
@@ -254,6 +265,7 @@ class UiSession:
 
     def _handle_requests(self, session: Any) -> None:
         for request in self._bridge.take_requests():
+            self._keep("ui/request", request)
             kind = request.get("type")
             if kind == "estop":
                 self._estop(session)
@@ -298,7 +310,7 @@ class UiSession:
                 except EpisodeEnded:
                     break
                 except Exception as error:
-                    self._bridge.push_event(dict(type="error", message=f"E-stop could not {label}: {error}"))
+                    self._push(dict(type="error", message=f"E-stop could not {label}: {error}"))
         if self.phase != ENDED:
             self._finish_reason = "E-stop from the UI"
             if self.phase == READY:  # Nothing ran: end now.
@@ -310,7 +322,7 @@ class UiSession:
         if action == "start" and self.phase == READY:
             self._time = float(session.time())  # The first call: the World's clock starts.
             self.phase, self._start_wall = RUNNING, self._clock()
-            self._bridge.push_event(dict(type="episode", sim_time=self._time, phase=RUNNING, status="running"))
+            self._push(dict(type="episode", sim_time=self._time, phase=RUNNING, status="running"))
             if self._demo_script is not None:
                 self._demo = iter(self._demo_script(self, session))
         elif action == "end" and self.phase == RUNNING:
@@ -322,7 +334,7 @@ class UiSession:
         """The episode is over: tell the page (the World's report follows with :meth:`show_report`)."""
         with self._lock:
             self.phase, self._end_wall, self._outcome = ENDED, self._clock(), (outcome, reason)
-        self._bridge.push_event(
+        self._push(
             dict(
                 type="episode",
                 sim_time=self._time,
@@ -365,7 +377,7 @@ class UiSession:
         outcome, reason = self._outcome or (report.get("ended_by", ENDED), report.get("reason", ""))
         with self._lock:
             self.phase = ENDED
-        self._bridge.push_event(
+        self._push(
             dict(
                 type="episode",
                 sim_time=self._time,
@@ -518,9 +530,7 @@ class UiSession:
         with self._lock:
             preview_id = f"p{len(self._previews) + 1}"
             self._previews[preview_id] = dict(skill=skill, inputs=plain(inputs), plan=plan, trajectory=None)
-        self._bridge.push_event(
-            dict(type="preview", id=preview_id, skill=skill, sim_time=self._time, status="planning")
-        )
+        self._push(dict(type="preview", id=preview_id, skill=skill, sim_time=self._time, status="planning"))
 
     def _follow_previews(self, session: Any) -> None:
         """Report each finished preview plan once: the gripper path and the final arm, or the raw failure."""
@@ -536,7 +546,7 @@ class UiSession:
             else:
                 preview["trajectory"] = trajectory
                 event.update(status="ready", **self._plan_drawing(session, trajectory))
-            self._bridge.push_event(event)
+            self._push(event)
 
     def _plan_drawing(self, session: Any, trajectory: JointTrajectory) -> dict:
         """A plan as the page draws it: the grasp point's path and the arm at the end, in the body
@@ -639,7 +649,7 @@ class UiSession:
             state="failed",
             feedback=dict(status="rejected", reason=f"{type(error).__name__}: {error}"),
         )
-        self._bridge.push_event(event)
+        self._push(event)
         self._count(event)
 
     def _poll(self, session: Any, record: dict) -> None:
@@ -653,7 +663,7 @@ class UiSession:
             record["status"] = status
             event = {key: record[key] for key in ("id", "channel", "skill", "inputs", "started")}
         event.update(type="command", sim_time=self._time, status=status, state=ui_state(status), feedback=feedback)
-        self._bridge.push_event(event)
+        self._push(event)
         self._count(event)
 
     # ------------------------------------------------------------------------------------------
@@ -691,7 +701,7 @@ class UiSession:
         self._steps_seen += len(lines)
         for time_seconds, kind, text in lines:
             if kind in STEP_KINDS:
-                self._bridge.push_event(dict(type="step", sim_time=time_seconds, kind=kind, text=text))
+                self._push(dict(type="step", sim_time=time_seconds, kind=kind, text=text))
 
     def _publish_map(self, view: Any) -> None:
         """Navigation's costmap as the page's map: obstacles, unknown, and where the robot's centre may not go."""
@@ -703,7 +713,7 @@ class UiSession:
         except (RuntimeError, ValueError, TimeoutError) as error:  # Navigation reports it too, when asked to plan.
             if str(error) != self._map_error:
                 self._map_error = str(error)
-                self._bridge.push_event(dict(type="error", message=f"Navigation map: {error}"))
+                self._push(dict(type="error", message=f"Navigation map: {error}"))
             return
         self._map_error = None
         if costmap is None:
@@ -752,7 +762,6 @@ class UiSession:
                 )
             arm = dict(joints=joints, gripper=positions.get(self._gripper_joint), stowed=stowed)
         telemetry = self._telemetry(packet, sim)
-        self._write_telemetry(dict(sim_time=sim, wall_time=wall, rtf=rtf, pose=pose, arm=arm, **telemetry))
         with self._lock:
             counts, failures, phase = (
                 json.loads(json.dumps(self._counts)),
@@ -826,17 +835,3 @@ class UiSession:
             cameras=cameras,
             health=None if self._health is None else plain(self._health()),
         )
-
-    def _write_telemetry(self, line: dict) -> None:
-        """Append one line to the telemetry file every telemetry period of sim time."""
-        if self._telemetry_file is None or line["sim_time"] - self._telemetry_written < self._telemetry_period:
-            return
-        self._telemetry_written = line["sim_time"]
-        self._telemetry_file.write(json.dumps(plain(line), separators=(",", ":")) + "\n")
-        self._telemetry_file.flush()
-
-    def close(self) -> None:
-        """Close the telemetry file."""
-        if self._telemetry_file is not None:
-            self._telemetry_file.close()
-            self._telemetry_file = None

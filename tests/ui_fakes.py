@@ -16,6 +16,7 @@ from fakes import SPOT
 
 from phygs.observations.front_view import CameraFrame
 from phygs.runtime.episode import EpisodeStatus
+from phygs.session.session import AgentSession as RealSession
 from phygs.ui.bridge import Bridge
 from phygs.ui.session import UiSession
 from phygs.world.viewer import EpisodeView
@@ -145,10 +146,11 @@ class Navigation:
 
 class AgentSession:
     """The agent session over a fake control: its clients, its observation and time; ``finished``
-    keeps the reasons the agent finished the episode with."""
+    keeps the reasons the agent finished the episode with. ``log`` is the real session's (its checks,
+    then ``log``: a recording's ``agent_log``; None: dropped)."""
 
-    def __init__(self, control):
-        self._control, self.finished, self.time_calls = control, [], 0
+    def __init__(self, control, log=None):
+        self._control, self.finished, self.time_calls, self._log = control, [], 0, log
         self.ended: str | None = None  # Set: every call raises EpisodeEnded, as after the budget.
 
     def __getattr__(self, name):
@@ -175,15 +177,17 @@ class AgentSession:
     def finish(self, reason=""):
         self.finished.append(reason)
 
+    log = RealSession.log
+
 
 class Ui:
     """A UiSession whose agent session and episode view come from a fake control. :meth:`update`
     is one agent pass, then one viewer update; other members are the UiSession's."""
 
-    def __init__(self, control, bridge, *, costmap=None, **options):
+    def __init__(self, control, bridge, *, costmap=None, log=None, **options):
         options.setdefault("feedback_period", 0.0)  # Every update reads the feedback.
         self.session = UiSession(bridge, **{"robot": SPOT, **options})
-        self.control, self.costmap, self.robot = control, costmap, AgentSession(control)
+        self.control, self.costmap, self.robot = control, costmap, AgentSession(control, log)
 
     def view(self):
         control = self.control
