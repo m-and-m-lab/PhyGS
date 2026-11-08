@@ -61,7 +61,7 @@ here and in `LAYERS`.
 
 - **Agent authors:** `phygs.session` only (`tests/test_agent_imports.py`), with the standard
   library, NumPy and PyYAML, and optionally the composite skills over it (`phygs.skills.composite`, which
-  imports the session only). [The agent contract](../README.md#-the-agent-contract);
+  imports the session only). [The agent contract](agents.md);
   `examples/agents/template.py`.
 - **Benchmark authors:** `phygs.world` and `phygs.scene` (scenes by id). [world.md](world.md).
 - **Framework developers:** a robot is a folder ([adding_a_robot.md](adding_a_robot.md)); a

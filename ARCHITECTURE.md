@@ -5,6 +5,32 @@ through a session; a task evaluator reads ground truth; the run is reproducible 
 This document says where the boundaries are and how the parts fit. Usage and measurements are in
 the topic guides ([docs index](docs/README.md)).
 
+## The three parts
+
+Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetched by id and version;
+they are made outside this repository (the paper's scene generator, a fork of Infinigen-Indoors, is
+on the `main` branch).
+
+1. **Robot and runtime** (`phygs/robots`, `phygs/runtime`, `phygs/sim`): a robot is one folder with a
+   `robot.yaml` (joints, gripper tool frames, cameras by role, limits) and code only for its base
+   controller and actuators. Spot with arm is the reference robot, walking under a learned policy at
+   250 Hz physics; Ridgeback-Franka is the second robot. One runtime owns the clock, every joint,
+   command expiry, reset and the emergency stop.
+2. **Skills and backends** (`phygs/skills`, each client's `api.py` and its `execution/`): three public
+   clients, `locomotion` (velocity; all zeros stops), `navigation` (`navigate_to`, `explore`, on Nav2
+   with a measured transit footprint, mapping the cameras' point clouds or a known map) and
+   `manipulation` (joint and wrist moves, end-effector lines, gripper, `stow`, `unstow`, `look_at`,
+   with cuRobo or MoveIt planning on known boxes or on depth). Every command has an id, feedback and
+   cancel.
+3. **The world and measurement** (`phygs/world`, `phygs/session`, `phygs/scene`, `phygs/recording`): an
+   episode is a spec (scene by id, robot start, objects, actions, observations, grants, budget,
+   seed); the `World` builds it, runs an agent's `run(session)` in its own thread, audits every call,
+   records the episode in its recording (`episode.rrd`), and hands ground truth to the task's
+   evaluator once, after the robot has stopped. Provenance in every report: the USD, policy and
+   threshold hashes and the code version.
+
+What is simulated and what is measured: [docs/physics.md](docs/physics.md).
+
 ## Boundaries
 
 **Robot capability ends where agent strategy begins.** PhyGS provides what the robot can do:
@@ -575,7 +601,7 @@ To add a new skill:
    component test (`components/`) for machinery under the session.
 
 To write an agent: a `run(session)` function that imports only `phygs.session`
-([the agent contract](README.md#-the-agent-contract); `examples/agents/template.py`). Composed
+([the agent contract](docs/agents.md); `examples/agents/template.py`). Composed
 behaviour (pick, open a drawer) is agent-side code over the same session: the agent's own, or the
 composite skills (`phygs.skills.composite`).
 

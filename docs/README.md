@@ -6,10 +6,11 @@ Start here. Each topic has **one** guide. Other files link to that guide; they d
 
 | Need | Read |
 | --- | --- |
-| Install, run, first commands | [README.md](../README.md) |
+| Install, run, first commands | [README.md](../README.md) · the container, and installing without it: [docker/README.md](../docker/README.md) |
 | The boundaries: the two public surfaces (`phygs.session`, `phygs.world`), what is private, which way information flows | [ARCHITECTURE.md](../ARCHITECTURE.md#boundaries) |
-| How the system fits together: layers, runtime tick, navigation flow (with diagrams) | [ARCHITECTURE.md](../ARCHITECTURE.md) |
+| How the system fits together: the three parts, layers, runtime tick, navigation flow (with diagrams) | [ARCHITECTURE.md](../ARCHITECTURE.md) |
 | The package layout, the layers and the import rule, what moved in 0.4.0 | [layout.md](layout.md) |
+| Writing an agent: the session, its calls, the composite skills, the recording and the report | [agents.md](agents.md) |
 | Driving the framework from a benchmark: spec, task, World, ground truth, report, versions | [world.md](world.md) |
 | What changed and when (including every rename of the repository split) | [CHANGELOG.md](../CHANGELOG.md) |
 | Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [tests/robot_tests/README.md](../tests/robot_tests/README.md) |
@@ -19,6 +20,7 @@ Start here. Each topic has **one** guide. Other files link to that guide; they d
 
 | Topic | Guide | Diagram |
 | --- | --- | --- |
+| What is simulated and what is measured: friction grasps, physical drawers, the legged base, contacts, task evaluators | [physics.md](physics.md) | — |
 | Adding a robot: one folder with a `robot.yaml`, plugin points (base controller, actuators), camera roles, the bring-up ladder with `--robot` | [adding_a_robot.md](adding_a_robot.md) | — |
 | Observations, frames, timing | [observations.md](observations.md) | — |
 | Who sees what: pipelines and permissions | [pipelines.md](pipelines.md) | — |

@@ -13,6 +13,8 @@ This file defines how Codex agents and human contributors should work in this re
 | Layers | Packages import downward only (`docs/layout.md`, `tests/test_layers.py`): ui, world, session, robots, skills, execution, sim and recording, scene and runtime, observations. A new package gets a layer; an upward need is a type to move down or a value to pass in. |
 | Clean and lean code | Keep modules small, separate API facade from IsaacLab backend, avoid global state, and avoid broad compatibility shims. |
 | Robotics benchmark mindset | Prefer explicit configs, deterministic target paths, named assets, measurable outputs, and repeatable smoke tests. |
+| SDK-shaped API | Spot SDK vocabulary where it fits; the runtime exposes `robot.<skill>` clients with ids, feedback and cancel. |
+| Measurement over self-report | Task evaluators and robot tests read ground truth; the report keeps outcome and conduct apart. |
 
 ## Required Workflow
 

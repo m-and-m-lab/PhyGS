@@ -3,7 +3,7 @@
 The package map, the layers and the import rule are in [docs/layout.md](../docs/layout.md); what each
 audience imports:
 
-- **An agent:** `phygs.session` only ([the agent contract](../README.md#-the-agent-contract),
+- **An agent:** `phygs.session` only ([the agent contract](../docs/agents.md),
   [examples/agents/template.py](../examples/agents/template.py)).
 - **A benchmark:** `phygs.world` and `phygs.scene` ([docs/world.md](../docs/world.md)).
 - **A robot:** a folder under `robots/` with a `robot.yaml` ([adding a robot](../docs/adding_a_robot.md)).

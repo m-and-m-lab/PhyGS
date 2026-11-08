@@ -16,6 +16,22 @@ root it accepts a folder `<id>/scene.usda|usdc|usd` or a record `<id>.json` writ
 (`usd_path`, `scene_version`, `sha256`, the dataset commit). The USD file is resolved when first
 used, so a spec validates without the scene, and the report's provenance holds the file's hash.
 
+## Three kinds of scenes
+
+- **Built-in** in `phygs/scene/builtin/`: grid storage (a drawer unit and a table), the navigation
+  course, the dynamic course, as files ([fixture scenes](#fixture-scenes)).
+- **Released scenes** (the scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): a catalog
+  of immutable releases, one scene id at one version each. `phygs.scene.fetch` downloads, verifies
+  (SHA-256, every dependency inside the archive) and installs a release under
+  `~/.cache/phygs/scenes` (or `--cache_dir`) with a record the scene registry reads; a spec pins it with
+  `scene: {id: bear_loop_house, version: 1.1.0}`. The release format is below.
+- **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says
+  `scene: {id: <folder>, ground: true|false}`; no spec holds a file path.
+
+**The scene contract** the framework reads from a USD: rigid bodies by name, prismatic joints as
+drawers, colliders for the known map, the robot's start on the floor. The reader is
+`phygs/scene/reader.py`.
+
 ## Where released scenes live
 
 The scene dataset is a private Hugging Face dataset, `mandmlabresearch/ForageBench`
@@ -38,9 +54,13 @@ result names the exact scene it ran in.
 ```bash
 isaaclab -p -m huggingface_hub.cli.hf auth login                      # once; the dataset is private
 isaaclab -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench     # ids, versions, sizes, the commit
-isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
+isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0 \
+  --revision 37d8744874b151c529b3823424ea4727a404a427   # optional: the dataset commit of that release
 isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --all  # every catalogued release
 ```
+
+The robot tests' configs pin the house scene's release 1.1.0 (535.5 MB). It was published in the
+dataset commit `37d8744874b151c529b3823424ea4727a404a427`; `--revision` fetches from exactly that commit.
 
 The fetcher resolves the dataset's `main` to a commit (or takes `--revision`), downloads the
 manifest and the ZIP, verifies the archive's SHA-256, refuses unsafe paths and symlinks inside it,
@@ -48,8 +68,8 @@ extracts into `<cache>/<sha256>/`, checks that every USD dependency resolved ins
 and writes `<cache>/records/<commit>/<id>-<version>.json` plus `<cache>/<id>.json` for the registry.
 `<id>.json` is the last fetch; a spec pinned to another fetched release of the id is found through
 that release's own record, so several releases of one id can stay installed side by side.
-The cache is `--cache_dir` (default `~/.cache/phygs/scenes`, which is also `$PHYGS_SCENES`'
-default). Rerunning verifies the cached files; nothing is overwritten. Nothing downloads during a
+The cache is `--cache_dir` (default `~/.cache/phygs/scenes`, where the registry looks after
+`$PHYGS_SCENES`). Rerunning verifies the cached files; nothing is overwritten. Nothing downloads during a
 simulation.
 
 ## Making a release

@@ -11,6 +11,16 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+Changed (2026-11-08, docs):
+
+- The README's reference sections moved into the guides that own them: the agent contract (the
+  session, the composite skills, the recording and the report) into `docs/agents.md` (new); the
+  physics points into `docs/physics.md` (new); "What PhyGS is" into `ARCHITECTURE.md` ("The three
+  parts"); the kinds of scenes and the scene contract into `docs/scenes.md`, with the dataset commit
+  of the house scene's release 1.1.0 (`--revision`); the install without the container and
+  the CPU-governor tip into `docker/README.md`; the two coding-philosophy rows `AGENTS.md` lacked
+  (SDK-shaped API, measurement over self-report) into its core principles. The robots table and the
+  robot-test ladder stayed in `docs/adding_a_robot.md` and `tests/robot_tests/README.md`.
 ### 0.12.0 (2026-11-08)
 
 Changed (2026-11-08, docs):

@@ -48,10 +48,38 @@ The container has an 8 GB `/dev/shm` (Nav2 and the planner workers crash with Do
 
 ## In every shell
 
+Every interactive shell in the container (`/etc/bash.bashrc`) sources ROS 2 Jazzy and the explore_lite overlay
+(`source /opt/explore_ws/install/setup.bash`), and `ROS_DOMAIN_ID` comes from `docker/.env.ros2`.
+Every command runs from the Isaac Lab root:
+
 ```bash
 cd /workspace/isaaclab
 isaaclab -p -m phygs version
 ```
 
-Then the README's quick start. On the host, `sudo cpupower frequency-set -g performance` is
-recommended (`powersave` costs about 20% real-time factor).
+Then the README's quick start.
+
+## Without the container
+
+Install what `docker/Dockerfile.phygs` installs: ROS 2 Jazzy, Nav2 and explore_lite
+([nav2.md](../docs/nav2.md#ros-2-jazzy-setup)), cuRobo and MoveIt
+([manipulation_planners.md](../docs/manipulation_planners.md#dependencies)). Then, from the Isaac Lab root:
+
+```bash
+isaaclab -p -m pip install -e scripts/PhyGS --no-deps
+```
+
+In every shell that runs an episode or a navigation test (the container does both for you):
+
+```bash
+source /opt/explore_ws/install/setup.bash   # ROS 2 Jazzy plus explore_lite.
+export ROS_DOMAIN_ID=<id>                   # Any ID no other ROS user on the machine uses.
+```
+
+## Speed
+
+On the host, set the CPU governor to `performance`; `powersave` costs about 20% real-time factor:
+
+```bash
+sudo cpupower frequency-set -g performance
+```
