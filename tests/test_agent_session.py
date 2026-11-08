@@ -271,6 +271,27 @@ def test_steps_are_audited_but_not_counted_and_record_how_they_ended(tmp_path):
     assert audit.summary()["calls"] == 3 and "session" not in audit.summary()["by_client"]
 
 
+def test_an_agent_s_own_records_go_to_the_recording_unchecked_by_time_and_uncounted(tmp_path):
+    world, main, session, _, _, audit, _ = make_session(tmp_path)
+    kept = []
+    session._log = lambda topic, record, images: kept.append((topic, record, images))  # The World's recording.
+    png = b"\x89PNG\r\n\x1a\n" + bytes(8)
+    session.log("model/turn", {"turn": 1, "pixel": np.array([3.0, 4.0])}, images={"hand": png})
+    session.log("model/error")
+    assert kept == [("model/turn", {"turn": 1, "pixel": [3.0, 4.0]}, {"hand": png}), ("model/error", {}, {})]
+    for topic in ("", "model//turn", "model turn", "../x", 3):
+        with pytest.raises(ValueError, match="topic"):
+            session.log(topic)
+    with pytest.raises(TypeError):
+        session.log("model/turn", ["not", "a", "dict"])
+    for image in (b"GIF89a", np.zeros((4, 4), np.float32), np.zeros((4, 4, 2), np.uint8)):
+        with pytest.raises(ValueError, match="image"):
+            session.log("model/turn", images={"hand": image})
+    with pytest.raises(ValueError, match="names"):
+        session.log("model/turn", images={"a/b": png})
+    assert len(kept) == 2 and audit.summary()["calls"] == 0 and world.audited == []  # Not a call; time stood.
+
+
 def test_hints_refuse_what_the_spec_does_not_grant(tmp_path):
     world, main, session, *_ = make_session(tmp_path, grants=("scene_hints",))
     seen = {}

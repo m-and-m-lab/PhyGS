@@ -209,6 +209,37 @@ TINY_URDF = """<robot name="tiny">
 """
 
 
+def test_an_agent_s_records_read_back_with_their_images_exactly_as_given(tmp_path):
+    import io
+
+    from PIL import Image
+
+    rgb = np.random.default_rng(0).integers(0, 255, (24, 32, 3), dtype=np.uint8)
+    buffer = io.BytesIO()
+    Image.fromarray(rgb).save(buffer, format="PNG")
+    png = buffer.getvalue()
+    log = EpisodeLog(tmp_path / "episode.rrd", run_id="run")
+    log.at(10, 0.04)
+    log.agent_log("model/turn", {"turn": 1, "reply": "stow"}, {"frontleft": png, "gray": rgb[..., 0]})
+    log.agent_log("model/point", {"turn": 1, "target": "the cup"}, {"rgba": np.dstack([rgb, rgb[..., :1]])})
+    log.at(50, 0.2)
+    log.agent_log("model/turn", {"turn": 2, "reply": "done"}, {"frontleft": png})
+    log.agent_log("model", {"deeper topics stay apart": True}, {})
+    assert log.close()["status"] == "complete"
+
+    recording = Recording(tmp_path)
+    turns = recording.agent_log("model/turn")
+    assert [(r.record["turn"], r.time, r.topic) for r in turns] == [(1, 0.04, "model/turn"), (2, 0.2, "model/turn")]
+    assert [r.topic for r in recording.agent_log()] == ["model/turn", "model/point", "model/turn", "model"]
+    assert turns[0].wall_time <= turns[1].wall_time and turns[0].seq < turns[1].seq
+    images = recording.agent_images("model/turn")
+    assert set(images) == {turns[0].seq, turns[1].seq} and images[turns[0].seq]["frontleft"] == png  # The bytes.
+    assert np.array_equal(images[turns[0].seq]["gray"], rgb[..., 0]) and set(images[turns[1].seq]) == {"frontleft"}
+    (point,) = recording.agent_images("model/point").values()
+    assert np.array_equal(point["rgba"], np.dstack([rgb, rgb[..., :1]]))
+    assert recording.agent_images("model") == {}  # Its own images only, none of model/turn's.
+
+
 def test_a_run_that_died_reads_back_to_its_last_whole_chunk(tmp_path):
     (tmp_path / "tiny.urdf").write_text(TINY_URDF)
     run = tmp_path / "run"

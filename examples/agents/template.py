@@ -18,6 +18,7 @@ def run(session):
     print(f"task: {session.task.goal} {session.task.description!r}; grants: {session.grants}")
     packet = session.observe()  # The latest observation the spec allows; time does not pass.
     print("cameras:", sorted(packet.cameras))
+    session.log("notes", {"cameras": sorted(packet.cameras)})  # The agent's own record, kept in the recording.
 
     if session.navigation is not None:
         start = packet.localization.pose.matrix[:2, 3].tolist() if packet.localization.valid else None

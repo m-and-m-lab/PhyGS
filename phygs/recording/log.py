@@ -50,6 +50,10 @@ public copy is the recording without it):
   the run rendered, as the robot's cameras gave it, with ``/sensors/<camera>`` (intrinsics, pose in
   the body frame); ``phygs replay`` then shows these instead of rendering again.
 - ``/agent/calls``: every agent call and step marker, as the audit writes it.
+- ``/agent/log/<topic>``: each record the agent kept of its own (``session.log``: a model's request
+  and reply, an error and where it came from), as JSON; its images under
+  ``/agent/log_images/<topic>/<name>``, at the same ``seq``: encoded bytes (PNG, JPEG) exactly as the
+  agent gave them, arrays lossless.
 - ``/events/phase``, ``/events/anomaly``: the episode's phases (settling included) and anomalies.
 - ``/perf/*``: real-time factor, tick time and machine load, once per wall-clock second.
 
@@ -91,6 +95,8 @@ ROTATION_STEP = math.radians(0.25)  # [rad]; likewise for its rotation.
 PERF_PERIOD = 1.0  # [s wall]; the /perf rows.
 WORLD_FRAME = "tf#/truth"  # The frame the robot's base and the scene are placed in.
 ROUTE_HEIGHT = 0.05  # [m]; Nav2's route is drawn this high above the floor.
+COLOR_MODELS = {2: "L", 3: "RGB", 4: "RGBA"}  # An agent's image array by its shape's rank or channels.
+MEDIA_TYPES = {b"\x89PNG": "image/png", b"\xff\xd8\xff": "image/jpeg"}  # Encoded images by their first bytes.
 
 
 def new_run_id() -> str:
@@ -541,6 +547,24 @@ class EpisodeLog:
             self._rr.TextLog(text[:2000], level="ERROR" if error is not None else "INFO"),
             self._rr.AnyValues(line=json.dumps(line, default=str)),
         )
+
+    @_guarded
+    def agent_log(self, topic: str, record: dict, images: dict) -> None:
+        """A record the agent kept (``session.log``; ``topic`` checked there): its JSON under
+        ``/agent/log/<topic>``, each image under ``/agent/log_images/<topic>/<name>`` with the same
+        ``seq``. Called from the agent's thread."""
+        rr, stream = self._rr, self._stream
+        self._stamp()
+        parts = topic.split("/")
+        text = json.dumps(record, default=str)
+        stream.log(_path("agent", "log", *parts), rr.TextLog(text[:2000], level="INFO"), rr.AnyValues(record=text))
+        for name, image in images.items():  # The thread's time is still the record's: the same seq.
+            path = _path("agent", "log_images", *parts, name)
+            if isinstance(image, bytes):
+                media = next(media for magic, media in MEDIA_TYPES.items() if image.startswith(magic))
+                stream.log(path, rr.EncodedImage(contents=image, media_type=media))
+            else:
+                stream.log(path, rr.Image(image, color_model=COLOR_MODELS[image.shape[2] if image.ndim == 3 else 2]))
 
     @_guarded
     def phase(self, name: str, detail: str = "") -> None:

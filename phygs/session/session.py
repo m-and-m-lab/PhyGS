@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import math
 import queue
+import re
 import threading
 from collections import Counter
 from collections.abc import Callable, Iterator
@@ -29,6 +30,7 @@ from typing import Any
 
 import numpy as np
 
+from phygs.recording.log import MEDIA_TYPES
 from phygs.robots.description import RobotInfo  # noqa: F401 (re-exported for agents)
 from phygs.skills.manipulation.execution.lowering import TrajectoryRefused  # noqa: F401 (re-exported for agents)
 from phygs.skills.manipulation.execution.planning import (  # noqa: F401 (re-exported for agents)
@@ -59,6 +61,7 @@ CLIENTS = {
 ENVIRONMENT_ONLY = frozenset(
     {"update", "reset", "close", "bind_skills", "bind_kinematics", "bind_navigation", "backend", "controller"}
 )
+LOG_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*")  # A part of a log topic, or an image's name (log()).
 
 
 class EpisodeEnded(RuntimeError):
@@ -337,7 +340,8 @@ class AgentSession:
     ``navigation``, ``manipulation`` and ``locomotion`` are the skill clients the tier
     allows (None otherwise); ``hints`` are the privileged hints, each call refused without its
     grant. Command ids are :class:`Command` ints; :meth:`wait` returns a command's final feedback.
-    :meth:`step` names a part of the agent's plan for the run's timeline.
+    :meth:`step` names a part of the agent's plan for the run's timeline; :meth:`log` keeps the
+    agent's own records (a model's requests and replies) in the run's recording.
     """
 
     def __init__(
@@ -355,12 +359,14 @@ class AgentSession:
         main: MainThread,
         audit: Audit,
         privileged: Callable[[str, str, tuple, dict], list[str]],
+        log: Callable[[str, dict, dict], None] | None = None,
     ) -> None:
         if set(clients) != set(CLIENTS):
             raise ValueError(f"Expected clients {sorted(CLIENTS)}.")
         self.task, self.robot, self.grants = task, robot, tuple(grants)
         self._main, self._audit = main, audit
         self._observe, self._time, self._finish = observe, time_seconds, finish
+        self._log = log  # The recording's agent_log (phygs.recording.log); None: records are dropped.
         self._camera_period = camera_period
         self._steps: list[str] = []  # The steps open now, outermost first (step).
         self._clients = {name: client for name, client in clients.items() if client is not None}
@@ -434,6 +440,38 @@ class AgentSession:
             raise
         self._steps.pop()
         self._audit.mark("session.step", name=name, event="end", depth=len(self._steps))
+
+    def log(self, topic: str, record: dict | None = None, images: dict[str, Any] | None = None) -> None:
+        """Keep a record of the agent's own in the run's recording, at this moment (``/agent/log/<topic>``):
+        what a model was asked and replied, an error and where it came from.
+
+        ``topic`` names the kind of record (``model/turn``): names of letters, digits, ``_``, ``-`` and
+        ``.`` (not starting with ``.`` or ``-``) joined by ``/``. ``record`` is JSON-able data.
+        ``images`` maps a name to an image: encoded bytes (PNG or JPEG), kept exactly as they are, or a
+        uint8 array [H, W], [H, W, 3] or [H, W, 4], kept lossless. A record is not a call: no time
+        passes and it is not counted. Logging never fails the episode; a record kept after the episode
+        ended is dropped.
+        """
+        parts = topic.split("/") if isinstance(topic, str) else []
+        if not parts or not all(LOG_NAME.fullmatch(part) for part in parts):
+            raise ValueError(f"log() takes a topic of names joined by '/', got {topic!r}.")
+        if record is not None and not isinstance(record, dict):
+            raise TypeError("log() takes the record as a dict.")
+        images = dict(images or {})
+        for name, image in images.items():
+            if not isinstance(name, str) or not LOG_NAME.fullmatch(name):
+                raise ValueError(f"log() takes image names of letters, digits, '_', '-' and '.', got {name!r}.")
+            if isinstance(image, bytes):
+                if not any(image.startswith(magic) for magic in MEDIA_TYPES):
+                    raise ValueError(f"log() image {name!r}: encoded bytes must be PNG or JPEG.")
+            elif not (
+                isinstance(image, np.ndarray)
+                and image.dtype == np.uint8
+                and (image.ndim == 2 or (image.ndim == 3 and image.shape[2] in (3, 4)))
+            ):
+                raise ValueError(f"log() image {name!r}: PNG or JPEG bytes, or a uint8 array [H, W], [H, W, 3|4].")
+        if self._log is not None:
+            self._log(topic, jsonable(record or {}), images)
 
 
 def partial_privileged(privileged: Callable[[str, str, tuple, dict], list[str]], client: str):

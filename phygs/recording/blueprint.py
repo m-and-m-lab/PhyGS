@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """The viewer's layout for an episode's recording (:mod:`phygs.recording.log`): the world in 3D with
-Nav2's route; beside it the agent's calls, what the agent saw, Nav2's costmap, the last arm plan and
-the joint targets and efforts (tabs) over the events and contacts; plots under it (joints, contact
-forces, base command, real-time factor). Sent with the recording, so ``rerun episode.rrd`` opens in
-this layout."""
+Nav2's route; beside it the agent's calls and own records, what the agent saw, the images of its own
+records, Nav2's costmap, the last arm plan and the joint targets and efforts (tabs) over the events
+and contacts; plots under it (joints, contact forces, base command, real-time factor). Sent with the
+recording, so ``rerun episode.rrd`` opens in this layout."""
 
 from __future__ import annotations
 
@@ -36,8 +36,9 @@ def episode_blueprint(robot: str, root: str):
             ),
             rrb.Vertical(
                 rrb.Tabs(
-                    rrb.TextLogView(name="Agent calls", origin="/agent"),
+                    rrb.TextLogView(name="Agent calls and records", origin="/agent"),
                     rrb.Spatial2DView(name="What the agent saw", origin="/agent_view/images"),
+                    rrb.Spatial2DView(name="Agent's record images", origin="/agent/log_images"),
                     rrb.Spatial2DView(name="Nav2 costmap", origin="/nav/costmap"),
                     rrb.Spatial3DView(name="Arm plan (body frame)", origin="/planner/plan"),
                     rrb.TimeSeriesView(

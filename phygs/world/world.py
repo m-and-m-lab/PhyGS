@@ -449,6 +449,7 @@ class World:
             main=main,
             audit=audit,
             privileged=self._privileged,
+            log=self.log.agent_log,
         )
         thread = threading.Thread(target=self._agent_main, args=(agent, session), name="agent", daemon=True)
         start, wall = runtime.time_seconds, time.perf_counter()

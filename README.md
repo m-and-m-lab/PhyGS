@@ -134,6 +134,7 @@ def run(session):
 | `navigation`, `manipulation`, `locomotion` | The clients the spec's `actions` allow (`skills`, `motion` or a list). Each command: an id, `feedback(id)` with status and reason, `cancel(id)`. |
 | `grants` and `hints` | Privileged channels the spec grants (`gt_localization`, `known_map`, `object_targets`, `scene_hints`); every use is audited and listed in the report. |
 | `finish(reason)` | Ends the episode. The World then cancels everything, keeps the grip, settles and evaluates. |
+| `step(name)`, `log(topic, record, images)` | The agent's own account: named steps of its plan on the run's timeline, and records it keeps in the recording (a model's request and reply, with the images it sent). Neither is a call: no time passes and neither is counted. |
 
 The skills that walk and then move the arm are the composite skills (`phygs.skills.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.place_upright(point)`, `skills.close_drawer(part)`. Each walks to where the arm reaches (stowing first), tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
 

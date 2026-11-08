@@ -8,9 +8,9 @@
 locomotion-only spec (``motion_grid``: a body velocity). Each run is its own process
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code,
 ``report.json`` and the recording ``episode.rrd`` (complete, of this run, holding no secret from
-the environment, with every observation and camera image the agent received). A third run
-(``motion_grid``) is killed with SIGKILL a second into its episode: its report still says it ran and
-its recording still reads back.
+the environment, with every observation and camera image the agent received and the record it
+kept, ``session.log``). A third run (``motion_grid``) is killed with SIGKILL a second into its
+episode: its report still says it ran and its recording still reads back.
 
     isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_entry_point.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_entry_point
@@ -130,6 +130,8 @@ def main() -> int:
             cameras = sorted({name for _, summary in seen for name in summary["cameras"]})
             images = {name: len(list(recording.images("agent_view", name))) for name in cameras}
             measure(f"{spec}_agent_view", (len(seen), images), len(seen) > 1 and all(images.values()))
+            notes = [record.record for record in recording.agent_log("notes")]  # The template's own record.
+            measure(f"{spec}_agent_log", notes, notes == [{"cameras": sorted(cameras)}])
             for client in clients:
                 # A command's final feedback is recorded as {feedback type: its fields}.
                 waits = [

@@ -7,7 +7,8 @@
 lines, the states ``phygs replay`` and :mod:`.trace` draw from (:class:`States`), the arm contacts'
 forces over time, the arm planner's requests (:meth:`Recording.plan_requests`, which
 ``examples/replay_plans.py`` plans again), what the agent received and, at level ``all_frames``,
-every camera capture (:meth:`Recording.images`, read lazily: images are not loaded with the rest).
+every camera capture (:meth:`Recording.images`, read lazily: images are not loaded with the rest), and
+the agent's own records (:meth:`Recording.agent_log`, their images :meth:`Recording.agent_images`).
 
 Rows are put in order by their ``tick``, then by when they were logged (Rerun's row ids grow as rows
 are logged), so rows of one tick keep their order. A recording whose run died while writing ends in a
@@ -218,6 +219,42 @@ class Recording:
                 else None,
             )
 
+    def agent_log(self, topic: str | None = None) -> list[AgentRecord]:
+        """The records the agent kept (``session.log``) of ``topic`` (``model/turn``; None: every
+        topic), in the order they were logged."""
+        found = []
+        for entity, rows in self._rows.items():
+            if entity[:2] != ("agent", "log") or (topic is not None and entity[2:] != tuple(topic.split("/"))):
+                continue
+            for _, row_id, time, batch, row in rows:
+                record = json.loads(_row(batch, row)["record"][0])
+                wall = float(_seconds(batch.column("wall_time"))[row])
+                seq = batch.column("seq")[row].as_py()
+                found.append((row_id, AgentRecord(time, wall, seq, "/".join(entity[2:]), record)))
+        return [record for _, record in sorted(found, key=lambda item: item[0])]
+
+    def agent_images(self, topic: str) -> dict[int, dict[str, bytes | np.ndarray]]:
+        """The images of ``topic``'s records, read from the file now: by the record's ``seq``, each
+        image by its name as the agent gave it (encoded bytes as they were, or the array)."""
+        import rerun as rr
+
+        root = ("agent", "log_images", *topic.split("/"))
+        content = ["/" + "/".join(rr.escape_entity_path_part(part) for part in root) + "/**"]
+        found: dict[int, dict[str, bytes | np.ndarray]] = {}
+        for chunk in rr.chunk.RrdReader(self._source).stream().filter(content=content, is_static=False):
+            entity = _parts(str(chunk.entity_path))
+            if entity[: len(root)] != root or len(entity) != len(root) + 1:
+                continue  # A deeper topic's images.
+            batch = chunk.to_record_batch()
+            for row in range(batch.num_rows):
+                values, seq = _row(batch, row), batch.column("seq")[row].as_py()
+                if "EncodedImage:blob" in values:
+                    image = np.asarray(values["EncodedImage:blob"][0], np.uint8).tobytes()
+                else:
+                    image = _image(values)
+                found.setdefault(seq, {})[entity[-1]] = image
+        return found
+
     def plan_requests(self) -> list[PlanRecord]:
         """Every arm plan's request, in the order they finished, with its depth images."""
         requests = self.rows("planner", "request")
@@ -322,7 +359,7 @@ class Recording:
         return arrays
 
 
-IMAGES = ("/agent_view/images/**", "/sensors/**")  # Image entities: read only through Recording.images.
+IMAGES = ("/agent_view/images/**", "/sensors/**", "/agent/log_images/**")  # Read only when asked for.
 
 
 @dataclass(frozen=True)
@@ -337,6 +374,18 @@ class CameraImage:
     depth: np.ndarray | None
     intrinsics: np.ndarray | None = None
     body_from_camera: np.ndarray | None = None
+
+
+@dataclass(frozen=True)
+class AgentRecord:
+    """One record the agent kept (``session.log``): when [s sim, s wall], its ``seq`` (its images'
+    key in :meth:`Recording.agent_images`), its topic and its data."""
+
+    time: float
+    wall_time: float
+    seq: int
+    topic: str
+    record: dict
 
 
 @dataclass(frozen=True)
@@ -407,6 +456,13 @@ def _rgb(values: dict) -> np.ndarray:
     """A logged RGB image as the uint8 array [H, W, 3] it was."""
     image = values["Image:format"][0]
     return np.asarray(values["Image:buffer"][0], np.uint8).reshape(image["height"], image["width"], 3)
+
+
+def _image(values: dict) -> np.ndarray:
+    """A logged uint8 image (color model L, RGB or RGBA) as the array it was."""
+    image = values["Image:format"][0]
+    channels = {1: (), 2: (3,), 3: (4,)}[image["color_model"]]
+    return np.asarray(values["Image:buffer"][0], np.uint8).reshape(image["height"], image["width"], *channels)
 
 
 def _depth(values: dict) -> np.ndarray:
