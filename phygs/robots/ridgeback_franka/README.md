@@ -18,7 +18,7 @@ joints with other names, and the gripper is two prismatic fingers [m] that follo
 
 ```bash
 python3 scripts/PhyGS/phygs/robots/ridgeback_franka/fetch.py
-./isaaclab.sh -p scripts/PhyGS/phygs/robots/ridgeback_franka/make_planning_urdf.py
+isaaclab -p scripts/PhyGS/phygs/robots/ridgeback_franka/make_planning_urdf.py
 ```
 
 ## Bring-up ladder
@@ -34,11 +34,11 @@ python3 scripts/PhyGS/phygs/robots/ridgeback_franka/fetch.py
 | 08 arm_planning_known (cuRobo) | Passes (2026-10-28, `output_check/20261028-1440_ridgeback_arm_planning/ridgeback_arm_planning_known`, start x -0.12 m): look_at 0.50 m at 60 deg on the target, hand goals over the clutter and a free spot within 1.3 mm, cancel, stow, walk; the planner's model on the links (0 m), a blocked start refused, no arm contact. Needed: the fingers never checked against each other, cuRobo with no locked joints. |
 | 08 arm_planning_known (MoveIt), 09 arm_planning_depth (cuRobo, MoveIt) | Pass (2026-10-28, `output_check/20261028-1911_ridgeback_arm_variants`): look_at 0.50 m at 60 deg, stow, a blocked start refused, no arm contact. |
 | 10 pick_place (cuRobo, MoveIt) | Passes (2026-10-28, `output_check/20261028-1855_pick_place_two_robots`, `ridgeback_pick_place_{known,depth,known_moveit}`; depth with MoveIt in `output_check/20261028-1911_ridgeback_arm_variants`): the box picked straight down and lifted 0.19 m, the carry into the clutter refused, the carry over it with the box 0.9-2.0 cm clear, set down within 0.6 mm (MoveIt 2.2 mm), upright, then stowed; no arm contact. Needed: the plain Franka finger gains (the asset's 1e5 stiffness toppled the box), the `grasp` frame 3.7 cm inside the fingertips, the palm allowed to touch the held box (`held_contact_links`), the place spot at x 0.80 m (the old one's pre-place was 2.1 cm out of reach). |
-| 11 drawer_grid, 12 drawer_place | Pass (2026-10-29, `output_check/20261029-1532_ridgeback_drawers_retrieve`, Spot's stances): the grid drawer opened 0.304 m (0.308 m planned) and closed; the box set upright in the open drawer. |
-| 11 drawer_house | Fails (same run): opened 0.259 m of 0.284 m planned; the bar slipped 2.5 cm in the fingers (the `handle` frame is not measured yet); the 30 deg pull was refused at the 0.225 m handle, 45 deg pulled. |
-| 14 retrieve_grid | Fails (same run): opened, reached in and picked; the stow with the box stalled, a finger pressed on the open drawer (141 N): the Franka's stow folds the hand down in front of the base. |
-| 14 retrieve_house | Error (same run): on the walk in to the open drawer the base camera saw nothing in range and the Nav2 bridge raised "Nav2 camera has no valid points". |
-| other rungs | Not run yet with `--robot ridgeback_franka`. These results predate the composite skills (2026-11-01), whose stances are computed from the grip range in their tuning, measured on Spot. |
+| 11 drawer_grid, 12 drawer_place, 14 retrieve_grid | Pass (2026-11-01, `output_check/20261101-1751_ridgeback_composite`, the composite skills with the default tuning): the grid drawer opened 0.303 m (0.307 m planned) and closed; the box set upright in the open drawer; the box retrieved from the drawer and held with the arm stowed (0.001 rad). The palm pressed on the box in both picks (101 N, 202 N). On 2026-10-29, with the old routines, retrieve_grid failed: the stow with the box pressed a finger on the open drawer (141 N). |
+| 11 drawer_house | Fails (same run, as on 2026-10-29): opened 0.259 m of 0.284 m planned while the hand pulled 0.284 m; the bar slipped 2.5 cm in the fingers (the `handle` frame is not measured yet); the 30 deg pull was refused at the 0.225 m handle, 45 deg pulled. |
+| 14 retrieve_house | Error (same run, as on 2026-10-29): on the walk in to the open drawer the base camera saw nothing in range and the Nav2 bridge raised "Nav2 camera has no valid points". |
+| 11, 12, 14 with the one-angle grasp | Fail, all five (2026-11-03, `output_check/20261103-1335_drawer_chain_ridgeback`): the composite now pitches the grasp along the line from `arm.shoulder` to the handle (10.5 deg at the grid's 0.465 m handle, 26 deg at the house's 0.225 m one) and every first `open_drawer` ends "the handle approach was refused: Pose planner failed: no_plan_within_budget, from 2 stances". Offline IK at a 1.09 m stance has no pre-grasp solution on that line: 10-15 deg at 0.465 m, 25-30 deg at 0.225 m; 0-5 and 25-35 deg (0.465 m) and 0-20 deg (0.225 m) reach. The hand's roll does not change it. Open: which pitches this arm reaches per handle height. |
+| other rungs | Not run yet with `--robot ridgeback_franka`. |
 
 Known open points: the camera mounts are first guesses; the `handle` tool frame sits between the
 fingertips until the drawer rungs measure it; the composite skills' tuning (grip range, reach) is Spot's.
