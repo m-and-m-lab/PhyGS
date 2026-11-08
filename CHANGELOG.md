@@ -29,6 +29,9 @@ Fixed (2026-11-08):
 - `apply_openings` and `apply_initial_state` move bodies authored with one `xformOp:transform` (the
   scene settle tool writes those: 111 of the house's 181 supported contents in 1.2.0, 133 in 1.3.0);
   they raised "has no xformOp:translate to move".
+- `UsdScene.part` measured a drawer whose slide is mounted on its cabinet (articulated furniture)
+  against the drawer itself, so its opening read about 0 however far it was open; it now takes the
+  slide's two bodies as they are.
 
 Added (2026-11-07, logging):
 
@@ -96,6 +99,15 @@ Removed (2026-11-07, logging):
 - The robot UI's own recording and replay page (`phygs/ui/recording.py`, `replay.py`,
   `replay_cli.py`, `phygs ui replay`, the page's replay bar; decision D33): the person's episode is in
   `episode.rrd` like any agent's; `rerun episode.rrd` shows it and `phygs replay` renders its videos.
+
+Added (2026-11-08, the agent's own records):
+
+- `AgentSession.log(topic, record, images)`: an agent keeps records of its own in the run's recording
+  (a model's request and reply, an error and where it came from), JSON under `/agent/log/<topic>` and
+  its images under `/agent/log_images/<topic>`, encoded bytes (PNG, JPEG) exactly as given, arrays
+  lossless (`EpisodeLog.agent_log`). Not a call: no time passes, not counted. `Recording.agent_log`
+  and `Recording.agent_images` read them back; the viewer shows them beside the agent's calls. The
+  template agent keeps one, and the entry-point rung checks it.
 
 Removed (2026-11-08, the live video; decision D32):
 

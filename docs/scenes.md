@@ -61,6 +61,24 @@ scene is a new version. The scene folder holds `README.md` (what the scene is, h
 and `ATTRIBUTION.md` (asset provenance); keep the dataset private until the asset licences are
 reviewed.
 
+## Articulated furniture
+
+A scene may tie a cabinet and its doors and drawers into one PhysX articulation: an
+`ArticulationRootAPI` on the fixed joint that mounts the cabinet to the world, the doors' and drawers'
+joints from the cabinet to them (`bear_loop_house` 1.2.0 builds its 32 storage units this way; 1.1.0
+joins each door and drawer to the world instead). PhyGS runs both (`phygs/scene/articulations.py`):
+
+- Every link is a scene body, read like any other (pose, velocity, held forces).
+- PhysX places a link from its joint positions only and ignores a pose written to it. A world's
+  restore and a replayed sample set each joint's position from the written link poses
+  (`SceneBodies.write_all`); writing one link alone raises.
+- A drawer a spec opens before the start (`parts`) also gets its slide's joint state
+  (`PhysicsJointStateAPI`), which PhysX starts it at.
+
+On 1.3.0 a drawer pulled to 0.20 m carries its contents 0.20 m, a pushed door swings as in 1.1.0, the
+cabinets do not move, and a restore closes them again. At rest, a physics step of the house costs
+0.53 ms on 1.3.0 and 0.43 ms on 1.1.0 (CPU, 250 Hz, scene only; 2026-11-08).
+
 ## Floor plans
 
 A release may ship its floor plans in `plan/` beside its scene file: `plan.json` and one image per

@@ -28,6 +28,7 @@ import numpy as np
 from pxr import Gf, Usd, UsdGeom, UsdPhysics
 from scipy.spatial.transform import Rotation
 
+from phygs.scene.articulations import articulations, author_joint_position
 from phygs.scene.parts import sliding_part
 from phygs.scene.types import ArticulatedPart
 
@@ -194,7 +195,9 @@ def _has_colliders(stage: Usd.Stage, body: str) -> bool:
 def apply_openings(stage: Usd.Stage, bodies: dict[str, str], found: dict[str, Drawer], parts: dict) -> None:
     """Open drawers before the episode: ``{name: {opening: m}}``, within the slide's limits. A drawer
     moves along its slide, and the bodies inside it move with it (a drawer without panels has no
-    known inside: nothing rides along)."""
+    known inside: nothing rides along). A drawer of articulated furniture also gets the opening as
+    its slide's joint state, which PhysX starts it at (it ignores a link's authored pose)."""
+    articulated = {joint.path: joint for articulation in articulations(stage) for joint in articulation.joints}
     for name, state in parts.items():
         if name not in found:
             raise ValueError(f"No drawer {name!r} in the scene; it has {sorted(found)}.")
@@ -214,17 +217,44 @@ def apply_openings(stage: Usd.Stage, bodies: dict[str, str], found: dict[str, Dr
         shift = (opening - part.opening) * np.asarray(part.direction)
         for path in (drawer.body, *riders):
             _translate(stage, path, shift)
+        if drawer.slide in articulated:
+            author_joint_position(stage, articulated[drawer.slide], opening)
 
 
 def _translate(stage: Usd.Stage, path: str, shift) -> None:
     """Move a prim by a world vector [m] (its authored translation, in its parent's frame)."""
     prim = stage.GetPrimAtPath(path)
-    attribute = prim.GetAttribute("xformOp:translate")
-    if not attribute.IsValid():
-        raise ValueError(f"{path} has no xformOp:translate to move")
     parent = world_pose(stage, str(prim.GetParent().GetPath()))
-    local = np.asarray(attribute.Get(), dtype=float) + np.linalg.inv(parent)[:3, :3] @ np.asarray(shift, dtype=float)
-    attribute.Set(Gf.Vec3d(*map(float, local)))
+    local = _local_translation(prim) + np.linalg.inv(parent)[:3, :3] @ np.asarray(shift, dtype=float)
+    _set_local_translation(prim, local)
+
+
+def _translation_op(prim: Usd.Prim) -> UsdGeom.XformOp:
+    """The op that holds a prim's translation in its parent's frame: its first op, a translate op or
+    a full transform op (settled scenes author one ``xformOp:transform``)."""
+    ops = UsdGeom.Xformable(prim).GetOrderedXformOps()
+    if not ops or ops[0].GetOpType() not in (UsdGeom.XformOp.TypeTranslate, UsdGeom.XformOp.TypeTransform):
+        raise ValueError(f"{prim.GetPath()} has no translate or transform op first to move")
+    return ops[0]
+
+
+def _local_translation(prim: Usd.Prim) -> np.ndarray:
+    op = _translation_op(prim)
+    value = op.Get()
+    if op.GetOpType() == UsdGeom.XformOp.TypeTransform:
+        value = Gf.Matrix4d(value).ExtractTranslation()
+    return np.asarray(value, dtype=float)
+
+
+def _set_local_translation(prim: Usd.Prim, local) -> None:
+    """Author a prim's translation [m] in its parent's frame, keeping its rotation."""
+    op = _translation_op(prim)
+    if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+        op.Set(Gf.Vec3d(*map(float, local)))
+        return
+    matrix = Gf.Matrix4d(op.Get())
+    matrix.SetTranslateOnly(Gf.Vec3d(*map(float, local)))
+    op.Set(matrix)
 
 
 def apply_initial_state(stage: Usd.Stage, bodies: dict[str, str], state: dict) -> None:
@@ -237,10 +267,7 @@ def apply_initial_state(stage: Usd.Stage, bodies: dict[str, str], state: dict) -
             position = (world_pose(stage, bodies[where["frame"]]) @ [*position, 1.0])[:3]
         parent = world_pose(stage, str(stage.GetPrimAtPath(path).GetParent().GetPath()))
         local = (np.linalg.inv(parent) @ [*position, 1.0])[:3]
-        attribute = stage.GetPrimAtPath(path).GetAttribute("xformOp:translate")
-        if not attribute.IsValid():
-            raise ValueError(f"{path} has no xformOp:translate to move")
-        attribute.Set(Gf.Vec3d(*map(float, local)))
+        _set_local_translation(stage.GetPrimAtPath(path), local)
 
 
 def map_bounds(
@@ -416,7 +443,9 @@ class UsdScene:
         if name not in self.drawers:
             raise KeyError(f"No drawer {name!r} in scene {self.name!r}; it has {self.part_names}.")
         drawer = self.drawers[name]
-        part = sliding_part(self._stage, drawer.slide, drawer.handle, lambda path: self.object_pose(name))
+        # Both of the slide's bodies as they are now: the drawer, and the cabinet when the slide is
+        # mounted on it (articulated furniture) rather than on the world.
+        part = sliding_part(self._stage, drawer.slide, drawer.handle, lambda path: self.object_pose(name_of(path)))
         if name not in self._interiors:  # Not a panelled house-unit drawer: no known floor.
             return part
         return replace(part, floor_center=tuple(map(float, self.drawer_floor(name, part.opening))))

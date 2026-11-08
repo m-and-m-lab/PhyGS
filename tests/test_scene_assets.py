@@ -47,43 +47,9 @@ def test_scene_bodies_register_as_one_collection_named_by_path():
     assert register_scene_bodies(Usd.Stage.CreateInMemory(), empty) == () and not hasattr(empty, SCENE_BODIES)
 
 
-class FakeCollection:
-    """Stands in for IsaacLab's RigidObjectCollection: link poses, CoM velocities and writes."""
-
-    def __init__(self, names):
-        import torch
-
-        self.body_names, self.device = list(names), "cpu"
-        count = len(names)
-        poses = torch.zeros(1, count, 7)
-        poses[0, :, 0] = torch.arange(count, dtype=torch.float32)
-        poses[0, :, 6] = 1.0
-        self.data = SimpleData(poses, torch.zeros(1, count, 6))
-        self.writes = []
-
-    def write_body_link_pose_to_sim_index(self, body_poses, body_ids=None):
-        self.writes.append(("pose", body_ids))
-        ids = range(len(self.body_names)) if body_ids is None else body_ids
-        for k, i in enumerate(ids):
-            self.data.body_link_pose_w.torch[0, i] = body_poses[0, k]
-
-    def write_body_com_velocity_to_sim_index(self, body_velocities, body_ids=None):
-        self.writes.append(("velocity", body_ids))
-        ids = range(len(self.body_names)) if body_ids is None else body_ids
-        for k, i in enumerate(ids):
-            self.data.body_com_vel_w.torch[0, i] = body_velocities[0, k]
-
-
-class SimpleData:
-    def __init__(self, poses, velocities):
-        from types import SimpleNamespace
-
-        self.body_link_pose_w = SimpleNamespace(torch=poses)
-        self.body_com_vel_w = SimpleNamespace(torch=velocities)
-
-
 def test_scene_bodies_read_and_write_one_body_by_path():
     import torch
+    from fakes import FakeCollection
 
     from phygs.scene.assets import SCENE_BODIES, SceneBodies
 
@@ -110,7 +76,7 @@ def test_world_restores_the_scene_bodies_and_drops_held_forces():
     from unittest.mock import Mock
 
     import torch
-    from fakes import FakeRobot, FakeScene, isaaclab_world
+    from fakes import FakeCollection, FakeRobot, FakeScene, isaaclab_world
 
     from phygs.scene.assets import SCENE_BODIES
 

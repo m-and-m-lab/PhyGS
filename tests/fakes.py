@@ -561,3 +561,34 @@ def nav2_transport(config=None, **attributes):
     for name, value in state.items():
         setattr(transport, name, value)
     return transport
+
+
+class FakeCollection:
+    """Stands in for IsaacLab's RigidObjectCollection: link poses, CoM velocities and writes."""
+
+    def __init__(self, names):
+        self.body_names, self.device = list(names), "cpu"
+        count = len(names)
+        poses = torch.zeros(1, count, 7)
+        poses[0, :, 0] = torch.arange(count, dtype=torch.float32)
+        poses[0, :, 6] = 1.0
+        self.data = SimpleData(poses, torch.zeros(1, count, 6))
+        self.writes = []
+
+    def write_body_link_pose_to_sim_index(self, body_poses, body_ids=None):
+        self.writes.append(("pose", body_ids))
+        ids = range(len(self.body_names)) if body_ids is None else body_ids
+        for k, i in enumerate(ids):
+            self.data.body_link_pose_w.torch[0, i] = body_poses[0, k]
+
+    def write_body_com_velocity_to_sim_index(self, body_velocities, body_ids=None):
+        self.writes.append(("velocity", body_ids))
+        ids = range(len(self.body_names)) if body_ids is None else body_ids
+        for k, i in enumerate(ids):
+            self.data.body_com_vel_w.torch[0, i] = body_velocities[0, k]
+
+
+class SimpleData:
+    def __init__(self, poses, velocities):
+        self.body_link_pose_w = SimpleNamespace(torch=poses)
+        self.body_com_vel_w = SimpleNamespace(torch=velocities)
