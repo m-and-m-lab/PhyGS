@@ -46,6 +46,8 @@ The fetcher resolves the dataset's `main` to a commit (or takes `--revision`), d
 manifest and the ZIP, verifies the archive's SHA-256, refuses unsafe paths and symlinks inside it,
 extracts into `<cache>/<sha256>/`, checks that every USD dependency resolved inside the extraction,
 and writes `<cache>/records/<commit>/<id>-<version>.json` plus `<cache>/<id>.json` for the registry.
+`<id>.json` is the last fetch; a spec pinned to another fetched release of the id is found through
+that release's own record, so several releases of one id can stay installed side by side.
 The cache is `--cache_dir` (default `~/.cache/phygs/scenes`, which is also `$PHYGS_SCENES`'
 default). Rerunning verifies the cached files; nothing is overwritten. Nothing downloads during a
 simulation.

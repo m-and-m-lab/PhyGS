@@ -10,8 +10,10 @@ A scene id is a folder name. The folders are looked up, in order, under ``$PHYGS
 that ship with PhyGS (``phygs/scene/builtin``: grid storage and the two navigation courses, the
 robot tests' fixtures). A folder holds ``scene.usda``,
 ``scene.usdc`` or ``scene.usd``; a fetched release may instead be a record ``<id>.json`` whose
-``usd_path`` points at the installed file. A spec may pin a release's ``version``; it is checked
-against the record (a plain folder is unversioned and accepts any pin). No spec ever holds a file path.
+``usd_path`` points at the installed file (the last fetched release). A spec may pin a release's
+``version``; another fetched release of the id is found by its own record,
+``records/<commit>/<id>-<version>.json`` (a plain folder is unversioned and accepts any pin). No spec
+ever holds a file path.
 """
 
 from __future__ import annotations
@@ -56,10 +58,16 @@ def scene_file(scene_id: str, version: str | None = None) -> Path:
         if record.is_file():
             data = json.loads(record.read_text())
             if version is not None and data.get("scene_version") != version:
-                raise ValueError(
-                    f"{record} holds {scene_id} {data.get('scene_version')}, the spec wants {version}: fetch it"
-                    f" (phygs.scene.fetch fetch --scene_id {scene_id} --scene_version {version})."
+                # Another fetched release of the id keeps its own record (the newest fetch first).
+                fetched = sorted(
+                    (root / "records").glob(f"*/{scene_id}-{version}.json"), key=lambda p: p.stat().st_mtime
                 )
+                if not fetched:
+                    raise ValueError(
+                        f"{record} holds {scene_id} {data.get('scene_version')}, the spec wants {version}: fetch it"
+                        f" (phygs.scene.fetch fetch --scene_id {scene_id} --scene_version {version})."
+                    )
+                data = json.loads(fetched[-1].read_text())
             path = Path(data["usd_path"])
             if path.is_file():
                 return path.resolve()
