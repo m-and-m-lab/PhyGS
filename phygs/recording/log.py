@@ -20,28 +20,45 @@ public copy is the recording without it):
 
 - ``/truth/<robot>``: the robot's URDF, logged once: its collision geometry (what the physics
   simulates; the visual meshes are 45 times larger) and its fixed joints (``joints/<joint>``). Every
-  state sample (each camera period): ``base`` (its root link in the world), ``joints/<joint>`` (each
-  moving joint's transform) and ``joint_positions`` [rad or m], one plot line per joint.
+  state sample (each camera period): ``base`` (its root link in the world) and ``joints/<joint>``
+  (each moving joint's transform). Every physics tick: ``joint_positions`` [rad or m] and
+  ``joint_efforts`` [N·m or N] (applied), one plot line per joint.
 - ``/truth/scene/static``: colliders fixed to the world (boxes, once).
 - ``/truth/scene/bodies/<body path>``: each scene body's pose, logged at the first sample and then
   when it moved more than 1 mm or 0.25 degrees; its colliders below it (boxes in its frame, once).
-- ``/truth/contacts``: arm contacts above the record threshold, when a link starts touching a body.
+- ``/truth/contact_forces/<link>/<body>``: the force [N] of each arm contact above the record
+  threshold at every contact read (0 when it ends); ``/truth/contact_events``: when a link starts
+  touching a body.
 - ``/estimate/holding``: whether the robot's gripper holds an object (1) or not (0), every sample.
 - ``/control/base_command``: the base's commanded body velocity [m/s, m/s, rad/s], every sample (NaN:
-  none); ``/control/commands``: the command timeline's spans, once at the end.
+  none); ``/control/joint_targets``: the joint position targets [rad or m] sent, every physics tick;
+  ``/control/commands``: each command timeline span when it ends (and the open ones at the end).
 - ``/nav/route``: Nav2's route (a line at the floor, world frame) and goal, when it changed;
   ``/nav/costmap``: Nav2's global costmap (an image of costs 0-255, row 0 at the lowest y) with its
   origin and cell size, when it changed.
 - ``/planner/plan``: each finished arm plan's display (:class:`~phygs.recording.panels.PlannerView`)
   in the robot's body frame: its label, voxel size and floor, and below it ``voxels``, ``boxes``,
   ``arm_start``, ``arm_path``, ``arm_end``, ``end_spheres`` and ``tool_path``.
+- ``/planner/request``: each finished arm plan's request as the planner worker got it (JSON) and its
+  outcome with the planned trajectory; ``depth/<camera>``: its depth images, lossless. Enough to plan
+  it again offline (``examples/replay_plans.py``).
+- ``/agent_view/observe``: each observation the agent received (its stamp, cameras, joints, base pose
+  and IMU when permitted); ``/agent_view/images/<camera>/rgb`` and ``depth``: each camera image it
+  received, once, lossless, at its capture time (level ``all_frames``: not again, they are among
+  ``/sensors``).
+- ``/sensors/<camera>/rgb`` and ``depth`` (level ``all_frames`` only): every capture of every camera
+  the run rendered, as the robot's cameras gave it, with ``/sensors/<camera>`` (intrinsics, pose in
+  the body frame); ``phygs replay`` then shows these instead of rendering again.
 - ``/agent/calls``: every agent call and step marker, as the audit writes it.
 - ``/events/phase``, ``/events/anomaly``: the episode's phases (settling included) and anomalies.
 - ``/perf/*``: real-time factor, tick time and machine load, once per wall-clock second.
 
 Recording properties (``rerun`` shows them beside the data): the run id, :data:`SCHEMA`, the episode
-spec, the provenance, ``layout`` (the robot's entity name, the joint and body order) and ``replay``
-(what ``phygs replay`` needs to build the scene again). :mod:`.reader` reads a recording back.
+spec, the provenance, ``settings`` (the run's settings, overrides applied), ``observation`` (the
+capture configuration: cameras and products, periods, the cameras' nearest depth), ``robot_layout``
+and ``scene_bodies`` (the robot's entity name, the joint and body order), ``replay`` (what ``phygs
+replay`` needs to build the scene again) and ``planner`` (the arm planner's backend, model and model
+files). :mod:`.reader` reads a recording back.
 
 Logging never fails or changes the episode: every call is guarded, and the first error closes the
 recording and is kept in :attr:`EpisodeLog.status`, which the report records. The file is a stream,
@@ -68,7 +85,7 @@ import numpy as np
 SCHEMA = 1
 """The entity layout and meaning above; a reader checks it (the ``phygs_log_schema`` property)."""
 FILE = "episode.rrd"
-LEVELS = ("full", "report_only")
+LEVELS = ("full", "all_frames", "report_only")  # all_frames: also every camera capture (large).
 POSITION_STEP = 0.001  # [m]; a body that moved this far since its last logged pose is logged again.
 ROTATION_STEP = math.radians(0.25)  # [rad]; likewise for its rotation.
 PERF_PERIOD = 1.0  # [s wall]; the /perf rows.
@@ -116,6 +133,10 @@ class EpisodeLog:
         self._urdf_joints: dict[str, _Joint] = {}
         self._robot = self._root = None
         self._joint_buffer: list[tuple] = []  # (tick, sim time, base pose, joints, holding, command)
+        self._tick_buffer: list[tuple] = []  # (tick, sim time, joint positions, targets, efforts) tensors
+        self._joint_tick: int | None = None  # The tick whose joints were logged last.
+        self._contact_forces: dict[tuple[str, str], float] = {}  # Touching at the last contact read.
+        self._camera_stamps: dict[tuple[str, str], int] = {}  # (branch, camera) -> last logged capture tick.
         self._joint_names: tuple[str, ...] = ()
         self._bodies: tuple[str, ...] = ()
         self._body_poses: np.ndarray | None = None
@@ -201,7 +222,9 @@ class EpisodeLog:
                 )
                 stream.log(_path("truth", self._robot, "joints", joint.name), transform, static=True)
         self._joint_names = tuple(joint_names)
-        stream.log(_path("truth", self._robot, "joint_positions"), rr.SeriesLines(names=self._joint_names), static=True)
+        for entity in (("truth", self._robot, "joint_positions"), ("truth", self._robot, "joint_efforts")):
+            stream.log(_path(*entity), rr.SeriesLines(names=self._joint_names), static=True)
+        stream.log("/control/joint_targets", rr.SeriesLines(names=self._joint_names), static=True)
         moving = {joint.name: joint for joint in tree.joints() if joint.joint_type != "fixed"}
         self._urdf_joints = {name: _Joint.of(moving[name]) for name in self._joint_names if name in moving}
         self.properties(robot_layout=dict(entity=self._robot, root=self._root, joints=list(self._joint_names)))
@@ -214,9 +237,10 @@ class EpisodeLog:
         holding: bool = False,
         command: Sequence[float] | None = None,
     ) -> None:
-        """The robot now: its root link's world pose [x, y, z, qx, qy, qz, qw], the joint positions in
-        :meth:`robot_model`'s order, whether the gripper holds an object and the base's commanded
-        velocity [m/s, m/s, rad/s] (None: none). Buffered and sent once per simulated second."""
+        """The robot at a state sample: its root link's world pose [x, y, z, qx, qy, qz, qw], the joint
+        positions in :meth:`robot_model`'s order (drawn: the joints' transforms; :meth:`joint_state`
+        logs them), whether the gripper holds an object and the base's commanded velocity [m/s, m/s,
+        rad/s] (None: none). Buffered and sent once per simulated second."""
         if self._stream is None or self._robot is None:
             return
         command = np.full(3, np.nan) if command is None else np.asarray(command, dtype=float).reshape(3)
@@ -224,6 +248,38 @@ class EpisodeLog:
         self._joint_buffer.append((self._tick, self._sim_time, base, joints, float(bool(holding)), command))
         if len(self._joint_buffer) > 1 and self._sim_time - self._joint_buffer[0][1] >= 1.0:
             self._send_robot_states()
+
+    def joint_state(self, positions, targets, efforts) -> None:
+        """The joints after a physics tick, in :meth:`robot_model`'s order: positions, the position
+        targets sent and the applied efforts (tensors, kept on their device and copied once per
+        simulated second). A second call in the same tick is ignored."""
+        if self._stream is None or self._robot is None:
+            return
+        if self._joint_tick == self._tick:
+            return
+        self._joint_tick = self._tick
+        self._tick_buffer.append((self._tick, self._sim_time, positions.clone(), targets.clone(), efforts.clone()))
+        if self._sim_time - self._tick_buffer[0][1] >= 1.0:
+            self._send_joint_states()
+
+    @_guarded
+    def _send_joint_states(self) -> None:
+        import torch
+
+        rr, stream, buffer = self._rr, self._stream, self._tick_buffer
+        if not buffer:
+            return
+        self._tick_buffer = []
+        indexes = [
+            rr.TimeColumn("tick", sequence=np.array([row[0] for row in buffer])),
+            rr.TimeColumn("sim_time", duration=np.array([row[1] for row in buffer])),
+        ]
+        values = torch.stack([torch.stack(row[2:]) for row in buffer]).cpu().numpy().astype(float)  # [N, 3, J]
+        for index, entity in enumerate(
+            (_path("truth", self._robot, "joint_positions"), "/control/joint_targets",
+             _path("truth", self._robot, "joint_efforts"))
+        ):  # fmt: skip
+            stream.send_columns(entity, indexes=indexes, columns=rr.Scalars.columns(scalars=values[:, index]))
 
     @_guarded
     def _send_robot_states(self) -> None:
@@ -250,9 +306,6 @@ class EpisodeLog:
                 parent_frame=[WORLD_FRAME] * count,
                 child_frame=[self._root] * count,
             ),
-        )
-        stream.send_columns(
-            _path("truth", self._robot, "joint_positions"), indexes=indexes, columns=rr.Scalars.columns(scalars=joints)
         )
         for column, name in enumerate(self._joint_names):
             joint = self._urdf_joints.get(name)
@@ -300,7 +353,7 @@ class EpisodeLog:
     def body_poses(self, poses: np.ndarray) -> None:
         """Every scene body's world pose [B, 7] in :meth:`scene`'s order; logs the ones that moved
         (all of them the first time)."""
-        poses = np.asarray(poses, dtype=np.float32)  # The simulation's precision: the moved test as the state log's.
+        poses = np.asarray(poses, dtype=np.float32)  # The simulation's precision.
         moved = np.ones(len(poses), dtype=bool) if self._body_poses is None else _moved(self._body_poses, poses)
         if not moved.any():
             return
@@ -317,12 +370,21 @@ class EpisodeLog:
             )
 
     @_guarded
-    def contact(self, link: str, body: str, force: float, step: str) -> None:
-        """A robot link started touching a scene body with ``force`` [N] during ``step``."""
+    def contacts(self, contacts: Sequence[tuple[str, str, float]], step: str) -> None:
+        """One contact read: every (link, body, force [N]) above the record threshold, during ``step``.
+        Logs each force, 0 for a contact that ended, and an event when a contact starts."""
+        rr, stream = self._rr, self._stream
+        now = {(link, body): float(force) for link, body, force in contacts}
+        if not now and not self._contact_forces:
+            return
         self._stamp()
-        self._stream.log(
-            "/truth/contacts", self._rr.TextLog(f"{link} touches {body}: {force:.1f} N ({step})", level="WARN")
-        )
+        for (link, body), force in [*now.items(), *((key, 0.0) for key in self._contact_forces if key not in now)]:
+            stream.log(_path("truth", "contact_forces", link, body), rr.Scalars(force))
+            if force > 0.0 and (link, body) not in self._contact_forces:
+                stream.log(
+                    "/truth/contact_events", rr.TextLog(f"{link} touches {body}: {force:.1f} N ({step})", level="WARN")
+                )
+        self._contact_forces = now
 
     # --- Navigation, the arm planner, the command timeline ---
 
@@ -390,10 +452,77 @@ class EpisodeLog:
         stream.log("/planner/plan/end_spheres", rr.Points3D(spheres[:, :3], radii=spheres[:, 3]))
 
     @_guarded
-    def commands(self, spans: Sequence[dict]) -> None:
-        """The command timeline's spans (lane, name, start, end [s] or None, status), once at the end."""
+    def plan_request(self, request: dict, outcome: dict, depth: dict[str, np.ndarray]) -> None:
+        """A finished arm plan's request (JSON; its depth images named by ``camera``), its outcome and
+        the depth images [m] by camera."""
+        rr, stream = self._rr, self._stream
         self._stamp()
-        self._stream.log("/control/commands", self._rr.AnyValues(spans=json.dumps(list(spans), default=str)))
+        stream.log(
+            "/planner/request",
+            rr.AnyValues(request=json.dumps(request), outcome=json.dumps(outcome, default=str)),
+        )
+        for camera, image in depth.items():
+            stream.log(_path("planner", "request", "depth", camera), rr.DepthImage(image, meter=1.0))
+
+    @_guarded
+    def command_span(self, index: int, span: dict) -> None:
+        """Span ``index`` of the command timeline (lane, name, start, end [s] or None, status), each time
+        it ends (a command issued again at once reopens it) and, still running, at the end."""
+        self._stamp()
+        self._stream.log("/control/commands", self._rr.AnyValues(span=json.dumps(dict(span, index=index), default=str)))
+
+    # --- What the cameras gave ---
+
+    @_guarded
+    def observed(self, packet) -> None:
+        """An observation packet the agent received: a row of what it held, and each camera image it
+        had not received before (lossless, at its capture time)."""
+        rr = self._rr
+        self._stamp()
+        joints, pose, imu = packet.joints, packet.localization, packet.imu
+        summary = dict(
+            tick=packet.stamp.tick,
+            cameras={name: camera.stamp.tick for name, camera in packet.cameras.items()},
+            joint_positions=None if joints is None else joints.positions.cpu().tolist(),
+            base_pose=None if pose is None else pose.pose.matrix.cpu().tolist(),
+            imu=None
+            if imu is None
+            else [*imu.angular_velocity.cpu().tolist(), *imu.proper_acceleration.cpu().tolist()],
+        )
+        self._stream.log("/agent_view/observe", rr.AnyValues(packet=json.dumps(summary)))
+        if self.level != "all_frames":  # There every capture is under /sensors already.
+            self._images("agent_view", packet, ("agent_view", "images"))
+
+    @_guarded
+    def camera_frames(self, packet) -> None:
+        """Every camera capture in ``packet`` not logged before, as the robot's cameras gave it (level
+        ``all_frames``), with its intrinsics and its pose in the body frame."""
+        if self.level == "all_frames":
+            self._images("sensors", packet, ("sensors",), poses=True)
+
+    def _images(self, branch: str, packet, prefix: tuple[str, ...], poses: bool = False) -> None:
+        rr, stream = self._rr, self._stream
+        for name, camera in packet.cameras.items():
+            stamp = camera.stamp
+            if self._camera_stamps.get((branch, name)) == stamp.tick:
+                continue
+            self._camera_stamps[(branch, name)] = stamp.tick
+            stream.set_time("tick", sequence=stamp.tick)
+            stream.set_time("sim_time", duration=stamp.time_seconds)
+            if camera.rgb is not None:
+                stream.log(_path(*prefix, name, "rgb"), rr.Image(camera.rgb.cpu().numpy()[..., :3], color_model="RGB"))
+            if camera.depth is not None:  # 0: no depth.
+                depth = camera.depth.cpu().numpy().astype(np.float32)
+                stream.log(_path(*prefix, name, "depth"), rr.DepthImage(depth.reshape(depth.shape[:2]), meter=1.0))
+            if poses:
+                stream.log(
+                    _path(*prefix, name),
+                    rr.AnyValues(
+                        intrinsics=camera.intrinsics.cpu().numpy().ravel(),
+                        body_from_camera=camera.extrinsics.matrix.cpu().numpy().ravel(),
+                    ),
+                )
+        self._stamp()  # Back to the episode's time for the rows that follow.
 
     # --- Agent and episode events ---
 
@@ -455,6 +584,7 @@ class EpisodeLog:
         """Send what is buffered, close the file, and return the report's ``recording`` entry."""
         if self._stream is not None:
             self._send_robot_states()
+            self._send_joint_states()
         if self._stream is not None:
             try:
                 self._stream.flush()
@@ -476,6 +606,7 @@ class EpisodeLog:
         """Make what was logged so far safe on disk (each phase change; a crash keeps it)."""
         if self._stream is not None:
             self._send_robot_states()
+            self._send_joint_states()
         if self._stream is not None:
             try:
                 self._stream.flush()

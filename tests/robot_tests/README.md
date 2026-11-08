@@ -83,7 +83,7 @@ missing is skipped, not failed. The last line names the first failing rung.
 
 Every test takes `--output DIR` (a fresh folder), runs headless by default, writes
 `DIR/check.json` (`test`, `status`, `error`, `checks` and the test's data) and exits 0 only when
-it passed. Agent tests also leave the episode's `report.json` and `audit.jsonl`.
+it passed. Agent tests also leave the episode's `report.json` and `episode.rrd`.
 
 ## Adding a rung
 

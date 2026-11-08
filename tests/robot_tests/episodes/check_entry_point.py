@@ -8,7 +8,8 @@
 locomotion-only spec (``motion_grid``: a body velocity). Each run is its own process
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code,
 ``report.json``, the recording ``episode.rrd`` (complete, of this run, holding no secret from the
-environment) and the video with ``--record``. A third run (``motion_grid``) is killed with SIGKILL a
+environment, with every observation and camera image the agent received) and the video with
+``--record``. A third run (``motion_grid``) is killed with SIGKILL a
 second into its episode: its report still says it ran and its recording still reads back.
 
     isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_entry_point.py \
@@ -20,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import signal
 import subprocess
 import sys
@@ -28,7 +28,7 @@ import time
 import traceback
 from pathlib import Path
 
-from phygs.recording.reader import Recording
+from phygs_robot_tests.episodes import episode
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT = ROOT.parents[1]  # The PhyGS checkout.
@@ -55,7 +55,6 @@ REPORT_KEYS = (
     "recording",
 )
 KILL_AFTER = 1.0  # [s wall] into the killed run's episode (motion_grid's agent runs for about 3 s).
-SECRET = re.compile(r"KEY|TOKEN|SECRET|PASSWORD", re.IGNORECASE)  # Environment variables never recorded.
 
 
 def entry_point(spec: str, output: Path, record: bool, kit_args: str | None) -> list[str]:
@@ -94,23 +93,6 @@ def killed(spec: str, output: Path, kit_args: str | None) -> dict:
     return json.loads(path.read_text()) if path.exists() else {}
 
 
-def secrets_in(recording: Path) -> list[str]:
-    """The secret-named environment variables whose values appear in any text of the recording."""
-    import pyarrow as pa
-    import rerun as rr
-
-    values = {name: value for name, value in os.environ.items() if SECRET.search(name) and len(value) >= 8}
-    found = set()
-    for chunk in rr.chunk.RrdReader(recording).stream().to_chunks():
-        for column in chunk.to_record_batch().columns:
-            while pa.types.is_list(column.type) or pa.types.is_large_list(column.type):
-                column = column.flatten()
-            if pa.types.is_string(column.type) or pa.types.is_large_string(column.type):
-                texts = [text for text in column.to_pylist() if text]
-                found.update(name for name, value in values.items() if any(value in text for text in texts))
-    return sorted(found)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", type=Path, required=True, help="Fresh folder for check.json and the runs")
@@ -139,11 +121,16 @@ def main() -> int:
             measure(f"{spec}_ended", outcome, outcome == ("finish", "agent_returned"))
             used = report["usage"]["levels_used"]
             measure(f"{spec}_levels_used", used, used == levels)
-            recording = Recording(args.output / spec)
+            recording = episode.recording(args.output / spec)
             entry = (report["recording"]["status"], recording.properties.get("run_id") == report["run_id"])
             measure(f"{spec}_recording", (*entry, len(recording.states())), entry == ("complete", True))
-            leaked = secrets_in(args.output / spec / "episode.rrd")
+            leaked = episode.recording_secrets(args.output / spec)
             measure(f"{spec}_recording_secrets", leaked or "none", not leaked)
+            # The template observes once and streams 1 s: what it received is in the recording.
+            seen = recording.observations()
+            cameras = sorted({name for _, summary in seen for name in summary["cameras"]})
+            images = {name: len(list(recording.images("agent_view", name))) for name in cameras}
+            measure(f"{spec}_agent_view", (len(seen), images), len(seen) > 1 and all(images.values()))
             for client in clients:
                 # A command's final feedback is recorded as {feedback type: its fields}.
                 waits = [
@@ -159,7 +146,7 @@ def main() -> int:
                 measure(f"{spec}_video", video.exists(), video.exists())
         stub = killed("motion_grid", args.output / "killed", args.kit_args)
         measure("killed_report", (stub.get("status"), bool(stub.get("run_id"))), stub.get("status") == "running")
-        recording = Recording(args.output / "killed")
+        recording = episode.recording(args.output / "killed")
         phases = [row[2]["TextLog:text"][0] for row in recording.rows("events", "phase")]
         samples = len(recording.states())
         same = recording.properties.get("run_id") == stub.get("run_id")

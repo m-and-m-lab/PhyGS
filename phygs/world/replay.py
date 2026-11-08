@@ -3,11 +3,11 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Render a finished run again from its state log (``phygs replay``), so the run itself renders nothing.
+"""Render a finished run again from its recording (``phygs replay``), so the run itself renders nothing.
 
 Needs a running Isaac Sim app (``AppLauncher`` before import). :class:`Replay` builds the run's
-scene and robot again, without the robot's control, Nav2 or the arm planner, then for each sample
-of the state log (:mod:`phygs.recording.state_log`) writes the robot's root pose and joints and
+scene and robot again, without the robot's control, Nav2 or the arm planner, then for each state
+sample of the recording (:mod:`phygs.recording.reader`) writes the robot's root pose and joints and
 every scene body's pose, updates the kinematics without stepping physics, and renders: a camera
 outside that follows the robot, and the robot's own cameras. With the logged costmap, route,
 commanded velocity and arm plans, a frame has the recording's panel sources
@@ -27,6 +27,7 @@ import torch
 from isaaclab.scene import InteractiveScene
 
 from phygs.observations.front_view import CameraFrame, FrontStitcher, depth_colors
+from phygs.observations.types import CameraPermission, ObservationConfig, Stamp
 from phygs.recording.panels import (
     DEPTH_RANGE,
     NavigationView,
@@ -44,6 +45,7 @@ from phygs.scene.reader import UsdScene
 from phygs.scene.registry import scene_file
 from phygs.sim.base import BaseLink
 from phygs.sim.cameras import RenderCameras, ViewCamera
+from phygs.sim.observations import camera_observation, pose_matrix
 from phygs.sim.robot_scene import make_scene_cfg, robot_cameras, simulation_cfg
 from phygs.world import build
 
@@ -75,8 +77,14 @@ class Replay:
         fixed: bool = False,
         device: str = "cpu",
     ) -> None:
-        self.states = states = Recording(run).states()
+        self.recording = recording = Recording(run)
+        self.states = states = recording.states()
         meta = states.meta
+        if "settings" not in recording.properties:
+            raise ValueError(f"{run} was recorded before PhyGS logged its settings and cameras; run it again.")
+        settings = recording.properties["settings"]  # The run's, not this checkout's.
+        # The run's cameras (their products and nearest depth): the replay makes images as they did.
+        self._capture = ObservationConfig.from_dict(recording.properties["observation"])
         if not isinstance(robot, RobotDescription):
             robot = load_robot(meta["robot"] if robot is None else robot)
         self.robot = robot
@@ -85,7 +93,6 @@ class Replay:
         usd = Path(scene["usd"])
         if not usd.is_file():  # Another machine: the same release from this one's scene cache.
             usd = scene_file(scene["id"], scene["version"])
-        settings = build.load_settings(build.SETTINGS)
         x, y, heading = meta["start"]
         self.scene_def = UsdScene(
             scene["name"],
@@ -101,7 +108,12 @@ class Replay:
         front, look = robot.cameras_for("front"), robot.look_camera
         self._front = front if any(view.startswith("front") for view in views) else ()
         self._look = look if any(view.startswith("hand") for view in views) else None
-        names = tuple(name for name in PanelFeed.cameras(robot) if name in (*self._front, self._look))
+        shown = tuple(name for name in PanelFeed.cameras(robot) if name in (*self._front, self._look))
+        # Level all_frames: every capture is in the recording; those cameras are shown, not rendered.
+        captured = {permission.name for permission in self._capture.cameras}
+        logged = settings["recording"]["level"] == "all_frames"
+        self._logged = {name: _Frames(recording, name) for name in shown if logged and name in captured}
+        names = tuple(name for name in shown if name not in self._logged)
         cfg = make_scene_cfg(
             robot,
             physics_dt=self.dt,
@@ -124,7 +136,7 @@ class Replay:
         index = {name: i for i, name in enumerate(states.body_names)}
         missing = [name for name in self._bodies.names if name not in index]
         if missing:
-            raise ValueError(f"The state log has no poses for {len(missing)} scene bodies, e.g. {missing[0]}.")
+            raise ValueError(f"The recording has no poses for {len(missing)} scene bodies, e.g. {missing[0]}.")
         self._order = np.asarray([index[name] for name in self._bodies.names])
         self.cameras = RenderCameras(self.scene, names) if names else None
         self._stitcher = FrontStitcher(width=640) if len(self._front) == 2 else None
@@ -165,11 +177,9 @@ class Replay:
         RenderCameras.render()
         outside = self.view.image() if self.view is not None else None
         pose = self.base.pose().cpu().numpy()
-        front, hand = (), None
-        if self.cameras is not None:
-            body = _matrix(pose)
-            front = tuple(self._frame(name, body) for name in self._front)
-            hand = self._frame(self._look, body) if self._look else None
+        body, now = _matrix(pose), self._time(sample)
+        front = tuple(self._frame(name, body, now) for name in self._front)
+        hand = self._frame(self._look, body, now) if self._look else None
         return outside, PanelSources(
             front, hand, self._navigation(sample, pose), self.states.plan_at(self._time(sample))
         )
@@ -216,21 +226,44 @@ class Replay:
             command=None if np.isnan(command).any() else tuple(map(float, command)),
         )
 
-    def _frame(self, name: str, world_from_body: np.ndarray) -> CameraFrame:
-        frame = self.cameras.read(name)
-        rgb = np.asarray(frame.rgb.cpu().numpy()[..., :3], dtype=np.uint8)
-        depth = np.asarray(frame.depth.cpu().numpy(), dtype=np.float32).reshape(rgb.shape[:2])
-        world_from_camera = np.asarray(frame.world_from_camera.cpu().numpy(), dtype=float)
+    def _frame(self, name: str, world_from_body: np.ndarray, now: float) -> CameraFrame:
+        """Camera ``name`` at time ``now`` [s]: its logged capture (level ``all_frames``), else rendered
+        now and made into the robot's camera image by the run's own code (:func:`camera_observation`,
+        with the run's capture configuration)."""
+        if name in self._logged:
+            image = self._logged[name].at(now)
+            body_from_camera = image.body_from_camera
+            rgb, depth, intrinsics = image.rgb, image.depth, image.intrinsics
+            valid = depth > 0  # The camera's: 0 is no depth.
+        else:
+            permission = next((p for p in self._capture.cameras if p.name == name), CameraPermission(name))
+            pose = self.base.pose()
+            camera = camera_observation(
+                self.cameras.read(name),
+                permission,
+                Stamp(0, 0, now),
+                pose_matrix(pose[:3], pose[3:]),
+                self._capture.depth_min,
+                self._robot.device,
+            )
+            rgb = camera.rgb.cpu().numpy()[..., :3].astype(np.uint8) if camera.rgb is not None else None
+            depth = camera.depth.cpu().numpy().astype(np.float32) if camera.depth is not None else None
+            shape = (rgb if rgb is not None else depth).shape[:2]
+            rgb = np.zeros((*shape, 3), np.uint8) if rgb is None else rgb  # The run's camera gave no RGB: black.
+            depth = np.zeros(shape, np.float32) if depth is None else depth.reshape(shape)  # Nor depth: none.
+            valid = depth > 0  # The camera's: 0 is no depth.
+            intrinsics = camera.intrinsics.cpu().numpy().astype(float)
+            body_from_camera = camera.extrinsics.matrix.cpu().numpy().astype(float)
         return CameraFrame(
             name=name,
-            time_seconds=0.0,
+            time_seconds=now,
             tick=0,
             rgb=rgb,
             depth=depth,
-            valid=np.isfinite(depth) & (depth > 0),
-            intrinsics=np.asarray(frame.intrinsics.cpu().numpy(), dtype=float),
-            body_from_camera=np.linalg.inv(world_from_body) @ world_from_camera,
-            world_from_camera=world_from_camera,
+            valid=valid,
+            intrinsics=intrinsics,
+            body_from_camera=body_from_camera,
+            world_from_camera=world_from_body @ body_from_camera,
         )
 
     # The scene's plan.
@@ -330,6 +363,21 @@ def render_plan(bounds, folder: Path, name: str, elevation: float = 0.0) -> plan
     folder.mkdir(parents=True, exist_ok=True)
     Image.fromarray(np.ascontiguousarray(image, dtype=np.uint8)).save(folder / f"{name}.png")
     return plans.Floor(name, f"{name}.png", elevation, elevation + PLAN_CUT, width, height, center, ppm)
+
+
+class _Frames:
+    """A camera's logged captures (level ``all_frames``), read forward in time."""
+
+    def __init__(self, recording: Recording, camera: str) -> None:
+        self._images = recording.images("sensors", camera)
+        self._current = next(self._images)
+        self._next = next(self._images, None)
+
+    def at(self, time: float):
+        """The latest capture at or before ``time`` [s] (the first before it starts)."""
+        while self._next is not None and self._next.time <= time + 1e-9:
+            self._current, self._next = self._next, next(self._images, None)
+        return self._current
 
 
 def _matrix(pose: np.ndarray) -> np.ndarray:

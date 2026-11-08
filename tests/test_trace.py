@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 from PIL import Image
 
 from phygs.recording import trace
@@ -68,7 +69,10 @@ def write_run(folder, audit=AUDIT):
         t = 0.5 * k
         x = min(max(t - 1.0, 0.0), 4.0)  # Walks 1 m/s from t = 1 s to 5 s.
         log.at(125 * k, t)
+        log.joint_state(torch.zeros(1), torch.zeros(1), torch.zeros(1))
         log.robot_state(np.array([x, 1.0, 0.5, 0.0, 0.0, 0.0, 1.0]), [0.0], holding=6.5 <= t < 7.5)
+        if t in (6.0, 6.5, 7.0):  # The jaws on the cup, squeezing harder, then open.
+            log.contacts([("jaw", "cup", 4.0 * t)] if t < 7.0 else [], "close_gripper")
         log.body_poses([[4.0, 1.0, 0.8, 0, 0, 0, 1]])
         if t == 1.0:
             log.route((4.0, 1.0, 0.0), ((0.0, 1.0), (2.0, 1.0), (4.0, 1.0)))
@@ -76,7 +80,8 @@ def write_run(folder, audit=AUDIT):
             log.route(None, ())
     for line in audit:
         log.agent_call(line)
-    log.commands(COMMANDS)
+    for index, span in enumerate(COMMANDS):
+        log.command_span(index, span)
     assert log.close()["status"] == "complete"
     return folder
 
@@ -103,6 +108,11 @@ def test_the_trace_has_the_agents_steps_the_commands_and_the_contacts(tmp_path):
     assert path["target"] == [4.0, 1.0] and path["z"] == 0.5 and built["duration"] == 8.0
     assert [route["t"] for route in path["routes"]] == [1.0, 5.0] and path["routes"][1]["path"] == []
     assert path["poses"][30][1:3] == pytest.approx((2.0, 1.0))  # 3 s at 10 per second.
+
+
+def test_the_trace_has_the_contact_force_at_each_read(tmp_path):
+    built = trace.build(write_run(tmp_path / "run"))
+    assert built["contact_force"] == [[6.0, 24.0, "cup"], [6.5, 26.0, "cup"], [7.0, 0.0, ""]]
 
 
 def test_a_run_without_steps_or_audit_still_has_its_commands(tmp_path):

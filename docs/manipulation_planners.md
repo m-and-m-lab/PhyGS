@@ -44,8 +44,8 @@ the pre-grasp, a straight end-effector line in, close, a line out), refuses a ca
 held object would hit (known boxes only: on depth the clutter's top is unseen while holding, see
 below), carries it over the clutter and back, places it on a free spot and stows. Both read the
 target pose and every arm contact on the test side (ground truth, never the agent's). Outputs:
-`check.json`, the episode's `report.json` and `audit.jsonl`, the planner's log and requests, and
-`third_person.mp4` with `--record` (simulation time).
+`check.json`, the episode's `report.json` and `episode.rrd` (with every plan request; `examples/replay_plans.py`
+plans them again), the planner's log, and `third_person.mp4` with `--record` (simulation time).
 
 ## Dependencies
 

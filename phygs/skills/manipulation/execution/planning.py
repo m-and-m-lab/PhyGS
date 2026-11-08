@@ -115,14 +115,18 @@ class PlannerProcess:
     Use submit() from simulation code and keep stepping while its future is pending.
     call() is the blocking transport operation (used for IK). Worker
     startup is synchronous; construct workers before starting a timed episode.
+    ``output`` gets the worker's config (``planner_config.json``); ``log`` the folder of its log
+    (``planner.log``; default ``output``).
     """
 
-    def __init__(self, command: list[str], config: dict, output: Path, env: dict[str, str]):
+    def __init__(self, command: list[str], config: dict, output: Path, env: dict[str, str], *, log: Path | None = None):
         output.mkdir(parents=True, exist_ok=True)
         path = output / "planner_config.json"
         path.write_text(json.dumps(config))
         read_fd, write_fd = os.pipe()
-        self.log = (output / "planner.log").open("w")
+        log = output if log is None else log
+        log.mkdir(parents=True, exist_ok=True)
+        self.log = (log / "planner.log").open("w")
         self.responses = os.fdopen(read_fd)
         started = time.perf_counter()
         self.process = subprocess.Popen(

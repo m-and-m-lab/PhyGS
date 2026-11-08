@@ -28,8 +28,7 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from phygs.recording.reader import Recording
-from phygs.recording.state_log import States
+from phygs.recording.reader import Recording, States
 
 LANES = ("Agent", "Base", "Arm", "Gripper", "Grip", "Bumps")
 GRIPPER = frozenset({"open_gripper", "close_gripper"})
@@ -166,8 +165,8 @@ def compose(
 ) -> dict:
     """A trace up to ``end`` [s] from what a run logs: the ``audit`` lines (steps, the target hint),
     the command timeline's spans ``commands``, the report's ``contacts`` and ``grasp_contacts``
-    (``contacts``), the state log (``states``: holding, the robot's path at ``rate`` [1/s], the
-    routes) and the skills' ``narration`` (time, kind, text). Without a state log, ``poses`` (time,
+    (``contacts``), the states (``states``: holding, the robot's path at ``rate`` [1/s], the
+    routes) and the skills' ``narration`` (time, kind, text). Without states, ``poses`` (time,
     x, y, yaw) is the path. ``title`` names the run (the episode and its task). A recording composes
     it as the run goes, :func:`build` after it."""
     all_steps = steps(list(audit), end)
@@ -205,13 +204,15 @@ def compose(
 
 def build(run: Path, *, rate: float = 10.0) -> dict:
     """The trace and the path of the run in folder ``run`` (``report.json`` and ``episode.rrd``):
-    ``{title, duration, lanes, steps, holding, narration, path: {rate, z, poses, routes, target}}``."""
+    ``{title, duration, lanes, steps, holding, narration, path: {rate, z, poses, routes, target},
+    contact_force}``; ``contact_force`` lists [time [s], force [N], body] of the strongest arm contact
+    at each contact read where it changed (force 0: none)."""
     run = Path(run)
     report = json.loads((run / "report.json").read_text())
     recording = Recording(run)
     states = recording.states()
     task = report.get("task", {})
-    return compose(
+    trace = compose(
         end=float(states.time[-1]) if len(states) else float(report.get("sim_seconds", 0.0)),
         title=f"{report.get('spec', {}).get('id', run.name)} | {task.get('goal', '')}: {task.get('description', '')}",
         audit=recording.audit,
@@ -221,3 +222,21 @@ def build(run: Path, *, rate: float = 10.0) -> dict:
         narration=report.get("narration", ()),
         rate=rate,
     )
+    return dict(trace, contact_force=strongest_contact(recording.contact_forces()))
+
+
+def strongest_contact(forces: dict[tuple[str, str], tuple]) -> list[list]:
+    """[time, force, body] of the strongest contact at each read where it changed, from each contact's
+    (times, forces) (:meth:`~.reader.Recording.contact_forces`)."""
+    reads: dict[float, dict] = {}
+    for (_, body), (times, values) in forces.items():  # Each read logs every contact touching then.
+        for time, force in zip(times.tolist(), values.tolist()):
+            read = reads.setdefault(round(time, 4), {})
+            read[body] = max(force, read.get(body, 0.0))
+    found, current = [], {}
+    for time in sorted(reads):
+        current.update(reads[time])
+        body, force = max(current.items(), key=lambda item: item[1])
+        if not found or found[-1][1:] != [round(force, 1), body if force > 0 else ""]:
+            found.append([time, round(force, 1), body if force > 0 else ""])
+    return found

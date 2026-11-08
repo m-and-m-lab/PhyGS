@@ -16,14 +16,20 @@ privileged source given only when the task grants it), or both. Each plan builds
 in the body frame from the cameras' first images after the request, taken with the arm still; the
 planning library removes the robot's and the held object's pixels itself (see
 :class:`~phygs.skills.manipulation.execution.planners.interface.PlanRequest`).
+
+The worker reads its model, the depth images and writes its obstacle voxels as files in a folder of
+the planner's own, removed when it closes; each finished plan's request, depth images and outcome go
+to ``record`` (the episode's recording, from which ``examples/replay_plans.py`` plans it again). The
+run folder keeps only the worker's log (``planner/planner.log``).
 """
 
 from __future__ import annotations
 
 import fcntl
-import json
 import os
+import shutil
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from concurrent.futures import Future
@@ -67,6 +73,11 @@ class ArmPlanner:
     ``tolerance`` [rad]): a plan asked with the arm within ``tolerance`` of the stow starts at the
     pre-stow posture (sphere models call the folded stow a self-collision, so planners reject it as a
     start) and its trajectory first moves straight there over ``move_seconds``, as ``unstow`` does.
+
+    ``record(request, outcome, depth)`` gets every finished plan: the request as JSON (each depth
+    image named by its ``camera``), the outcome (success, reason, plan and map time, and the planned
+    trajectory: joint names, times [s], positions) and the depth images [m] by camera. ``output`` is
+    the run folder of the worker's log.
     """
 
     def __init__(
@@ -85,13 +96,17 @@ class ArmPlanner:
         boxes: Callable[[frozenset[str]], dict[str, tuple[np.ndarray, np.ndarray]]] | None = None,
         target: str | None = None,
         stow: dict | None = None,
+        record: Callable[[dict, dict, dict[str, np.ndarray]], None] | None = None,
     ) -> None:
         if not cameras and boxes is None:
             raise ValueError("The arm planner needs depth cameras, known boxes, or both.")
         self._project, self._output, self._settings = project, output, settings
         self._geometry, self._usd_boxes, self._observe = geometry, usd_boxes, observe
         self._cameras, self._boxes, self._target = tuple(cameras), boxes, target
-        self._robot, self._episode_id, self._time = robot, episode_id, time_seconds
+        self._robot, self._episode_id, self._time, self._record = robot, episode_id, time_seconds, record
+        # The worker's files (model, depth images, obstacle voxels): the planner's own, removed at close.
+        self._files = Path(tempfile.mkdtemp(prefix="phygs_planner_"))
+        self._depth: dict[str, tuple[str, np.ndarray]] = {}  # A request's image file -> (camera, depth).
         self._gripper = robot.gripper.primary
         shapes = {(robot.cameras[name].height, robot.cameras[name].width) for name in robot.cameras_for("planning")}
         if len(shapes) > 1:
@@ -113,26 +128,7 @@ class ArmPlanner:
         # Why the planner process broke (crashed, ran out of memory, timed out), not a failed plan.
         self.failure: str | None = None
         self.last_view: PlannerView | None = None  # The latest finished plan for display (recording.panels).
-        backend = settings["backend"]
-        self._env = {
-            **os.environ,
-            "PYTHONPATH": str(project) + os.pathsep + os.environ.get("PYTHONPATH", ""),
-        }
-        if backend == "curobo":
-            self._env["PYTHONPATH"] = settings["curobo_dependencies"] + os.pathsep + self._env["PYTHONPATH"]
-        elif backend != "moveit":
-            raise ValueError(f"Unknown planner backend {backend!r}; expected curobo or moveit.")
-        gpu = render_gpu()
-        if gpu is not None and "CUDA_VISIBLE_DEVICES" not in os.environ:
-            # The worker plans on the GPU the simulation renders on (phygs.sim.gpu), and sees only it.
-            self._env.update(CUDA_DEVICE_ORDER="PCI_BUS_ID", CUDA_VISIBLE_DEVICES=str(gpu))
-        self._command = [
-            "/usr/bin/python3" if backend == "moveit" else sys.executable,
-            "-m",
-            "phygs.skills.manipulation.execution.planners.worker",
-            "--backend",
-            backend,
-        ]
+        self._command, self._env = worker_command(settings, project)
 
     @property
     def startup_seconds(self) -> float | None:
@@ -146,7 +142,7 @@ class ArmPlanner:
         self.model.update(
             prepare_model(
                 self._robot,
-                self._output,
+                self._files,
                 geometry=self._geometry,
                 locked_joints=self._joints(self._observe()),
                 usd_boxes=self._usd_boxes,
@@ -166,22 +162,23 @@ class ArmPlanner:
             self_filter_padding=settings["self_filter_padding"],
         )
         for folder in ("depth", "world"):
-            (self._output / "planner" / folder).mkdir(parents=True, exist_ok=True)
+            (self._files / folder).mkdir(parents=True, exist_ok=True)
         if self._settings["backend"] == "moveit":
             # MoveIt's self filter reads the robot's link frames from /tf: the worker gets a ROS domain
             # of its own, so its frames never reach Nav2 or another planner, nor theirs reach it.
             # (Discovery off also stops the worker's own nodes from finding each other.)
             self._domain = private_ros_domain()
             self._env["ROS_DOMAIN_ID"] = str(self._domain[0])
-        self.worker = PlannerProcess(self._command, self.model, self._output / "planner", self._env)
+        self.worker = PlannerProcess(self._command, self.model, self._files, self._env, log=self._output / "planner")
 
-    def set_output(self, output: Path) -> None:
-        """Write the next plans' records (``planner/requests.jsonl``, depth images, obstacle voxels)
-        to ``output``, numbered from 0, for the World's next episode. The worker, its model and its
-        log stay in the first episode's folder."""
-        self._output, self._images, self._plans = Path(output), 0, 0
-        for folder in ("depth", "world"):
-            (self._output / "planner" / folder).mkdir(parents=True, exist_ok=True)
+    def description(self) -> dict:
+        """What plans an episode's requests again: the backend, the model and the model's files (name
+        -> text), which the model names by path. Empty before :meth:`start`."""
+        if not self.model:
+            return {}
+        paths = [Path(self.model[key]) for key in ("urdf", "moveit_urdf", "srdf") if key in self.model]
+        files = {path.name: path.read_text() for path in paths if path.is_file()}
+        return dict(backend=self._settings["backend"], model=self.model, files=files)
 
     def warm_up(self, grippers: tuple[float, ...] = (), timeout: float = 120.0) -> float:
         """Plan once with the measured gripper angle and once per angle in ``grippers`` [rad],
@@ -262,7 +259,7 @@ class ArmPlanner:
                 self.failure = f"{type(done.exception()).__name__}: {done.exception()}"
             try:
                 result = done.result()
-                self._record(plan_request, result)
+                self._recorded(plan_request, result)
                 self.last_plan = dict(
                     kind=kind.lower(),
                     seconds=time.perf_counter() - started,
@@ -278,15 +275,35 @@ class ArmPlanner:
                     self.last_view = self._view(plan_request, done.result(), request["asked"])
                 except Exception as error:  # noqa: BLE001 - shown in the video's planner panel.
                     self.last_view = PlannerView(label=f"display failed: {type(error).__name__}: {error}")
+            self._remove_files(plan_request)
 
         pending.add_done_callback(finish)
 
-    def _record(self, request: PlanRequest, result: dict) -> None:
-        """One line per plan in ``planner/requests.jsonl``: the request (replayable offline) and the outcome."""
-        outcome = {key: result[key] for key in ("success", "reason", "plan_seconds", "map_seconds") if key in result}
-        line = dict(t=round(self._time(), 3), request=request.to_json(), result=outcome)
-        with (self._output / "planner" / "requests.jsonl").open("a") as file:
-            file.write(json.dumps(line) + "\n")
+    def _recorded(self, request: PlanRequest, result: dict) -> None:
+        """Give ``record`` the finished plan: the request with its images named by camera, the outcome
+        and the depth images."""
+        if self._record is None:
+            return
+        keys = ("success", "reason", "plan_seconds", "map_seconds", "joint_names", "times", "positions")
+        outcome = {key: result[key] for key in keys if key in result}  # With the planned trajectory.
+        data, depth = request.to_json(), {}
+        if request.images:
+            images = []
+            for image in data["images"]:
+                camera, array = self._depth[image.pop("path")]
+                images.append(dict(camera=camera, **image))
+                depth[camera] = array
+            data["images"] = images
+        data.pop("world_path", None)  # Where this worker wrote its voxels; the display holds them.
+        self._record(data, outcome, depth)
+
+    def _remove_files(self, request: PlanRequest) -> None:
+        """A finished plan's files: its depth images and the worker's voxels."""
+        for image in request.images or ():
+            self._depth.pop(image.path, None)
+            Path(image.path).unlink(missing_ok=True)
+        if request.world_path is not None:
+            Path(request.world_path).unlink(missing_ok=True)
 
     def _plan_request(self, packet, *, goal, world_pose, held, asked) -> tuple[PlanRequest, tuple | None]:
         """The worker's request and, from the stow, the straight lead to the pre-stow posture (start
@@ -310,7 +327,7 @@ class ArmPlanner:
             goal_pose = [*local[:3, 3].tolist(), *Rotation.from_matrix(local[:3, :3]).as_quat().tolist()]
         world = None
         if self._settings["backend"] == "curobo" and self._cameras:
-            world = str(self._output / "planner" / "world" / f"{self._plans:06d}.npy")
+            world = str(self._files / "world" / f"{self._plans:06d}.npy")
         self._plans += 1
         # A joint resting on its stop reads at or a hair past its limit (1.8325994 of Spot's 1.8325957
         # rad wrist pitch, 2026-11-01), and cuRobo refuses a start that is not inside every limit ("start
@@ -383,8 +400,8 @@ class ArmPlanner:
         return np.concatenate(rows) if rows else np.zeros((0, 4))
 
     def _image(self, camera, name: str) -> DepthImage:
-        """The camera's depth for the planner, saved under ``planner/depth``: 0 where there is no
-        data or the point is outside the work volume."""
+        """The camera's depth for the planner, saved for the worker: 0 where there is no data or the
+        point is outside the work volume."""
         depth = np.where(camera.depth_valid.cpu().numpy(), camera.depth.cpu().numpy(), 0.0).astype(np.float32)
         intrinsics = camera.intrinsics.cpu().numpy()
         body_from_camera = camera.extrinsics.matrix.cpu().numpy()
@@ -392,9 +409,11 @@ class ArmPlanner:
         rays = np.linalg.solve(intrinsics, np.stack((cols, rows, np.ones_like(rows))))
         points = body_from_camera[:3, :3] @ (rays * depth.reshape(-1)) + body_from_camera[:3, 3:]
         inside = np.all((self._lower <= points.T) & (self._upper >= points.T), axis=1).reshape(depth.shape)
-        path = self._output / "planner" / "depth" / f"{self._images:06d}_{name}.npy"
+        path = self._files / "depth" / f"{self._images:06d}_{name}.npy"
         self._images += 1
-        np.save(path, np.where(inside, depth, 0.0).astype(np.float32))
+        depth = np.where(inside, depth, 0.0).astype(np.float32)
+        np.save(path, depth)
+        self._depth[str(path)] = (name, depth)
         pose = [*body_from_camera[:3, 3].tolist(), *Rotation.from_matrix(body_from_camera[:3, :3]).as_quat().tolist()]
         return DepthImage(path=str(path), intrinsics=intrinsics.tolist(), pose=pose)
 
@@ -443,6 +462,25 @@ class ArmPlanner:
         if self._domain is not None:
             self._domain[1].close()  # Frees the domain.
             self._domain = None
+        shutil.rmtree(self._files, ignore_errors=True)
+
+
+def worker_command(settings: dict, project: Path) -> tuple[list[str], dict[str, str]]:
+    """The planner worker's command line and environment for ``settings`` (``backend``,
+    ``curobo_dependencies``): this checkout (``project``) on its Python path, cuRobo's dependencies
+    for ``curobo``, and the GPU the simulation renders on, unless ``CUDA_VISIBLE_DEVICES`` is set."""
+    backend = settings["backend"]
+    env = {**os.environ, "PYTHONPATH": str(project) + os.pathsep + os.environ.get("PYTHONPATH", "")}
+    if backend == "curobo":
+        env["PYTHONPATH"] = settings["curobo_dependencies"] + os.pathsep + env["PYTHONPATH"]
+    elif backend != "moveit":
+        raise ValueError(f"Unknown planner backend {backend!r}; expected curobo or moveit.")
+    gpu = render_gpu()
+    if gpu is not None and "CUDA_VISIBLE_DEVICES" not in os.environ:
+        # The worker plans on the GPU the simulation renders on (phygs.sim.gpu), and sees only it.
+        env.update(CUDA_DEVICE_ORDER="PCI_BUS_ID", CUDA_VISIBLE_DEVICES=str(gpu))
+    python = "/usr/bin/python3" if backend == "moveit" else sys.executable
+    return [python, "-m", "phygs.skills.manipulation.execution.planners.worker", "--backend", backend], env
 
 
 def private_ros_domain() -> tuple[int, Any]:

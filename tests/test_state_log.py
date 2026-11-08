@@ -3,75 +3,36 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The state log: samples written once and read back, only moved bodies logged, routes and costmaps
-on change, arm plans as the panels show them (no Isaac Sim)."""
+"""The live video's states (recording.state_log): samples kept as they were, Nav2's routes when they
+change, the base path resampled (no Isaac Sim)."""
 
 from __future__ import annotations
 
-import json
 import math
 
 import numpy as np
 import pytest
 
-from phygs.recording.panels import PlannerView
-from phygs.recording.state_log import COSTMAP_PERIOD, POSITION_STEP, ROTATION_STEP, SCHEMA, StateLog, States
-
-JOINTS = ("hip", "knee", "arm")
-BODIES = ("/World/table", "/World/drawer", "/World/cup")
+from phygs.recording.state_log import StateLog
 
 
 def identity(x=0.0, y=0.0, z=0.0, yaw=0.0):
     return np.array([x, y, z, 0.0, 0.0, math.sin(yaw / 2), math.cos(yaw / 2)], dtype=np.float32)
 
 
-def scene(drawer_x=0.0, cup_yaw=0.0):
-    return np.stack([identity(1.0), identity(drawer_x, 2.0), identity(3.0, yaw=cup_yaw)])
-
-
-def make_log(tmp_path):
-    return StateLog(tmp_path / "state.npz", joint_names=JOINTS, body_names=BODIES, meta=dict(period=0.032))
-
-
-def test_only_bodies_that_moved_are_logged_and_every_sample_reads_back_whole(tmp_path):
-    log = make_log(tmp_path)
-    log.sample(0.0, identity(), np.zeros(3), scene(), holding=False)
-    log.sample(0.032, identity(0.1), np.ones(3), scene(drawer_x=0.5 * POSITION_STEP), holding=False)  # Too little.
-    log.sample(0.064, identity(0.2), np.ones(3), scene(drawer_x=0.2), holding=True)
-    log.sample(0.096, identity(0.3), np.ones(3), scene(drawer_x=0.2, cup_yaw=2 * ROTATION_STEP), holding=True)
-    log.write([dict(lane="base", name="navigate_to", start=0.0, end=None, status="active")])
-    with np.load(tmp_path / "state.npz") as arrays:
-        assert arrays["body_sample"].tolist() == [0, 0, 0, 2, 3]  # All at first, then the drawer, then the cup.
-        assert arrays["body_index"].tolist() == [0, 1, 2, 1, 2]
-    states = States.load(tmp_path)  # The folder or the file.
-    assert len(states) == 4 and states.holding.tolist() == [False, False, True, True]
-    assert states.joint_names == JOINTS and states.body_names == BODIES
-    assert states.meta["schema"] == SCHEMA and states.meta["period"] == 0.032
-    assert states.commands == [dict(lane="base", name="navigate_to", start=0.0, end=None, status="active")]
-    sequence = [poses.copy() for poses in states.bodies()]
-    for sample, poses in enumerate(sequence):
-        assert np.array_equal(poses, states.bodies_at(sample))
-    assert sequence[1][1, 0] == 0.0 and sequence[2][1, 0] == pytest.approx(0.2)  # The drawer: logged when it moved.
-    assert sequence[3][2] == pytest.approx(scene(drawer_x=0.2, cup_yaw=2 * ROTATION_STEP)[2])
-    assert states.index(0.07) == 2 and states.index(-1.0) == 0 and states.index(9.0) == 3
-
-
-def test_a_sample_keeps_its_values_when_the_simulation_overwrites_its_buffers(tmp_path):
-    log = make_log(tmp_path)
-    root, joints, bodies = identity(), np.zeros(3, dtype=np.float32), scene()
+def test_a_sample_keeps_its_values_when_the_simulation_overwrites_its_buffer():
+    log, root = StateLog(), identity()
     for k in range(3):
-        root[0], joints[:] = k, k  # The same buffers, updated in place as the simulation's are.
-        bodies[2, 0] = 3.0 + k
-        log.sample(0.1 * k, root, joints, bodies, holding=False)
-    log.write()
-    states = States.load(tmp_path)
-    assert states.root[:, 0].tolist() == [0.0, 1.0, 2.0] and states.joints[:, 1].tolist() == [0.0, 1.0, 2.0]
-    assert [poses[2, 0] for poses in states.bodies()] == [3.0, 4.0, 5.0]
+        root[0] = k  # The same buffer, updated in place as the simulation's is.
+        log.sample(0.1 * k, root, holding=k == 2)
+    states = log.states()
+    assert len(log) == 3 and states.root[:, 0].tolist() == [0.0, 1.0, 2.0]
+    assert states.holding.tolist() == [False, False, True]
 
 
-def test_routes_are_logged_when_they_change(tmp_path):
-    log = make_log(tmp_path)
-    log.sample(0.0, identity(), np.zeros(3), scene(), holding=False)
+def test_routes_are_logged_when_they_change():
+    log = StateLog()
+    log.sample(0.0, identity(), holding=False)
     path = ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0))
     log.route(0.0, None, ())
     log.route(0.5, (1.0, 1.0, None), path)
@@ -79,8 +40,7 @@ def test_routes_are_logged_when_they_change(tmp_path):
     log.route(0.7, (1.0, 1.0, None), [list(point) for point in path])  # Equal values: not again.
     log.route(1.0, (1.0, 1.0, None), path[1:])  # Replanned.
     log.route(2.0, None, ())  # Arrived: no route.
-    log.write()
-    states = States.load(tmp_path / "state.npz")
+    states = log.states()
     assert [route.time for route in states.routes] == [0.0, 0.5, 1.0, 2.0]
     assert states.routes[0].goal is None and len(states.routes[0].points) == 0
     assert states.routes[1].goal == (1.0, 1.0, None) and states.routes[1].points.tolist() == [list(p) for p in path]
@@ -88,74 +48,10 @@ def test_routes_are_logged_when_they_change(tmp_path):
     assert states.route_at(0.9).time == 0.5 and states.route_at(-1.0) is None
 
 
-def test_the_panels_data_reads_back_as_it_was_at_any_time(tmp_path):
-    log = make_log(tmp_path)
-    free, blocked = np.zeros((4, 6), np.uint8), np.zeros((4, 6), np.uint8)
-    blocked[1, 2] = 254
-    arm = np.array([[0.0, 0.0, 0.5], [0.3, 0.0, 0.6], [0.6, 0.0, 0.5]])
-    first = PlannerView(
-        label="12.0 s planned",
-        voxels=np.ones((5, 3)),
-        boxes=(((1.0, 0.0, 0.4), (0.5, 0.5, 0.8)),),
-        arm_start=arm,
-        arm_path=(arm, arm + 0.1),
-        arm_end=arm + 0.2,
-        end_spheres=np.ones((2, 4)),
-        tool_path=arm[:2],
-        floor=-0.5,
-    )
-    second = PlannerView(label="display failed: no plan")
-    for k in range(6):
-        t = 0.5 * k
-        log.sample(t, identity(), np.zeros(3), scene(), holding=False, command=None if k == 0 else (0.5, 0.0, 0.1))
-        if log.wants_costmap(t):  # At 0, 1 and 2 s.
-            log.costmap(t, blocked if t >= 2.0 else free, (-1.0, -2.0), 0.05)
-        log.plan(t, first if t < 2.0 else second)  # Logged when it is another object.
-    log.write()
-    states = States.load(tmp_path)
-    assert np.isnan(states.command[0]).all() and states.command[1].tolist() == pytest.approx([0.5, 0.0, 0.1])
-    assert states.costmap_times.tolist() == [0.0, 2.0]  # The read at 1 s found the same costmap.
-    assert states.costmap_at(-0.1) is None and states.costmap_at(1.9)[0].max() == 0
-    costs, origin, cell = states.costmap_at(2.4)
-    assert costs[1, 2] == 254 and origin == (-1.0, -2.0) and cell == 0.05
-    assert states.plan_times.tolist() == [0.0, 2.0] and states.plan_at(-1.0) is None
-    view = states.plan_at(1.0)
-    assert view.label == "12.0 s planned" and view.floor == -0.5 and view.voxel_size == first.voxel_size
-    assert np.allclose(np.ravel(view.boxes), np.ravel(first.boxes)) and len(view.arm_path) == 2  # float32
-    assert np.allclose(view.arm_path[1], arm + 0.1) and np.allclose(view.end_spheres, 1.0)
-    assert states.plan_at(2.5).label == "display failed: no plan" and states.plan_at(2.5).floor is None
-    assert log.wants_costmap(0.0) and not log.wants_costmap(COSTMAP_PERIOD / 2)  # Time went back: a new episode.
-
-
-def test_a_log_without_the_panels_data_reads_back_without_it(tmp_path):
-    log = make_log(tmp_path)
-    log.sample(0.0, identity(), np.zeros(3), scene(), holding=False)
-    log.write()
-    with np.load(tmp_path / "state.npz") as arrays:  # As PhyGS 0.7 and 0.8 wrote it.
-        old = {key: arrays[key] for key in arrays.files if not key.startswith(("command", "costmap", "plan"))}
-    states = States(old)
-    assert np.isnan(states.command).all() and states.command.shape == (1, 3)
-    assert states.costmap_at(5.0) is None and states.plan_at(5.0) is None
-
-
-def test_the_base_path_is_resampled_with_its_heading(tmp_path):
-    log = make_log(tmp_path)
+def test_the_base_path_is_resampled_with_its_heading():
+    log = StateLog()
     for k in range(11):
-        log.sample(0.1 * k, identity(0.1 * k, yaw=0.1 * k), np.zeros(3), scene(), holding=False)
-    log.write()
-    path = States.load(tmp_path).base_path(rate=5.0)
+        log.sample(0.1 * k, identity(0.1 * k, yaw=0.1 * k), holding=False)
+    path = log.states().base_path(rate=5.0)
     assert [p[0] for p in path] == pytest.approx([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     assert path[-1][1:] == pytest.approx((1.0, 0.0, 1.0), abs=1e-3)
-
-
-def test_a_log_of_another_schema_is_refused(tmp_path):
-    log = make_log(tmp_path)
-    log.sample(0.0, identity(), np.zeros(3), scene(), holding=False)
-    log.write()
-    with np.load(tmp_path / "state.npz") as arrays:
-        data = {key: arrays[key] for key in arrays.files}
-    data["meta"] = np.asarray(json.dumps(dict(json.loads(str(data["meta"])), schema=SCHEMA + 1)))
-    with pytest.raises(ValueError, match="schema"):
-        States(data)
-    with pytest.raises(IndexError):
-        States.load(tmp_path).bodies_at(1)

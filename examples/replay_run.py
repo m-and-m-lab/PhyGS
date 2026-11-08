@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Render a finished run again from its state log: the run itself renders nothing it does not need.
+"""Render a finished run again from its recording: the run itself renders nothing it does not need.
 
     isaaclab -p scripts/PhyGS/examples/replay_run.py \
         scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_grid_table

@@ -542,6 +542,7 @@ def nav2_transport(config=None, **attributes):
         _explore_outcomes={},
         _explore_complete=False,
         _latest_costmap=None,
+        _costmap_version=0,
     )
     handles = ("_rclpy", "_context", "_node", "_executor", "_clock", "_odom", "_map", "_path", "_tf")
     state.update({name: Mock() for name in handles})

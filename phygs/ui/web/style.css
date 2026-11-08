@@ -271,10 +271,6 @@ body[data-phase="ready"] #left, body[data-phase="ended"] #left { opacity: 0.5; p
 .outcome.s-succeeded { color: var(--ok); } .outcome.s-failed { color: var(--fail); } .outcome.s-cancelled { color: var(--idle); }
 
 /* Replay: read-only, with its own controls in the header. */
-.replay-bar { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.replay-bar .segmented button { padding: 3px 7px; }
-body.replay #estop, body.replay #end-episode { display: none; }
-body.replay #left .tile, body.replay #skill-panel .actions, body.replay .channel .cancel { pointer-events: none; opacity: 0.55; }
 
 /* Plan preview: plan first, see it, run that plan. */
 .plan-box { border: 1px dashed var(--line); border-radius: 6px; padding: 6px 8px; display: grid; gap: 4px; }

@@ -49,7 +49,7 @@ Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetch
 PhyGS/
 ├── README.md  AGENTS.md  ARCHITECTURE.md  CHANGELOG.md  pyproject.toml
 ├── phygs/                       # The framework (package `phygs`); layers and import rule in docs/layout.md
-│   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, replay_cli.py, configs/)
+│   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, configs/)
 │   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth,
 │   │                            # the robot's assembly (robot.py), environment.yaml (physics, cameras, Nav2, planner, timing)
 │   ├── session/                 # What an agent gets: AgentSession, target types, hints
@@ -137,7 +137,7 @@ def run(session):
 
 The skills that walk and then move the arm are the composite skills (`phygs.skills.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.place_upright(point)`, `skills.close_drawer(part)`. Each walks to where the arm reaches (stowing first), tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
 
-Everything the agent does goes into `audit.jsonl` and the episode's recording, `episode.rrd`: a [Rerun](https://rerun.io) file with the robot, the scene, Nav2, the arm plans, the agent's calls and the episode's phases on one timeline (`rerun episode.rrd` opens it; `phygs replay` renders videos from it). The report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
+Everything the agent does goes into the episode's recording, `episode.rrd`: a [Rerun](https://rerun.io) file with the robot, the scene, Nav2, the arm plans and their requests, the agent's calls and the episode's phases on one timeline (`rerun episode.rrd` opens it; `phygs replay` renders videos from it; `examples/replay_plans.py` plans the arm plans again). The report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
 
 ## 🤖 Robots
 

@@ -68,17 +68,11 @@ drag sets the heading.
 
 ## What a run leaves
 
-In the output folder: the World's `report.json` and `audit.jsonl`, as for every agent; `ui_summary.json`
+In the output folder: the World's `report.json` and `episode.rrd`, as for every agent; `ui_summary.json`
 (commands and failures per skill, Drive time, the evaluation); `ui_log.jsonl` (the session's events);
 `telemetry.jsonl` (every 0.2 s of simulated time: pose, arm, base velocity, joint speeds, hand, the
-running arm command, camera rates, the loop's health); and `recording/`, every message both ways with
-its wall time.
-
-Replay without Isaac Sim, read-only, on the same page (pause, ×0.5 to ×8, restart):
-
-```bash
-isaaclab -p scripts/PhyGS/phygs/ui/replay_cli.py <output folder>
-```
+running arm command, camera rates, the loop's health). The person's episode is recorded like any
+agent's: `rerun episode.rrd` shows it, and `phygs replay` renders its videos.
 
 ## Protocol
 

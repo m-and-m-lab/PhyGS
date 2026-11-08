@@ -148,6 +148,7 @@ class RclpyNav2Transport:
         from nav2_msgs.msg import Costmap
 
         self._latest_costmap = None
+        self._costmap_version = 0  # One more for each costmap received (a recording logs each one).
         self._costmap_subscription = self._node.create_subscription(
             Costmap, "global_costmap/costmap_raw", self._costmap_received, latched
         )
@@ -357,6 +358,7 @@ class RclpyNav2Transport:
         stamp = message.header.stamp.sec * 1_000_000_000 + message.header.stamp.nanosec
         if stamp >= self._epoch:  # Not from before the last reset.
             self._latest_costmap = message
+            self._costmap_version += 1
 
     def _command_received(self, message) -> None:
         stamp = message.header.stamp.sec * 1_000_000_000 + message.header.stamp.nanosec
@@ -606,6 +608,13 @@ class RclpyNav2Transport:
             raise RuntimeError("Nav2 rejected path execution")
         self._follow_result = self._following.get_result_async()
         return tuple((pose.pose.position.x, pose.pose.position.y) for pose in result.result.path.poses)
+
+    @property
+    def costmap_version(self) -> int:
+        """How many global costmaps Nav2 has published so far: it grows by one with each. Handles at
+        most two pending messages, so a check stays cheap; navigating, poll handles the rest every tick."""
+        self._spin_pending(limit=2)
+        return self._costmap_version
 
     def costmap(self) -> tuple[np.ndarray, tuple[float, float], float] | None:
         """Nav2's newest published global costmap: cost per cell [row y, column x] (0-252 free to near,

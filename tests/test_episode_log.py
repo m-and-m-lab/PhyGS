@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 rr = pytest.importorskip("rerun")
 
@@ -35,17 +36,24 @@ def test_a_recording_holds_the_robot_the_scene_the_calls_and_the_phases(tmp_path
     joints = ("arm_sh0", "front_left_knee", "not_in_the_urdf")
     log.robot_model(SPOT_URDF, joints)
     log.scene([(None, np.zeros(3), np.ones(3)), ("/World/box", np.zeros(3), np.full(3, 0.2))], ["/World/box"])
-    for tick in range(0, 400, 8):  # 1.6 s at the camera period: one batch sent on the way, one at close.
+    for tick in range(400):  # 1.6 s of physics ticks: one batch sent on the way, one at close.
         log.at(tick, tick * 0.004)
-        log.robot_state(np.array([tick * 0.001, 0, 0.5, 0, 0, 0, 1]), np.array([0.1, -1.2, 0.0]))
-        log.body_poses(np.array([[1.0 + (0.01 if tick >= 200 else 0.0), 0, 0.4, 0, 0, 0, 1]]))
+        positions = torch.tensor([0.1, -1.2, 0.001 * tick])
+        log.joint_state(positions, positions + 0.01, torch.full((3,), 2.0))
+        log.joint_state(positions, positions, positions)  # Again in the same tick: ignored.
+        if tick % 8 == 0:  # A state sample every camera period.
+            log.robot_state(np.array([tick * 0.001, 0, 0.5, 0, 0, 0, 1]), positions.numpy())
+            log.body_poses(np.array([[1.0 + (0.01 if tick >= 200 else 0.0), 0, 0.4, 0, 0, 0, 1]]))
     log.agent_call(dict(t=0.4, call="navigation.navigate_to", args={"x": 1.0}, result="accepted"))
     log.phase("agent")
-    log.contact("arm_link_fngr", "/World/box", 12.5, "pick")
+    for forces in ([("arm_link_fngr", "/World/box", 12.5)], [("arm_link_fngr", "/World/box", 14.0)], [], []):
+        log.contacts(forces, "pick")  # Touches, pushes harder, lets go; then nothing to log.
+    log.command_span(0, dict(lane="base", name="navigate_to", start=0.1, end=0.9, status="succeeded"))
     report = log.close()
     assert report == dict(status="complete", file=episode_log.FILE, error=None, schema=1, run_id="run-1")
     rows = entities(path)
-    assert rows["/truth/spot/joint_positions"] == 50 + 1  # Every joint, plotted (and the lines' names, once).
+    for entity in ("/truth/spot/joint_positions", "/truth/spot/joint_efforts", "/control/joint_targets"):
+        assert rows[entity] == 400 + 1, entity  # Every physics tick (and the lines' names, once).
     assert rows["/truth/spot/joints/arm_sh0"] == 50 and "/truth/spot/joints/not_in_the_urdf" not in rows
     assert not [name for name in rows if "visual_geometries" in name]  # The collision geometry only.
     assert any("collision_geometries" in name for name in rows)
@@ -54,7 +62,9 @@ def test_a_recording_holds_the_robot_the_scene_the_calls_and_the_phases(tmp_path
     assert rows["/truth/spot/base"] == 50
     body = next(name for name in rows if name.startswith("/truth/scene/bodies/") and not name.endswith("colliders"))
     assert rows[body] == 2  # The start, then the 1 cm move.
-    assert rows["/agent/calls"] == 1 and rows["/events/phase"] == 1 and rows["/truth/contacts"] == 1
+    assert rows["/agent/calls"] == 1 and rows["/events/phase"] == 1 and rows["/truth/contact_events"] == 1
+    assert rows["/truth/contact_forces/arm_link_fngr/\\/World\\/box"] == 3  # 12.5 N, 14 N, then 0 N.
+    assert rows["/control/commands"] == 1
 
 
 def test_the_joint_transforms_equal_rerun_s_own_urdf_computation():

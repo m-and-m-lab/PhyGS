@@ -57,6 +57,11 @@ class ObservationConfig:
         if len(names) != len(set(names)):
             raise ValueError("Camera permissions must have unique names.")
 
+    @classmethod
+    def from_dict(cls, data: dict) -> ObservationConfig:
+        """The configuration from :func:`dataclasses.asdict` of one (as an episode's recording keeps it)."""
+        return cls(**{**data, "cameras": tuple(CameraPermission(**camera) for camera in data.get("cameras", ()))})
+
 
 @dataclass(frozen=True)
 class ObservationAccess:

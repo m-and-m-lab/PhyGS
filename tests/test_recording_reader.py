@@ -3,8 +3,9 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""The recording read back (phygs.recording.reader) holds what the state log holds: the same samples,
-bodies, routes, costmaps, arm plans, command spans and audit lines (no Isaac Sim)."""
+"""The recording read back (phygs.recording.reader): the samples, the scene's bodies, Nav2's routes
+and costmaps, the arm plans and their requests, the command spans and the audit lines, as they were
+logged (no Isaac Sim)."""
 
 from __future__ import annotations
 
@@ -13,23 +14,26 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 rr = pytest.importorskip("rerun")
 
-from phygs.recording.log import EpisodeLog  # noqa: E402
+from phygs.observations.types import CameraObservation, ObservationPacket, Stamp, Transform  # noqa: E402
+from phygs.recording.log import POSITION_STEP, EpisodeLog  # noqa: E402
 from phygs.recording.panels import PlannerView  # noqa: E402
 from phygs.recording.reader import Recording  # noqa: E402
-from phygs.recording.state_log import StateLog, States  # noqa: E402
 
 SPOT_URDF = Path(__file__).resolve().parents[1] / "phygs" / "robots" / "spot" / "assets" / "spot.urdf"
 JOINTS = ("arm_sh0", "front_left_knee", "not in.the urdf")  # The last: plotted, not drawn; escaped in paths.
 BODIES = ("/World/table", "/World/drawer", "/World/cup")
 META = dict(period=0.032, physics_dt=0.004, robot="spot", scene=dict(id="grid", sha256="abc"), start=[0.0, 0.0, 0.0])
 SPANS = [dict(lane="base", name="navigate_to", start=0.1, end=None, status="active")]
+TICKS = [0, 0, *range(8, 400, 8)]  # Two samples in the first tick, as a run's start; then every 32 ms.
+ROUTE = ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0))
 
 
 def pose(x=0.0, y=0.0, z=0.0, yaw=0.0):
-    return np.array([x, y, z, 0.0, 0.0, math.sin(yaw / 2), math.cos(yaw / 2)])
+    return np.array([x, y, z, 0.0, 0.0, math.sin(yaw / 2), math.cos(yaw / 2)], dtype=np.float32)
 
 
 def plan(label: str, shift: float) -> PlannerView:
@@ -47,81 +51,154 @@ def plan(label: str, shift: float) -> PlannerView:
     )
 
 
-def record_both(tmp_path: Path) -> tuple[States, Recording]:
-    """One episode's states written by the state log and by the recording, read back by each."""
-    state = StateLog(tmp_path / "state.npz", joint_names=JOINTS, body_names=BODIES, meta=META)
+FIRST_PLAN, SECOND_PLAN = plan("plan 1: ok", 0.0), plan("plan 2: ok", 0.1)
+
+
+def sample(index: int, time: float) -> tuple:
+    """The state at sample ``index``: root, joints, bodies, holding, command."""
+    bodies = np.stack([pose(1.0), pose(min(time, 0.5), 2.0), pose(3.0, yaw=0.2 if time > 1.0 else 0.0)])
+    root, joints = pose(0.01 * index, z=0.5, yaw=0.1 * index), np.array([0.1, -1.2, 0.25 * time], np.float32)
+    return root, joints, bodies, time > 0.8, None if time < 0.2 else (0.3, 0.0, 0.1)
+
+
+def costs(index: int) -> np.ndarray:
+    found = np.full((4, 5), 3 * index, dtype=np.uint8)
+    found[0, 1] = 254
+    return found
+
+
+def record(tmp_path: Path) -> Recording:
+    """One episode's recording, read back."""
     log = EpisodeLog(tmp_path / "episode.rrd", run_id="run")
     log.properties(replay=META)
     log.robot_model(SPOT_URDF, JOINTS)
     log.scene([(None, np.zeros(3), np.ones(3))], BODIES)
-    route = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)]
-    first_plan, second_plan = plan("plan 1: ok", 0.0), plan("plan 2: ok", 0.1)
-    for sample, tick in enumerate([0, 0, *range(8, 400, 8)]):  # Two samples in the first tick, as a run's start.
+    for index, tick in enumerate(TICKS):
         time = tick * 0.004
-        bodies = np.stack([pose(1.0), pose(min(time, 0.5), 2.0), pose(3.0, yaw=0.2 if time > 1.0 else 0.0)])
-        root, joints = pose(0.01 * sample, z=0.5, yaw=0.1 * sample), np.array([0.1, -1.2, 0.01 * sample])
-        holding, command = time > 0.8, None if time < 0.2 else (0.3, 0.0, 0.1)
-        state.sample(time, root, joints, bodies, holding=holding, command=command)
+        root, joints, bodies, holding, command = sample(index, time)
         log.at(tick, time)
+        log.joint_state(torch.as_tensor(joints), torch.as_tensor(joints) + 0.01, torch.zeros(3))
         log.robot_state(root, joints, holding=holding, command=command)
         log.body_poses(bodies)
-        goal, points = ((1.0, 1.0, None), route) if 0.2 <= time < 1.2 else (None, ())
-        state.route(time, goal, points)
-        log.route(goal, points)
-        if sample in (2, 30):
-            costs = np.full((4, 5), 3 * sample, dtype=np.uint8)
-            costs[0, 1] = 254
-            state.costmap(time, costs, (-1.0, -2.0), 0.05)
-            log.costmap(costs, (-1.0, -2.0), 0.05)
-        view = first_plan if sample >= 10 else None
-        view = second_plan if sample >= 40 else view
+        if 12 <= index <= 15:  # A finger touches the cup harder at each read, then lets go.
+            log.contacts([("arm_link_fngr", "/World/cup", 10.0 + index)] if index < 15 else [], "pick")
+        route = (1.0, 1.0, None) if 0.2 <= time < 1.2 else None
+        log.route(route, ROUTE if route else ())
+        log.route(route, [list(point) for point in ROUTE] if route else [])  # Equal values: not again.
+        if index in (2, 30):
+            log.costmap(costs(index), (-1.0, -2.0), 0.05)
+        if index == 31:
+            log.costmap(costs(30), (-1.0, -2.0), 0.05)  # The same costmap: not again.
+        view = SECOND_PLAN if index >= 40 else FIRST_PLAN if index >= 10 else None
         if view is not None:
-            state.plan(time, view)
-            log.plan(view)
+            log.plan(view)  # Logged when it is another object.
     log.agent_call(dict(t=0.4, call="navigation.navigate_to", args={"x": 1.0}, result="accepted"))
-    log.agent_call(dict(t=0.5, call="session.step", name="open the drawer", event="start"))
-    log.commands(SPANS)
-    state.write(SPANS)
+    log.agent_call(dict(t=0.5, call="session.step", name="open the drawer", event="begin"))
+    for index, span in enumerate(SPANS):
+        log.command_span(index, span)
     assert log.close()["status"] == "complete"
-    return States.load(tmp_path), Recording(tmp_path)
+    return Recording(tmp_path)
 
 
-def test_the_recording_reads_back_what_the_state_log_holds(tmp_path):
-    expected, recording = record_both(tmp_path)
-    states = recording.states()
-    assert len(states) == len(expected) == 51
-    assert np.allclose(states.time, expected.time, atol=1e-9)
-    for name in ("root", "joints", "holding"):
-        assert np.array_equal(getattr(states, name), getattr(expected, name)), name
-    assert np.array_equal(states.command, expected.command, equal_nan=True)
-    assert states.joint_names == expected.joint_names and states.body_names == expected.body_names
-    for sample in range(len(states)):
-        assert np.array_equal(states.bodies_at(sample), expected.bodies_at(sample)), sample
-    assert len(states.routes) == len(expected.routes) == 3
-    for got, want in zip(states.routes, expected.routes):
-        assert got.time == pytest.approx(want.time) and got.goal == want.goal
-        assert np.array_equal(got.points, want.points)
-    for time in (*expected.costmap_times, 0.0, 9.0):
-        got, want = states.costmap_at(time), expected.costmap_at(time)
-        assert (got is None) == (want is None)
-        if want is not None:
-            assert np.array_equal(got[0], want[0]) and got[1:] == want[1:]
-    assert np.allclose(states.plan_times, expected.plan_times)
-    for time in expected.plan_times:
-        got, want = states.plan_at(time), expected.plan_at(time)
-        fields = ("label", "voxel_size", "floor", "boxes")
-        assert [getattr(got, name) for name in fields] == [getattr(want, name) for name in fields]
+def test_the_recording_reads_back_the_samples_the_scene_and_the_panels_as_logged(tmp_path):
+    states = record(tmp_path).states()
+    times = np.array(TICKS) * 0.004
+    assert len(states) == len(TICKS) and np.allclose(states.time, times, atol=1e-9)
+    for index, time in enumerate(times):
+        root, joints, bodies, holding, command = sample(index, time)
+        assert np.array_equal(states.root[index], root) and np.array_equal(states.joints[index], joints)
+        assert states.holding[index] == holding
+        want = np.full(3, np.nan) if command is None else command
+        assert np.array_equal(states.command[index], np.asarray(want, np.float32), equal_nan=True)
+        # Each body's last logged pose: within the logging step of where it is.
+        assert np.abs(states.bodies_at(index)[:, :3] - bodies[:, :3]).max() <= POSITION_STEP
+    assert states.joint_names == JOINTS and states.body_names == BODIES
+    changes = [0.0, times[times >= 0.2][0], times[times >= 1.2][0]]  # No route, the route, arrived.
+    assert [route.time for route in states.routes] == pytest.approx(changes)
+    assert states.routes[0].goal is None and states.routes[1].goal == (1.0, 1.0, None)
+    assert states.routes[1].points.tolist() == [list(point) for point in ROUTE] and len(states.routes[2].points) == 0
+    assert np.allclose(states.costmap_times, times[[2, 30]]) and states.costmap_at(times[2] - 0.01) is None
+    found, origin, cell = states.costmap_at(times[31])
+    assert np.array_equal(found, costs(30)) and origin == (-1.0, -2.0) and cell == 0.05
+    assert np.allclose(states.plan_times, times[[10, 40]]) and states.plan_at(times[10] - 0.01) is None
+    for time, want in ((times[10], FIRST_PLAN), (times[45], SECOND_PLAN)):
+        got = states.plan_at(time)
+        assert (got.label, got.voxel_size, got.floor) == (want.label, want.voxel_size, want.floor)
+        assert np.allclose(np.ravel(got.boxes), np.ravel(want.boxes))
         for name in ("voxels", "arm_start", "arm_end", "end_spheres", "tool_path"):
-            assert np.array_equal(getattr(got, name), getattr(want, name)), name
-        assert all(np.array_equal(a, b) for a, b in zip(got.arm_path, want.arm_path, strict=True))
-    assert states.commands == expected.commands == SPANS
-    assert states.meta == expected.meta
+            assert np.allclose(getattr(got, name), getattr(want, name)), name
+        assert all(np.allclose(a, b) for a, b in zip(got.arm_path, want.arm_path, strict=True))
+    assert states.commands == SPANS and states.meta == dict(META, commands=SPANS)
+
+
+def test_the_contact_forces_read_back_over_time(tmp_path):
+    forces = record(tmp_path).contact_forces()
+    times, values = forces[("arm_link_fngr", "/World/cup")]
+    assert values.tolist() == [22.0, 23.0, 24.0, 0.0] and np.allclose(times, np.array(TICKS[12:16]) * 0.004)
+
+
+def camera_packet(tick: int, shade: int) -> ObservationPacket:
+    """A packet with a 4x6 hand camera image captured at ``tick``."""
+    stamp = Stamp(0, tick, tick * 0.004)
+    depth = torch.full((4, 6), 1.5)
+    depth[0, 0] = 0.0  # No depth there.
+    camera = CameraObservation(
+        stamp,
+        "hand_optical",
+        torch.full((4, 6, 3), shade, dtype=torch.uint8),
+        depth,
+        depth > 0,
+        torch.tensor([[5.0, 0, 3], [0, 5.0, 2], [0, 0, 1]]),
+        Transform("body", "hand_optical", stamp, torch.eye(4) * 2, "ideal_robot_kinematics"),
+        True,
+    )
+    return ObservationPacket(stamp, None, None, None, {"hand": camera}, ())
+
+
+@pytest.mark.parametrize("level", ["full", "all_frames"])
+def test_what_the_agent_received_and_every_capture_read_back(tmp_path, level):
+    log = EpisodeLog(tmp_path / "episode.rrd", run_id="frames", level=level)
+    log.properties(replay=META, settings=dict(recording=dict(level=level)))
+    for tick, shade in ((8, 40), (16, 90)):
+        log.at(tick, tick * 0.004)
+        log.camera_frames(camera_packet(tick, shade))  # Level all_frames only.
+    log.at(20, 0.08)
+    log.observed(camera_packet(16, 90))
+    log.at(22, 0.088)
+    log.observed(camera_packet(16, 90))  # The same capture: its images once.
+    log.close()
+    recording = Recording(tmp_path)
+    assert [summary["cameras"] for _, summary in recording.observations()] == [{"hand": 16}, {"hand": 16}]
+    (received,) = recording.images("agent_view", "hand")  # At all_frames: found among every capture.
+    assert received.tick == 16 and received.rgb[0, 0].tolist() == [90, 90, 90] and received.depth[0, 0] == 0.0
+    frames = list(recording.images("sensors", "hand"))
+    assert [frame.tick for frame in frames] == ([8, 16] if level == "all_frames" else [])
+    if frames:
+        assert np.array_equal(frames[1].body_from_camera, np.eye(4) * 2) and frames[1].intrinsics[0, 0] == 5.0
+    assert recording.entities("sensors") == [] and recording.entities("agent_view", "images") == []  # Not loaded.
 
 
 def test_the_audit_lines_come_back_in_order(tmp_path):
-    _, recording = record_both(tmp_path)
+    recording = record(tmp_path)
     assert [line["call"] for line in recording.audit] == ["navigation.navigate_to", "session.step"]
     assert recording.audit[0]["args"] == {"x": 1.0} and recording.properties["run_id"] == "run"
+
+
+def test_an_arm_plan_request_reads_back_with_its_depth_images_lossless(tmp_path):
+    log = EpisodeLog(tmp_path / "episode.rrd", run_id="plans")
+    rng = np.random.default_rng(0)
+    depth = {"hand": rng.uniform(0.2, 3.0, (24, 32)).astype(np.float32), "front": np.zeros((24, 32), np.float32)}
+    images = [dict(camera=name, intrinsics=[[30.0, 0, 16], [0, 30.0, 12], [0, 0, 1]], pose=[0.0] * 7) for name in depth]
+    for k in range(2):
+        log.at(100 * k, 0.4 * k)
+        request = dict(kind="plan", start=[0.1 * k] * 6, goal=[0.0] * 6, images=images if k == 0 else None)
+        log.plan_request(request, dict(success=k == 0, plan_seconds=0.05), depth if k == 0 else {})
+    log.close()
+    first, second = Recording(tmp_path).plan_requests()
+    assert first.request["images"] == images and first.request["start"] == [0.0] * 6
+    assert all(np.array_equal(first.depth[name], depth[name]) for name in depth)  # Every float as it was.
+    assert first.outcome == dict(success=True, plan_seconds=0.05) and first.time == 0.0
+    assert second.request["images"] is None and second.depth == {} and second.time == pytest.approx(0.4)
 
 
 TINY_URDF = """<robot name="tiny">
@@ -142,6 +219,7 @@ def test_a_run_that_died_reads_back_to_its_last_whole_chunk(tmp_path):
     log.scene([], BODIES[:1])
     for k in range(300):
         log.at(8 * k, 0.032 * k)
+        log.joint_state(torch.tensor([0.001 * k]), torch.zeros(1), torch.zeros(1))
         log.robot_state(pose(0.01 * k, z=0.5), [0.001 * k], holding=k > 150)
         log.body_poses([pose(1.0 + (0.01 if k > 50 else 0.0))])
         if k == 200:

@@ -17,7 +17,6 @@ drives: its arm joints, gripper, tools and cameras.
 
 from __future__ import annotations
 
-import json
 import math
 import queue
 import threading
@@ -26,7 +25,6 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -233,14 +231,12 @@ def jsonable(value: Any) -> Any:
 
 
 class Audit:
-    """One JSON line per agent call (``audit.jsonl``) and the totals for the report."""
+    """One line per agent call, and the totals for the report. Every line is kept (:attr:`lines`) and
+    given to ``sink`` (the episode's recording, :mod:`phygs.recording.log`)."""
 
-    def __init__(
-        self, path: Path | None, time_seconds: Callable[[], float], sink: Callable[[dict], None] | None = None
-    ) -> None:
-        self._file = None if path is None else path.open("w")
+    def __init__(self, time_seconds: Callable[[], float], sink: Callable[[dict], None] | None = None) -> None:
         self._time = time_seconds
-        self._sink = sink  # Also given every line (the episode's recording, phygs.recording.log).
+        self._sink = sink
         self.calls: Counter[str] = Counter()
         self.privileged: Counter[str] = Counter()
         self.levels: set[str] = set()
@@ -259,9 +255,6 @@ class Audit:
         if "feedback" in fields:
             self.commands.append(line)
         self.lines.append(line)
-        if self._file is not None:
-            self._file.write(json.dumps(line) + "\n")
-            self._file.flush()
         if self._sink is not None:
             self._sink(line)
 
@@ -269,10 +262,7 @@ class Audit:
         """Write one line that is not a call (a step marker): not counted in the totals."""
         line = dict(t=round(self._time(), 4), call=call, **{k: jsonable(v) for k, v in fields.items()})
         self.lines.append(line)
-        if self._file is not None and not self._file.closed:  # A step the agent leaves after the episode.
-            self._file.write(json.dumps(line) + "\n")
-            self._file.flush()
-        if self._sink is not None:
+        if self._sink is not None:  # A step the agent leaves after the episode: the recording is closed.
             self._sink(line)
 
     def summary(self) -> dict:
@@ -282,10 +272,6 @@ class Audit:
             privileged_reads=dict(self.privileged),
             levels_used=sorted(self.levels),
         )
-
-    def close(self) -> None:
-        if self._file is not None:
-            self._file.close()
 
 
 class _Proxy:

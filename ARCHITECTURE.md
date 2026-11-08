@@ -509,7 +509,7 @@ access for the skills, scene hints), and owns the simulation loop on the main th
 `run(session)` in its own thread; every session call runs on the main thread between ticks, and
 simulated time passes only while the agent waits (`charged` clock) or always (`realtime`).
 Privileged information reaches agents only through granted `session.hints` calls and granted
-skill targets; `audit.jsonl` logs every call. The evaluator is separate and never given to the agent: the World resets it on the settled world before the agent starts, has it sample ground truth while the agent runs, and at the end stops the robot (every command cancelled, the grip kept), settles, and asks it for the result.
+skill targets; every call is audited into the episode's recording (`episode.rrd`). The evaluator is separate and never given to the agent: the World resets it on the settled world before the agent starts, has it sample ground truth while the agent runs, and at the end stops the robot (every command cancelled, the grip kept), settles, and asks it for the result.
 Robot tests hold the World and may read ground truth (`World.truth()`). A benchmark author's view
 of the same: [docs/world.md](docs/world.md).
 

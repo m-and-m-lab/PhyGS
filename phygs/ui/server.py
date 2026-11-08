@@ -12,8 +12,8 @@ Protocol (docs/ui.md, Protocol). Text messages are JSON:
 x, y}) and ``estop`` from the client. Binary messages carry images
 (:func:`~phygs.ui.codecs.binary_message`) with header kinds ``frame`` and ``map``.
 The main view is sent at every new capture (at most ``main_rate`` per wall second); the
-other views as thumbnails every ``thumbnail_period`` [s]. A ``recorder``
-(:class:`~phygs.ui.recording.Recorder`) keeps every message both ways for replay.
+other views as thumbnails every ``thumbnail_period`` [s]. The episode's recording (``episode.rrd``,
+written by the World) holds what the person did; the page's traffic is not kept.
 """
 
 from __future__ import annotations
@@ -31,7 +31,6 @@ from aiohttp import WSMsgType, web
 from phygs.observations.front_view import CameraFrame, FrontStitcher, FrontView, depth_colors
 from phygs.ui.bridge import Bridge
 from phygs.ui.codecs import binary_message, jpeg, map_png
-from phygs.ui.recording import Recorder
 from phygs.ui.targets import resolve_camera_pixel, resolve_front_pixel
 
 WEB = Path(__file__).parent / "web"
@@ -58,7 +57,6 @@ class UiServer:
         max_depth: float = 6.0,
         main_rate: float = 15.0,
         thumbnail_period: float = 1.0,
-        recorder: Recorder | None = None,
     ) -> None:
         if not token:
             raise ValueError("The UI requires an access token.")
@@ -68,7 +66,6 @@ class UiServer:
         self.front_cameras = tuple(front_cameras)
         self.stitcher = stitcher or FrontStitcher()
         self.max_depth, self.main_rate, self.thumbnail_period = max_depth, main_rate, thumbnail_period
-        self.recorder = recorder
         self._client: web.WebSocketResponse | None = None
         self._front: FrontView | None = None
         # Frames sent recently, by view and capture tick: a pointed-at pixel is resolved in the
@@ -159,8 +156,6 @@ class UiServer:
                 if message.type != WSMsgType.TEXT:
                     continue
                 data = json.loads(message.data)
-                if self.recorder is not None:
-                    self.recorder.text("in", data)
                 if data.get("type") == "view" and data.get("main") in (*self.bridge.hello["views"], MAP):
                     view.update(main=data["main"], mode="depth" if data.get("mode") == "depth" else "rgb")
                 elif data.get("type") == "estop":
@@ -226,13 +221,9 @@ class UiServer:
 
     async def _text(self, socket: web.WebSocketResponse, message: dict) -> None:
         await socket.send_str(json.dumps(message))
-        if self.recorder is not None:
-            self.recorder.text("out", message)
 
     async def _binary(self, socket: web.WebSocketResponse, header: dict, payload: bytes) -> None:
         await socket.send_bytes(binary_message(header, payload))
-        if self.recorder is not None:
-            self.recorder.binary(header, payload)
 
     def _encode(self, name: str, mode: str, frames: dict, sent: dict) -> tuple[dict, bytes] | None:
         """The newest image of a view not yet sent in this mode, as (header, JPEG)."""

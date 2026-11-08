@@ -25,9 +25,13 @@ Added (2026-11-07, logging):
   under `/truth`. `rerun episode.rrd` opens it; `recording.live` in `world/environment.yaml`
   streams it to a viewer. Logging never fails or changes the episode; its first error closes the
   recording and is reported. The file is safe on disk at every phase.
-- `phygs.recording.reader.Recording` reads a recording back: its properties, the audit lines and
-  the states (`States`, as the state log's); a recording cut short by a dead run is repaired with
-  Rerun's own `rrd merge`.
+- `phygs.recording.reader.Recording` reads a recording back: its properties, the audit lines, the
+  states (`States`, moved here from `state_log`) and the arm plan requests (`plan_requests`); a
+  recording cut short by a dead run is repaired with Rerun's own `rrd merge`.
+- The recording holds each arm plan's request as the planner worker got it, with its depth images
+  (lossless), and the planner's backend, model and model files (`planner` property).
+  `examples/replay_plans.py <run>` plans them all again offline with this checkout's worker and
+  compares the outcomes (`ArmPlanner(record=...)`, `arm_planner.worker_command`).
 - `report.json` (schema 3) has `run_id` (the recording's id) and `recording` (status, file, error,
   schema); a run writes it at the start with `status: running` (`phygs.world.report.stub`), so a run
   that dies still says what ran. `Audit` takes a `sink` that gets every line.
@@ -36,7 +40,56 @@ Changed (2026-11-07, logging):
 
 - `phygs replay` and `phygs.recording.trace.build` read `report.json` and `episode.rrd`, not
   `state.npz` and `audit.jsonl`; runs from before 0.12.0 do not replay (`trace.read_audit` is gone).
-  `state.npz` and `audit.jsonl` are still written until their other readers move.
+- The arm planner's files (its model, the depth images and obstacle voxels it passes its worker) live
+  in a folder of its own, removed when it closes; the run folder keeps only `planner/planner.log`.
+
+Added (2026-11-08, logging what flowed):
+
+- The recording also holds, so nothing the episode did has to be assumed afterwards: every physics
+  tick's joint positions, joint targets sent and applied efforts (`EpisodeLog.joint_state`); each arm
+  contact's force at every contact read (`EpisodeLog.contacts`, `Recording.contact_forces`); each
+  global costmap Nav2 publishes (`costmap_version` on the Nav2 backend and transport); the planned
+  trajectory with each plan's outcome; each observation the agent received with each camera image
+  once, lossless (`EpisodeLog.observed`, `Recording.observations`, `Recording.images`); each command
+  span when it ends (`EpisodeLog.command_span`, `Recording.command_spans`); the run's settings and the
+  cameras' capture configuration (properties `settings`, `observation`).
+- Recording level `all_frames` (`run_world.py --recording all_frames`): also every camera capture
+  as the cameras gave it, with its intrinsics and pose (about 5 GB per simulated minute with 3 cameras);
+  `phygs replay` then shows those instead of rendering.
+- `phygs.sim.observations.camera_observation`: one step that makes a rendered image into the robot's
+  camera image (products, nearest depth, pose); the run and `phygs replay` both use it.
+  `ObservationConfig.from_dict`.
+
+Changed (2026-11-08, logging what flowed):
+
+- `phygs replay` uses the run's settings and camera configuration from the recording, not this
+  checkout's, and makes camera images with the run's own code; recordings without them are refused.
+- The video's status line shows the arm's contact force at that time (it showed each contact's peak
+  for its whole duration).
+- Contact entities: `/truth/contact_forces/<link>/<body>` and `/truth/contact_events` (was
+  `/truth/contacts`); joint positions are logged every physics tick, not every camera period.
+
+Removed (2026-11-07, logging):
+
+- `state.npz` (`StateLog.write`, `States.load`), `audit.jsonl` (`Audit`'s file; `Audit(time_seconds,
+  sink)`), `planner/requests.jsonl`, `planner/depth/`, `planner/world/`, `planner/planner_config.json`
+  and the run folder's `planning*.urdf`/`.srdf`: the recording holds all of it. `StateLog` keeps only
+  what the live video's strip draws (until the live video goes), and `ArmPlanner.set_output` is gone.
+  The robot tests read the recording (`episode.recording`, `episode.first_tool_pose`).
+- The robot UI's own recording and replay page (`phygs/ui/recording.py`, `replay.py`,
+  `replay_cli.py`, `phygs ui replay`, the page's replay bar; decision D33): the person's episode is in
+  `episode.rrd` like any agent's; `rerun episode.rrd` shows it and `phygs replay` renders its videos.
+
+Fixed (2026-11-07, logging):
+
+- `phygs replay` showed depth nearer than the cameras' minimum range (0.2 m, the Orbbec Gemini 2's;
+  `ObservationConfig.depth_min`), which the run's cameras never gave: the hand depth panel showed the
+  drawer front 3 cm away where the robot got no depth. It had its own copy of the camera step; it now
+  runs the run's (`camera_observation`) with the run's capture configuration.
+- The entry-point rung's script imported `phygs.recording.reader` and Rerun itself, against the rule
+  that episode plans import only the session, the composite skills and the episode helper
+  (`tests/test_agent_imports.py` failed since the logging commit); it now uses the helper's
+  `episode.recording` and `episode.recording_secrets`.
 - `rerun-sdk` 0.42.0 is pinned in `docker/Dockerfile.phygs` (was "0.38.1 unless Rerun is already
   there", which kept Isaac Lab's 0.31.4).
 

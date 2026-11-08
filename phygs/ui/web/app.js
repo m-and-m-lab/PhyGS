@@ -1,7 +1,6 @@
 // Spot Robot UI. Protocol: phygs/ui/server.py; design: docs/design/ui/design.html.
 // The task and Start; move the base (Navigate to, Drive, Stop); move the arm (joints, path, Stow,
 // gripper, Look at, Move to pose, Move along, plan preview); cancel; End; E-stop.
-// With a replay server (phygs/ui/replay_cli.py) the same page plays a recording, read-only.
 "use strict";
 
 const VIEW_LABELS = { front: "Front", map: "Map", hand: "Hand", frontleft: "Front-left", frontright: "Front-right" };
@@ -62,7 +61,6 @@ const ui = {
   jointDuration: "",
   poses: [], // saved arm poses: { name, positions, seconds }
   timelineHits: [],
-  replay: null, // { duration, speeds } when a replay server plays a recording
   resultClosed: false,
   endArmed: 0, // End episode: the time of the first click; a second within 3 s confirms
   preview: null, // the plan shown for the selected skill: { id, skill, status, duration, path_body, arm_body, path_world, reason }
@@ -135,7 +133,6 @@ function showConnectionProblem(code) {
 }
 
 function send(message) {
-  if (ui.replay && message.type !== "replay") return; // A replay is read-only.
   if (ui.socket && ui.socket.readyState === WebSocket.OPEN) ui.socket.send(JSON.stringify(message));
 }
 
@@ -162,9 +159,6 @@ function onText(message) {
       break;
     case "error": log(simNow(), `✗ ${message.message}`, "fail", "all"); break;
     case "preview": onPreview(message); break;
-    case "replay_view": ui.view.main = message.main; ui.view.mode = message.mode || "rgb"; markTabs(); break;
-    case "replay_clock": onReplayClock(message); break;
-    case "replay_restart": location.reload(); break;
     default: break;
   }
 }
@@ -188,9 +182,6 @@ function onBinary(buffer) {
 
 function onHello(hello) {
   ui.hello = hello;
-  ui.replay = hello.replay || null;
-  document.body.classList.toggle("replay", Boolean(ui.replay));
-  if (ui.replay) buildReplayBar();
   ui.skills = new Map((hello.skills || []).map((skill) => [skill.name, skill]));
   $("episode").textContent = `Episode ${hello.episode_id}`;
   $("task").textContent = hello.task || "–";
@@ -209,8 +200,8 @@ function onState(state) {
   const pill = $("status");
   pill.textContent = phase === "ready" ? "ready" : state.status;
   pill.className = `pill ${phase === "ready" ? "s-armed" : state.status === "running" ? "s-executing" : state.status === "completed" ? "s-succeeded" : "s-failed"}`;
-  $("start-card").hidden = phase !== "ready" || Boolean(ui.replay);
-  $("end-episode").hidden = phase !== "running" || Boolean(ui.replay);
+  $("start-card").hidden = phase !== "ready";
+  $("end-episode").hidden = phase !== "running";
   $("estop").hidden = phase === "ended";
   renderTaskChip(state);
   followLookAround(state);
@@ -391,26 +382,6 @@ function renderTaskChip(state) {
   const what = task.goal === "retrieve" ? `Retrieve: ${task.description}` : "Explore";
   chip.textContent = `${what} · ${fmt(left, 0)} s left${wall}`;
   chip.classList.toggle("low", left < 0.1 * task.budget);
-}
-
-// ---------- replay ----------
-function buildReplayBar() {
-  $("replay-bar").hidden = false;
-  const group = $("replay-speed");
-  group.textContent = "";
-  for (const speed of ui.replay.speeds) {
-    const button = el("button", { type: "button", textContent: `×${speed}` });
-    button.dataset.speed = String(speed);
-    button.addEventListener("click", () => send({ type: "replay", action: "speed", speed }));
-    group.append(button);
-  }
-}
-
-function onReplayClock(clock) {
-  ui.replayClock = clock;
-  $("replay-clock").textContent = `${formatWall(clock.position)} / ${formatWall(clock.duration)}`;
-  $("replay-play").textContent = clock.paused ? "Play" : "Pause";
-  for (const button of document.querySelectorAll("#replay-speed button")) button.classList.toggle("on", Number(button.dataset.speed) === clock.speed);
 }
 
 // The raw result: status, failure code and reason, as the API returned them.
@@ -1436,7 +1407,7 @@ function recordTelemetry(state) {
   const t = state.telemetry;
   if (!t) return;
   const history = ui.telemetry.history;
-  if (history.length && state.sim_time < history[history.length - 1].t) history.length = 0; // A replay restarted.
+  if (history.length && state.sim_time < history[history.length - 1].t) history.length = 0; // Time went back.
   history.push({ t: state.sim_time, rtf: state.rtf, base: t.base, speeds: t.joint_speeds, tracking: t.tracking });
   while (history.length && history[0].t < state.sim_time - TELEMETRY_WINDOW_S) history.shift();
   ui.telemetry.latest = state;
@@ -1673,8 +1644,6 @@ function setup() {
   $("end-episode").addEventListener("click", endEpisode);
   $("start-button").addEventListener("click", startEpisode);
   $("result-close").addEventListener("click", () => { ui.resultClosed = true; $("result-card").hidden = true; });
-  $("replay-play").addEventListener("click", () => send({ type: "replay", action: ui.replayClock && ui.replayClock.paused ? "play" : "pause" }));
-  $("replay-restart").addEventListener("click", () => send({ type: "replay", action: "restart" }));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Pause") { event.preventDefault(); estop(); return; }
     if (event.key === "Escape") { disarm(); return; }

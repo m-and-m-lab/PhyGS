@@ -92,7 +92,7 @@ isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_retrieve.py \
 
 An agent test's folder also holds the harness's `report.json` (spec, how the episode ended, the
 evaluator's result (`evaluation`), call totals and privileged reads, commands with their final feedback, arm
-contacts, narration) and `audit.jsonl` (one line per agent call). Thresholds:
+contacts, narration) and the recording `episode.rrd` (every agent call among it). Thresholds:
 `configs/<test>.yaml` and `configs/episodes.yaml` (in `phygs_robot_tests`); the plans' strategy: the
 composite skills' tuning (`phygs/skills/composite/tuning.py`).
 
@@ -142,16 +142,12 @@ isaaclab -p scripts/PhyGS/phygs/ui/cli.py \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
 # Open the printed http://127.0.0.1:8765/?token=... in a browser on this machine.
 # Remote machine: ssh -L 8765:127.0.0.1:8765 <host>, then open the same URL locally.
-
-# Replay an episode in the browser (no Isaac Sim):
-isaaclab -p scripts/PhyGS/phygs/ui/replay_cli.py \
-  scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_ui_grid
 ```
 
 `--spec <file>` runs another spec, e.g. `phygs/ui/configs/house_drawer.yaml`; `--demo tour` drives a
 short fixed route; `--autostart` starts without the page. Unit tests: `test_ui_stitch.py`,
 `test_ui_translate.py`, `test_ui_session.py`, `test_ui_episode.py`,
-`test_ui_replay.py`, `test_ui_previews.py`, `test_ui_telemetry.py`.
+`test_ui_previews.py`, `test_ui_telemetry.py`.
 
 ## Scenes
 

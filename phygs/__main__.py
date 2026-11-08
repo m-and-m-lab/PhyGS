@@ -7,8 +7,7 @@
 
     phygs run --spec <episode.yaml> --agent template --output <folder> [--task_loader module:function]
     phygs ui --output <folder> [--spec ...]            # The robot UI (a person as the agent).
-    phygs ui replay <recording>                        # Replay a recorded UI episode.
-    phygs replay <run> [--views ...]                   # Render a run again from its state log.
+    phygs replay <run> [--views ...]                   # Render a run again from its recording.
     phygs scenes list | fetch ...                      # Scene releases from the dataset.
     phygs tests ladder --upto N | <group> ...          # The robot tests (tests/robot_tests/run_suite.py).
     phygs version
@@ -29,7 +28,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = {
     "run": ROOT / "examples" / "run_world.py",
     "ui": ROOT / "phygs" / "ui" / "cli.py",
-    "ui-replay": ROOT / "phygs" / "ui" / "replay_cli.py",
     "replay": ROOT / "examples" / "replay_run.py",
     "tests": ROOT / "tests" / "robot_tests" / "run_suite.py",
 }
@@ -47,9 +45,7 @@ def main(argv: list[str] | None = None) -> int:
 
         print(__version__)
         return 0
-    if command == "ui" and rest[:1] == ["replay"]:
-        command, rest = "ui-replay", rest[1:]
-    elif command == "ui" and "--task_loader" not in rest and (ROOT / "tests" / "robot_tests").is_dir():
+    if command == "ui" and "--task_loader" not in rest and (ROOT / "tests" / "robot_tests").is_dir():
         rest = [*rest, "--task_loader", "phygs_robot_tests.tasks:load_task"]  # The default episode's task.
     if command in SCRIPTS:
         script = SCRIPTS[command]

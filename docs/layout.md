@@ -17,8 +17,8 @@ phygs/
 ├── composite/     Deprecated alias of skills/composite/ (moved 2026-11-05)
 ├── sim/           Isaac Lab adapters: cameras, robot state and observations, base and arm readers, footprint,
 │                  Fabric, the robot's Isaac Lab scene (robot_scene.py)
-├── recording/     The video, its panels, the command timeline, the skills' narration, the state log, the
-│                  trace read from a run's logs and the replay's overview strip
+├── recording/     The episode's recording and its reader, the video, its panels, the command timeline,
+│                  the skills' narration, the trace and the replay's overview strip
 ├── scene/         Scenes by id (registry), the fetcher, the USD reader (ground truth), drawers, storage units, floor
 │                  plans, plain types, the built-in scenes (builtin/)
 ├── runtime/       Clock, ownership, command expiry, reset, emergency stop

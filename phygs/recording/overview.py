@@ -156,10 +156,16 @@ class Overview:
         mono, bold, small = self._fonts
         held = next((item["label"] for item in trace["holding"] if _now(item, t) or t == item["e"]), None)
         force, what = 0.0, ""
-        for lane in trace["lanes"]:
-            for item in lane["items"]:
-                if item.get("peak") and item["s"] <= t <= item["e"] and item["peak"] > force:
-                    force, what = item["peak"], item.get("body", "")
+        if "contact_force" in trace:  # A recording's: the force at t.
+            for time, value, body in trace["contact_force"]:
+                if time > t:
+                    break
+                force, what = value, body
+        else:  # The live video's: the peak of each contact while it lasts.
+            for lane in trace["lanes"]:
+                for item in lane["items"]:
+                    if item.get("peak") and item["s"] <= t <= item["e"] and item["peak"] > force:
+                        force, what = item["peak"], item.get("body", "")
         step = " > ".join(item["label"] for item in trace.get("steps", ()) if _now(item, t))
         x = 16
         for text, font, color in (

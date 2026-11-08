@@ -37,10 +37,11 @@ class Feedback:
 
 
 class World:
-    """A fake simulation: a clock and the thread that steps it."""
+    """A fake simulation: a clock, the thread that steps it, and the audit lines its recording got."""
 
     def __init__(self):
         self.time, self.thread = 0.0, None
+        self.audited: list[dict] = []
 
     def step(self):
         assert threading.current_thread() is self.thread, "only the main thread steps"
@@ -95,7 +96,7 @@ def fake_boxes():
 def make_session(tmp_path, grants=("object_targets", "scene_hints")):
     world, main = World(), MainThread()
     navigation, manipulation = FakeNavigation(world), FakeManipulation()
-    audit = Audit(tmp_path / "audit.jsonl", lambda: world.time)
+    audit = Audit(lambda: world.time, sink=world.audited.append)
     finished = []
     session = AgentSession(
         task=PublicTask("retrieve", "the small green box"),
@@ -220,10 +221,10 @@ def test_errors_reach_the_agent_and_every_call_is_audited(tmp_path):
         seen["part"] = session.hints.part("drawer")
 
     assert "error" not in run(world, main, agent)
-    audit.close()
     assert seen["error"] == "no plan" and manipulation.targets == [ObjectTarget("target")]
     assert seen["hint"].inside == "drawer" and seen["part"] == "part drawer"
-    lines = [json.loads(line) for line in (tmp_path / "audit.jsonl").read_text().splitlines()]
+    lines = [json.loads(json.dumps(line)) for line in world.audited]  # As the recording keeps them: JSON.
+    assert lines == audit.lines
     assert [line["call"] for line in lines] == [
         "manipulation.look_at",
         "navigation.navigate_to",
@@ -254,8 +255,7 @@ def test_steps_are_audited_but_not_counted_and_record_how_they_ended(tmp_path):
                 pass
 
     assert "error" not in run(world, main, agent)
-    audit.close()
-    lines = [json.loads(line) for line in (tmp_path / "audit.jsonl").read_text().splitlines()]
+    lines = [json.loads(json.dumps(line)) for line in world.audited]
     steps = [(line["name"], line["event"], line["depth"]) for line in lines if line["call"] == "session.step"]
     assert steps == [
         ("walk", "begin", 0),

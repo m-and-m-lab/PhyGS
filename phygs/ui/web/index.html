@@ -18,13 +18,6 @@
     <div><dt>Speed</dt><dd id="clock-rtf">–</dd></div>
   </dl>
   <span id="task-chip" class="task-chip" hidden></span>
-  <div id="replay-bar" class="replay-bar" hidden>
-    <span class="pill s-armed">Replay</span>
-    <button type="button" id="replay-play" title="Pause or play">Pause</button>
-    <div id="replay-speed" class="segmented" role="group" aria-label="Replay speed"></div>
-    <span id="replay-clock" class="mono small">–</span>
-    <button type="button" id="replay-restart">Restart</button>
-  </div>
   <button id="telemetry-toggle" type="button" title="Telemetry: health, motion, mission, command details (key T)">Telemetry <kbd>T</kbd></button>
   <span id="connection" class="conn off" title="Connection to the simulation">offline</span>
   <button id="end-episode" type="button" hidden title="End the episode now; the report is written">End episode</button>
@@ -79,7 +72,7 @@
         <h1 id="result-outcome">–</h1>
         <p id="result-reason" class="mono small"></p>
         <dl id="result-facts" class="card-facts"></dl>
-        <p class="small muted">The report is <code>report.json</code> in the episode's output folder; <code>ui_replay.py</code> plays the recording back.</p>
+        <p class="small muted">The report is <code>report.json</code> in the episode's output folder; <code>rerun episode.rrd</code> shows the recording.</p>
         <button type="button" id="result-close">Look at the last state</button>
       </div>
       <canvas id="pip" title="Click to swap with the main view"></canvas>

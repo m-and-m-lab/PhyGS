@@ -16,6 +16,7 @@ import torch
 from phygs.observations.localization import GroundTruthLocalization
 from phygs.observations.types import (
     CameraObservation,
+    CameraPermission,
     ImuObservation,
     JointObservation,
     ObservationConfig,
@@ -41,6 +42,32 @@ def pose_matrix(position: torch.Tensor, quaternion_xyzw: torch.Tensor) -> torch.
     matrix[:3, :3] = matrix_from_quat(quaternion_xyzw)
     matrix[:3, 3] = position
     return matrix
+
+
+def camera_observation(
+    image, permission: CameraPermission, stamp: Stamp, body_pose: torch.Tensor, depth_min: float, device
+) -> CameraObservation:
+    """A rendered camera image (:meth:`~phygs.sim.cameras.RenderCameras.read`) as the robot's camera
+    gives it: the permitted products, depth nearer than ``depth_min`` [m] or without a return as no
+    depth (0, invalid), on ``device``, with its pose in the body frame (``body_pose``: world from
+    body). The run's observations and ``phygs replay`` both make camera images with it."""
+    frame = f"{permission.name}_optical"
+    extrinsics = Transform(
+        "body", frame, stamp, torch.linalg.solve(body_pose, image.world_from_camera), "ideal_robot_kinematics"
+    )
+    rgb = image.rgb if permission.rgb else None
+    depth, mask = image.depth if permission.depth else None, None
+    if depth is not None:  # Too near or no return: no depth (0), as the sensor reports it.
+        # On the renderer's device, then one copy each to the scene device: masking a CPU copy cost
+        # about 1.5 ms per 640x480 frame, on the GPU about 0.3 ms with the copy.
+        mask = torch.isfinite(depth) & (depth > 0) & (depth >= depth_min)
+        depth = torch.where(mask, depth, torch.zeros_like(depth)).to(device)
+        mask = mask.to(device)
+    intrinsics = image.intrinsics
+    valid = bool(torch.isfinite(intrinsics).all() and torch.isfinite(extrinsics.matrix).all())
+    if not valid or intrinsics[0, 0] <= 0 or intrinsics[1, 1] <= 0:
+        raise RuntimeError(f"Invalid calibration for {permission.name}")
+    return CameraObservation(stamp, frame, rgb, depth, mask, intrinsics, extrinsics, valid)
 
 
 class IsaacLabObservations:
@@ -157,28 +184,8 @@ class IsaacLabObservations:
             )
             for permission in self._config.cameras:
                 image = self._cameras.read(permission.name)
-                frame = f"{permission.name}_optical"
-                extrinsics = Transform(
-                    "body",
-                    frame,
-                    stamp,
-                    torch.linalg.solve(body_pose, image.world_from_camera),
-                    "ideal_robot_kinematics",
-                )
-                rgb = image.rgb if permission.rgb else None
-                depth, mask = image.depth if permission.depth else None, None
-                if depth is not None:  # Too near or no return: no depth (0), as the sensor reports it.
-                    # On the renderer's device, then one copy each to the scene device: masking a CPU
-                    # copy cost about 1.5 ms per 640x480 frame, on the GPU about 0.3 ms with the copy.
-                    mask = torch.isfinite(depth) & (depth > 0) & (depth >= self._config.depth_min)
-                    depth = torch.where(mask, depth, torch.zeros_like(depth)).to(self._device)
-                    mask = mask.to(self._device)
-                intrinsics = image.intrinsics
-                valid = bool(torch.isfinite(intrinsics).all() and torch.isfinite(extrinsics.matrix).all())
-                if not valid or intrinsics[0, 0] <= 0 or intrinsics[1, 1] <= 0:
-                    raise RuntimeError(f"Invalid calibration for {permission.name}")
-                cameras[permission.name] = CameraObservation(
-                    stamp, frame, rgb, depth, mask, intrinsics, extrinsics, valid
+                cameras[permission.name] = camera_observation(
+                    image, permission, stamp, body_pose, self._config.depth_min, self._device
                 )
         transforms = tuple(camera.extrinsics for camera in cameras.values()) + self._camera_world
         if localization is not None:

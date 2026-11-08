@@ -253,18 +253,44 @@ class CameraTiming:
 
 
 def first_tool_pose(folder: Path) -> np.ndarray:
-    """The first tool pose the agent read in the episode (``manipulation.tool_pose`` in
-    ``folder/audit.jsonl``), as a world 4x4 [m]."""
-    import json
-
+    """The first tool pose the agent read in the episode (``manipulation.tool_pose`` in the agent's
+    calls of ``folder/episode.rrd``), as a world 4x4 [m]."""
+    from phygs.recording.reader import Recording
     from phygs.skills.composite.geometry import matrix
 
-    with (folder / "audit.jsonl").open() as audit:
-        for line in audit:
-            entry = json.loads(line)
-            if entry["call"] == "manipulation.tool_pose":
-                return matrix(entry["result"])
-    raise ValueError(f"The agent never read a tool pose ({folder / 'audit.jsonl'}).")
+    for entry in Recording(folder).audit:
+        if entry["call"] == "manipulation.tool_pose":
+            return matrix(entry["result"])
+    raise ValueError(f"The agent never read a tool pose ({folder / 'episode.rrd'}).")
+
+
+def recording(folder: Path):
+    """The episode's recording (``folder/episode.rrd``), read back (``phygs.recording.reader``)."""
+    from phygs.recording.reader import Recording
+
+    return Recording(folder)
+
+
+def recording_secrets(folder: Path) -> list[str]:
+    """The secret-named environment variables (key, token, secret, password; 8 characters or more)
+    whose values appear in any text of ``folder/episode.rrd``."""
+    import os
+    import re
+
+    import pyarrow as pa
+    import rerun as rr
+
+    values = {name: value for name, value in os.environ.items() if re.search(r"KEY|TOKEN|SECRET|PASSWORD", name, re.I)}
+    values = {name: value for name, value in values.items() if len(value) >= 8}
+    found = set()
+    for chunk in rr.chunk.RrdReader(folder / "episode.rrd").stream().to_chunks():
+        for column in chunk.to_record_batch().columns:
+            while pa.types.is_list(column.type) or pa.types.is_large_list(column.type):
+                column = column.flatten()
+            if pa.types.is_string(column.type) or pa.types.is_large_string(column.type):
+                texts = [text for text in column.to_pylist() if text]
+                found.update(name for name, value in values.items() if any(value in text for text in texts))
+    return sorted(found)
 
 
 def unintended_contacts(report: dict, allowed: tuple[str, ...] = ()) -> list[dict]:

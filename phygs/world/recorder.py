@@ -3,12 +3,11 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""An episode's output folder: ``report.json``, the state log, the third-person video and contact records."""
+"""An episode's output folder: ``report.json``, the live third-person video and the contact records."""
 
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -38,8 +37,8 @@ class Recorder:
     both jaws on a surface, is a ``contact``.
 
     Contacts are read every ``read_ticks`` physics ticks; a record's ``ticks`` counts each read as
-    that many ticks. ``state`` is the run's state log (:mod:`phygs.recording.state_log`), sampled by
-    the World and written with the report.
+    that many ticks. ``state`` holds the states the live video's strip draws
+    (:mod:`phygs.recording.state_log`), sampled by the World.
     """
 
     def __init__(
@@ -121,12 +120,10 @@ class Recorder:
         path.write_text(json.dumps(stub, indent=2) + "\n")
         return path
 
-    def write(self, report: dict, commands: Sequence[dict] = ()) -> Path:
-        """Write ``report.json``, and the state log with the command timeline's spans ``commands``."""
+    def write(self, report: dict) -> Path:
+        """Write ``report.json``."""
         path = self.output / "report.json"
         path.write_text(json.dumps(report, indent=2) + "\n")
-        if self.state is not None:
-            self.state.write(commands)
         return path
 
     def close(self) -> None:

@@ -44,6 +44,12 @@ parser.add_argument(
 parser.add_argument("--output", type=Path, required=True, help="A fresh output folder (date-time prefix)")
 parser.add_argument("--clock", choices=("charged", "realtime"), default="charged")
 parser.add_argument("--record", action="store_true", help="Write a third-person video")
+parser.add_argument(
+    "--recording",
+    choices=("full", "all_frames", "report_only"),
+    default=None,
+    help="The recording's level (default: world/environment.yaml's); all_frames also keeps every camera capture",
+)
 parser.add_argument("--seed", type=int, default=None, help="Override the spec's seed")
 parser.add_argument("--robot", default=None, help="Override the spec's robot: a robot name or a robot.yaml path")
 parser.add_argument(
@@ -82,6 +88,7 @@ def main() -> int:
         robot=robot,
         task=task,
         target=target,
+        overrides=None if args.recording is None else {"recording": {"level": args.recording}},
     ) as world:
         report = world.run(agent, name=agent_name)
     print(

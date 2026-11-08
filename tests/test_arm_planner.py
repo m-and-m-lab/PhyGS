@@ -7,6 +7,7 @@
 
 from concurrent.futures import Future
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -74,7 +75,7 @@ class Worker:
     startup_seconds, busy = 9.5, False
     started: list = []
 
-    def __init__(self, command, model, folder, env):
+    def __init__(self, command, model, folder, env, log=None):
         self.command, self.model, self.requests, self.closed = command, dict(model), [], False
         self.env = dict(env)
         self.result = dict(success=True, joint_names=list(JOINTS), times=[0.0, 1.0], positions=[[0.0] * 6, [0.1] * 6])
@@ -104,7 +105,7 @@ def host(tmp_path, monkeypatch):
             locked_joints={k: v for k, v in locked_joints.items() if k not in JOINTS}, gripper_ratios={"arm_f1x": 1.0}
         ),
     )
-    robot, clock = Robot(), SimpleNamespace(t=0.0)
+    robot, clock, made = Robot(), SimpleNamespace(t=0.0), []
 
     def make(**sources):
         planner = arm_planner.ArmPlanner(
@@ -112,9 +113,12 @@ def host(tmp_path, monkeypatch):
             observe=robot.observe, episode_id=lambda: 3, time_seconds=lambda: clock.t, **sources,
         )  # fmt: skip
         planner.start()
+        made.append(planner)
         return planner
 
-    return make, robot, clock
+    yield make, robot, clock
+    for planner in made:  # Removes each planner's folder.
+        planner.close()
 
 
 def test_one_worker_serves_the_episode_and_each_request_carries_the_measured_legs(host):
@@ -160,8 +164,11 @@ def _spheres(wrist, cell):
 
 
 def test_depth_waits_for_an_image_taken_after_the_request_and_keeps_only_the_work_volume(host):
+    """What the worker read is what is recorded: the request (its image named by camera) and the
+    depth; the plan's files go when it finished, the planner's folder when it closes."""
     make, robot, clock = host
-    planner = make(cameras=("hand",))
+    recorded = []
+    planner = make(cameras=("hand",), record=lambda *plan: recorded.append(plan))
     worker = Worker.started[0]
     robot.depth[:, :4] = 3.0  # Beyond the 2 m work volume.
     clock.t = 1.0
@@ -171,16 +178,25 @@ def test_depth_waits_for_an_image_taken_after_the_request_and_keeps_only_the_wor
     robot.stamp = 1.0
     planner.poll()
     (image,) = worker.requests[0].images
-    depth = np.load(image.path)
+    ((request, outcome, depth),) = recorded
+    assert request["images"] == [dict(camera="hand", intrinsics=image.intrinsics, pose=image.pose)]
+    assert request["goal"] == [0.0] * 6 and outcome["success"] and set(depth) == {"hand"}
+    assert outcome["times"] == [0.0, 1.0] and outcome["positions"][-1] == [0.1] * 6  # The planned trajectory.
+    depth = depth["hand"]
     assert (depth[:, :4] == 0).all() and depth[12, 16] == pytest.approx(1.0)  # The robot's pixels stay.
     camera = Rotation.from_quat(image.pose[3:]).as_matrix()
     np.testing.assert_allclose(camera, robot.observe().cameras["hand"].extrinsics.matrix[:3, :3], atol=1e-9)
-    assert worker.requests[0].boxes == []
+    assert worker.requests[0].boxes == [] and not Path(image.path).exists()
     worker.result = dict(success=False, reason="start_collision")
     failed = planner.request(goal=[0.0] * 6)
     planner.poll()
     with pytest.raises(RuntimeError, match="Joint planner failed: start_collision"):
         failed.result(timeout=0)
+    assert recorded[1][1] == dict(success=False, reason="start_collision")
+    folder = Path(image.path).parents[1]
+    assert folder.is_dir()
+    planner.close()
+    assert not folder.exists()
 
 
 def test_the_planner_needs_an_obstacle_source(host):
@@ -272,20 +288,6 @@ def test_a_new_gripper_angle_needs_no_warm_up(host):
     with pytest.raises(TimeoutError):
         broken.result()
     assert planner.failure.startswith("TimeoutError") and len(worker.requests) == 2
-
-
-def test_each_episode_writes_its_plan_records_to_its_own_folder(host, tmp_path):
-    make, _, _ = host
-    planner = make(boxes=lambda exclude: {})
-    planner.request(goal=[0.1] * 6)
-    planner.poll()
-    second = tmp_path / "repeat_1"
-    planner.set_output(second)
-    planner.request(goal=[0.1] * 6)
-    planner.poll()
-    for folder in (tmp_path, second):
-        assert len((folder / "planner" / "requests.jsonl").read_text().splitlines()) == 1
-    assert (second / "planner" / "depth").is_dir() and len(Worker.started) == 1
 
 
 def test_a_failed_plan_is_the_callers_but_a_broken_planner_process_is_recorded_for_the_world(host):

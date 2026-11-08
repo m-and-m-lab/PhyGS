@@ -15,9 +15,9 @@ The episode is an episode spec (docs/world.md) run by the same
 :class:`~phygs.world.World` as every agent's: the person is the
 agent (:class:`~phygs.ui.session.UiSession`, every action an audited session call
 within the spec's actions and grants) and the page is its viewer. The World writes the episode
-report (``report.json``, with the task's evaluation) and ``audit.jsonl``; the UI adds
-``ui_summary.json``, ``ui_log.jsonl``, ``telemetry.jsonl`` and a ``recording`` that ``replay_cli.py``
-plays back. ``phygs/ui/configs/house_drawer.yaml`` runs the Bear house. The episode ends with End, the
+report (``report.json``, with the task's evaluation) and the recording (``episode.rrd``, ``rerun
+episode.rrd`` shows it); the UI adds ``ui_summary.json``, ``ui_log.jsonl`` and ``telemetry.jsonl``.
+``phygs/ui/configs/house_drawer.yaml`` runs the Bear house. The episode ends with End, the
 budget or E-stop. ``--demo tour`` starts at once, drives a short fixed route through the public
 locomotion API and then navigates back with Nav2, so there is something to watch.
 
@@ -85,7 +85,6 @@ from phygs.robots.description import load_robot
 from phygs.skills.manipulation.execution.planners.model import link_transforms
 from phygs.ui import schema
 from phygs.ui.bridge import Bridge
-from phygs.ui.recording import Recorder
 from phygs.ui.server import UiServer
 from phygs.ui.session import RUNNING, UiSession
 from phygs.world import World
@@ -188,7 +187,6 @@ def main() -> int:
         task=task,
         target=target,
     )
-    recorder = Recorder(args.output / "recording")
     server = None
     exit_code = 1
     started = time.monotonic()
@@ -227,7 +225,6 @@ def main() -> int:
             token=token,
             front_cameras=front,
             max_depth=config["max_depth"],
-            recorder=recorder,
         )
         server.start()
         print(
@@ -279,7 +276,6 @@ def main() -> int:
     finally:
         if server is not None:
             server.stop()
-        recorder.close()
         ui.close()
         world.close()
         bridge.close()
