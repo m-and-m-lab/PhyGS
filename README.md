@@ -1,228 +1,150 @@
-# PhyGS: Physically-Grounded Controllable Scene Generation and Simulation
+# PhyGS: run and score mobile-manipulation agents in photorealistic, interactive houses on Isaac Sim
 
-[![Paper](https://img.shields.io/badge/paper-CVPR%202026%20MEIS%20Workshop-b31b1b.svg)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
-[![Website](https://img.shields.io/badge/project-page-1f6feb.svg)](https://m-and-m-lab.github.io/PhyGS/)
-[![IsaacSim](https://img.shields.io/badge/IsaacSim-6.0-76b900.svg)](https://developer.nvidia.com/isaac/sim)
+> [!NOTE]
+> This is the `develop` branch: the PhyGS framework. The `main` branch is the May 2026 beta, the scene generator described in the CVPR 2026 workshop paper.
+
+[![IsaacSim](https://img.shields.io/badge/IsaacSim-6.2.0-silver.svg)](https://docs.isaacsim.omniverse.nvidia.com/6.2.0/index.html)
+[![Isaac Lab](https://img.shields.io/badge/IsaacLab-3.0.0-silver)](https://isaac-sim.github.io/IsaacLab/v3.0.0/)
+[![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://docs.python.org/3/whatsnew/3.12.html)
+[![Linux platform](https://img.shields.io/badge/platform-linux--64-orange.svg)](https://releases.ubuntu.com/24.04/)
 [![License](https://img.shields.io/badge/license-TBD-lightgrey.svg)](LICENSE)
 
+[![Paper](https://img.shields.io/badge/paper-CVPR%202026%20MEIS%20Workshop-b31b1b.svg)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
+[![Project Page](https://img.shields.io/badge/project-page-1f6feb)](https://m-and-m-lab.github.io/PhyGS/)
+[![Docs](https://img.shields.io/badge/docs-0.12.0-informational)](https://github.com/m-and-m-lab/PhyGS/blob/v0.12.0/docs/README.md)
+[![HF Dataset](https://img.shields.io/badge/dataset-scenes-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/datasets/mandmlabresearch/ForageBench)
+
 [Aparajito Saha](https://aparajitosaha.github.io)<sup>1</sup>, [Zhen Hao Gan](https://ganzh6880.github.io)<sup>1</sup>, Jinjia Guo<sup>1</sup>, Jacob Skwirsk<sup>1</sup>, Jeremy Acheampong<sup>1</sup>, [Anton Arapin](https://anton-arapin.github.io)<sup>1</sup>, [Chahyon Ku](https://chahyon-ku.github.io)<sup>1</sup>, [Yue Hu](https://phyllish.github.io)<sup>1</sup>, [Nima Fazeli](https://www.mmintlab.com/people/nima-fazeli/)<sup>1</sup>, [Bernadette Bucher](https://bucherb.github.io)<sup>1</sup>
+<br><sup>1</sup>[Mapping and Motion Lab](https://sites.google.com/umich.edu/mandmlab/), University of Michigan, Ann Arbor
 
-<sup>1</sup>University of Michigan, Ann Arbor
+**[🌐 Project page](https://m-and-m-lab.github.io/PhyGS/)** · **[📄 Paper](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)** · **[📚 Docs](https://github.com/m-and-m-lab/PhyGS/blob/v0.12.0/docs/README.md)** · **[🤗 Dataset](https://huggingface.co/datasets/mandmlabresearch/ForageBench)**
 
-**[Project page](https://m-and-m-lab.github.io/PhyGS)** &nbsp;·&nbsp; **[Paper (CVPR 2026 MEIS Workshop)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)**
+<p align="center"><img src="docs/assets/teaser.jpg" alt="Scenes rendered in Isaac Sim, and Spot with an arm in simulation and in the real world" width="85%"></p>
 
-PhyGS is a simulation framework for mobile manipulation in Isaac Lab: photorealistic, building-scale indoor scenes generated with physics (articulated drawers, rigid bodies, ray-traced light), a robot with an arm walking in them under a learned policy, a shared runtime with one clock and exclusive ownership of every joint, public skill clients an agent calls the way it would call a robot SDK, and measurement that reads the physics, never the skills' own feedback. It is built to run and score mobile manipulation tasks that are intractable to run at scale in the real world. PhyGS names no task: a benchmark such as [ForageBench](https://github.com/m-and-m-lab/ForageBench) brings its tasks, episodes and scoring and runs them on this framework.
+## 📦 Overview
 
-<p align="center">
-  <img src="docs/assets/teaser.png" alt="PhyGS generated scenes rendered in IsaacSim and Spot sim-to-real" width="100%">
-</p>
+PhyGS puts a mobile manipulator, a Boston Dynamics Spot with an arm, in photorealistic houses where everything it touches is simulated physics. Your agent gets the robot's cameras and skills through one Python session; PhyGS runs the episode and scores it from the physics. It is for people who build or evaluate robot agents, from scripted planners to vision-language models, at a scale the real robot can't reach.
 
-## 📄 Abstract
+**Why PhyGS**
+- **Grasps are held by friction.** Nothing is attached: a grasped object can slip and drop.
+- **Drawers are real joints.** Opening one is a planned pull on its handle, and it can jam.
+- **A legged base under a learned policy.** Spot walks, can stumble or fall, and can push furniture.
+- **Task evaluators read physics.** Success comes from object poses, joint states and the base pose, never from a skill's own "succeeded".
 
-The pursuit of generalist robot policies requires evaluation spanning variations of visual environments and physical interactions intractable for a robot to execute in the real world. We introduce PhyGS, a simulation framework designed for the controllable generation of photorealistic, building-scale indoor environments with high-fidelity low-level physics that bridges the gap between procedural scene synthesis and robotic control. By extending Infinigen-Indoors within the IsaacSim ecosystem, PhyGS transforms static visual backdrops into fully interactable environments through automated object articulation, the assignment of rigid-body physical properties, and the integration of ray-traced lighting. Unlike recent agent-based generative tools that rely on stochastic language models, PhyGS employs a rule-based approach to ensure the controllability required for rigorous benchmarking. Finally, we provide a hardware abstraction layer via a unified API and USD model for the Boston Dynamics Spot robot, demonstrating a seamless transition between simulated evaluation and physical deployment to help identify critical performance gaps in state-of-the-art generalist robotic agents.
+Agent calls use the Spot SDK's vocabulary where it fits, so the code reads like code for the real robot; each command returns an id you can wait on, ask for feedback or cancel.
 
-## ⚠️ Note on usage
+<p align="center"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/where_it_fits_dark.svg">
+  <img alt="Where PhyGS fits: Isaac Sim, then Isaac Lab, then PhyGS; ForageBench, agents and learned policies use it, and agents keep the real Spot's SDK terms; runs give recordings, reports and metrics" src="docs/figures/where_it_fits.svg" width="90%">
+</picture></p>
 
-PhyGS is under active development at the [Mapping and Motion Lab](https://sites.google.com/umich.edu/mandmlab/), and this version of the repository is a beta release intended for early community testing and usage. Please file a GitHub issue detailing any bugs faced or major feature requests, and the team will respond to and resolve these issues as soon as possible.
+## ✅ Requirements
 
-The `main` branch is the May 2026 beta (`phygs_simulation/`). The `develop` branch is the framework described below; it becomes the next release.
-
-## 📦 What PhyGS is
-
-Three parts, in one Python package (`phygs`). Scenes come in as USD files, fetched by id and version; they are made outside this repository (the paper's scene generator, a fork of Infinigen-Indoors, is on the `main` branch).
-
-1. **Robot and runtime** (`phygs/robots`, `phygs/runtime`, `phygs/sim`): a robot is one folder with a `robot.yaml` (joints, gripper tool frames, cameras by role, limits) and code only for its base controller and actuators. Spot with arm is the reference robot, walking under a learned policy at 250 Hz physics; Ridgeback-Franka is the second robot. One runtime owns the clock, every joint, command expiry, reset and the emergency stop.
-2. **Skills and backends** (`phygs/skills`, each client's `api.py` and its `execution/`): three public clients, `locomotion` (velocity; all zeros stops), `navigation` (`navigate_to`, `explore`, on Nav2 with a measured transit footprint, mapping the cameras' point clouds or a known map) and `manipulation` (joint and wrist moves, end-effector lines, gripper, `stow`, `unstow`, `look_at`, with cuRobo or MoveIt planning on known boxes or on depth). Every command has an id, feedback and cancel.
-3. **The world and measurement** (`phygs/world`, `phygs/session`, `phygs/scene`, `phygs/recording`): an episode is a spec (scene by id, robot start, objects, actions, observations, grants, budget, seed); the `World` builds it, runs an agent's `run(session)` in its own thread, audits every call, records contacts and a third-person video, and hands ground truth to the task's evaluator once, after the robot has stopped. Provenance in every report: the USD, policy and threshold hashes and the code version.
-
-## 🧲 Honest physics, stated first
-
-- **No attached grasps.** A grasped object is held by friction between the jaws; it can slip and drop. "Held" is measured as the object off its support and inside the hand.
-- **Physical drawer strokes.** Drawers are prismatic joints with authored limits; opening one is a planned end-effector line on its handle, and it can jam or bounce.
-- **A legged base.** Spot walks under a learned policy; it can stumble, fall (the run ends) and push furniture.
-- **Contacts are measured, not prevented.** Every arm-link contact above a threshold is recorded with its peak force and the running command; nothing stops the robot from touching things, and the record goes beside the outcome.
-- **Evaluators read physics.** Success is read from object poses, joint states and the base pose, never from a skill's "succeeded". Skill feedback is for the agent.
-
-## 🗂️ Repository structure
-
-```
-PhyGS/
-├── README.md  AGENTS.md  ARCHITECTURE.md  CHANGELOG.md  pyproject.toml
-├── phygs/                       # The framework (package `phygs`); layers and import rule in docs/layout.md
-│   ├── ui/                      # The robot UI: a person as the agent, in a browser (cli.py, configs/)
-│   ├── world/                   # World (build, run, stop, evaluate, report), EpisodeSpec, the Task seam, Truth,
-│   │                            # the robot's assembly (robot.py), environment.yaml (physics, cameras, Nav2, planner, timing)
-│   ├── session/                 # What an agent gets: AgentSession, target types, hints
-│   ├── composite/               # Deprecated alias of skills/composite/ (moved 2026-11-05)
-│   ├── robots/                  # spot/ (robot.yaml, policy, assets/, spot_description submodule), ridgeback_franka/, _template/
-│   ├── skills/                  # locomotion/, navigation/, manipulation/: each its api.py and execution/;
-│   │                            # composite/: the skills that walk, then move the arm (pick, place, drawers, look_at sweep)
-│   ├── sim/  recording/         # Isaac Lab adapters; the video, panels, timeline, narration
-│   ├── scene/  runtime/         # Scenes by id, fetcher, USD reader; clock, ownership, reset, e-stop
-│   ├── observations/            # Observation packets, localization, front view, colour detectors
-│   └── __main__.py              # The phygs command: run, ui, scenes, tests, version
-├── tests/robot_tests/           # The robot tests (importable): 15 rungs, test tasks, fixture scenes, run_suite.py
-├── tests/                       # Unit tests (no simulator) and the import guards
-├── examples/                    # run_world.py (one episode spec with an agent); agents/ (template, depth example)
-├── docker/                      # PhyGS image on Isaac Lab main (ROS 2, Nav2, MoveIt, cuRobo)
-└── docs/                        # Topic guides and the docs/README.md index
-```
+| | Tested |
+| --- | --- |
+| OS | Ubuntu 24.04, x86_64 |
+| GPU | NVIDIA RTX with RT cores (Isaac Sim needs them, so no A100 or H100); tested on a GeForce RTX 4090, 24 GB |
+| Driver | 580.178.04 (tested) |
+| Isaac Sim | 6.2.0 (tested build: 6.2.0-rc.14, from `/isaac-sim/VERSION`) |
+| Isaac Lab | 3.0.0 (main, `isaaclab` 44.0.1), commit `9dffa59`; newer `main` commits are untested |
+| Python | 3.12 |
 
 ## 🛠️ Installation
 
-PhyGS runs inside the [Isaac Lab](https://github.com/isaac-sim/IsaacLab) Docker container. Validated against Isaac Sim 6.2.0 and Isaac Lab main (3.0.0, `isaaclab` 44.0.1; Ubuntu 24.04, Python 3.12) on Linux x86_64 with an NVIDIA GPU.
-
-| Step | Command or guide | When |
-| --- | --- | --- |
-| Clone with submodules | `cd IsaacLab/scripts && git clone --recursive -b develop https://github.com/m-and-m-lab/PhyGS.git` | Always (`--recursive` brings Spot's meshes). |
-| Build and enter the container | From `IsaacLab/docker`: `./container.py start ros2 --suffix <name> --files ../scripts/PhyGS/docker/docker-compose.phygs.yaml`, then `./container.py enter ros2 --suffix <name>` (one-time setup in [docker/README.md](docker/README.md)) | Always. The image adds ROS 2 Jazzy with Nav2, explore_lite, MoveIt and cuRobo V2 to Isaac Lab main's base image; the container installs PhyGS (editable) at its first start ([docker/README.md](docker/README.md)). |
-| Without the container | Install as `docker/Dockerfile.phygs` does: [docs/nav2.md](docs/nav2.md#ros-2-jazzy-setup) (ROS 2, Nav2, explore_lite), [docs/manipulation_planners.md](docs/manipulation_planners.md#dependencies) (cuRobo, MoveIt), then `isaaclab -p -m pip install -e scripts/PhyGS --no-deps` | Only outside Docker. |
-| CPU governor | `sudo cpupower frequency-set -g performance` on the host | Recommended; `powersave` costs about 20% real-time factor. |
-
-In every shell that runs an episode or a navigation test:
+PhyGS runs in a Docker container: Isaac Lab's base image plus ROS 2 Jazzy, Nav2, explore_lite, MoveIt and cuRobo. You need Docker and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html); running the image means accepting the NVIDIA Isaac Sim licence. Clone Isaac Lab and PhyGS (`--recursive` brings Spot's meshes), then build and enter the container:
 
 ```bash
-source /opt/explore_ws/install/setup.bash   # ROS 2 Jazzy plus explore_lite (the container's ~/.bashrc does it).
-export ROS_DOMAIN_ID=48                     # One per person or simulator on this machine.
-export PHYGS=scripts/PhyGS                  # The checkout, relative to the Isaac Lab root.
+git clone https://github.com/isaac-sim/IsaacLab.git && cd IsaacLab
+git clone --recursive -b develop https://github.com/m-and-m-lab/PhyGS.git scripts/PhyGS
+cat scripts/PhyGS/docker/dockerignore.phygs >> .dockerignore
+cp scripts/PhyGS/docker/env.ros2 docker/.env.ros2
+sed -i 's/^ROS_DOMAIN_ID=.*/ROS_DOMAIN_ID=<id>/' docker/.env.ros2   # Replace <id>: any ID no other ROS user on the machine uses.
+cd docker
+./container.py start ros2 --suffix mine --files ../scripts/PhyGS/docker/docker-compose.phygs.yaml
+./container.py enter ros2 --suffix mine
+```
+
+The container installs PhyGS at its first start. More on the container, and installing without it: [docker/README.md](docker/README.md).
+
+**Check it works.** In the container, run the first robot test: Spot spawns, resets and stops on an emergency stop. The first Isaac Sim launch in a new container builds its shader cache and takes longer.
+
+```bash
+cd /workspace/isaaclab
+isaaclab -p -m phygs tests ladder --upto 1
+```
+
+Expected output:
+
+```
+1 robot tests into /workspace/isaaclab/scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_ladder
+1 scene_reset: passed (exit 0, 0.1 min)
+1/1 passed, 0 skipped; /workspace/isaaclab/scripts/PhyGS/output_check/<YYYYMMDD-HHMM>_ladder
 ```
 
 ## 🚀 Quick start
 
-All commands run from the Isaac Lab root (`/workspace/isaaclab` in the container). The first three need no download: the grid storage scene is a fixture in the repository. With the package installed, `phygs <command>` (or `isaaclab -p -m phygs <command>`) runs the same scripts: `phygs run`, `phygs ui`, `phygs scenes`, `phygs tests`, `phygs version`.
+Spot opens a drawer by its handle and pushes it shut; the run is then rendered to a video:
 
 ```bash
-# 1. Run a world with the template agent (it looks around and finishes). The report lands in --output.
-isaaclab -p $PHYGS/examples/run_world.py \
-  --spec $PHYGS/tests/robot_tests/configs/episodes/dev_grid_table.yaml \
-  --agent template --task_loader phygs_robot_tests.tasks:load_task \
-  --output $PHYGS/output_check/$(date +%Y%m%d-%H%M)_grid_table
-
-# 2. Drive the robot yourself: the robot UI in a browser (headless simulator; open the printed URL).
-isaaclab -p $PHYGS/phygs/ui/cli.py --task_loader phygs_robot_tests.tasks:load_task \
-  --output $PHYGS/output_check/$(date +%Y%m%d-%H%M)_ui_grid
-
-# 3. The first five robot tests (no ROS needed): spawn and reset, sensors, walking, footprint, arm.
-isaaclab -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 5
-
-# 4. Fetch a released scene (the dataset is private for now; authenticate once with `hf auth login`).
-isaaclab -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench
-isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
+cd /workspace/isaaclab
+isaaclab -p -m phygs tests episodes --only drawer_grid --record
 ```
 
-`--task_loader` names the function that turns a spec's task block into a task object (its brief, its privileged target, its evaluation). PhyGS knows no task; the robot tests ship a retrieve task for their own use, and a benchmark ships its own. A spec with `task: {goal: none}` needs no loader.
+The last line names the run folder. Open `index.html` there, or the video `drawer_grid/replay/replay.mp4`.
 
-## 🤝 The agent contract
-
-An agent is a function `run(session)`. The session is the only object it needs ([template](examples/agents/template.py)):
-
-```python
-def run(session):
-    print(session.task.goal, session.task.description)      # The public brief; nothing about where the target is.
-    packet = session.observe()                              # Cameras (RGB-D, calibrated), joints, IMU, localization.
-    goal = session.navigation.navigate_to(x=1.0, y=0.0, heading=0.0)
-    session.wait(goal)                                      # Simulated time passes only while the agent waits.
-    move = session.manipulation.move_to_pose(pose)          # Planned by cuRobo or MoveIt; feedback has the reason.
-    session.wait(move)
-    session.manipulation.close_gripper()                    # Holding is measured from contact, not assumed.
-    session.finish("done")
-```
-
-| Part of the session | What it gives |
-| --- | --- |
-| `observe()`, `time()`, `wait(command)`, `sleep(seconds)`, `stream(camera)` | Observations and time. The clock is `charged` (time advances only while the agent waits) or `realtime`. |
-| `navigation`, `manipulation`, `locomotion` | The clients the spec's `actions` allow (`skills`, `motion` or a list). Each command: an id, `feedback(id)` with status and reason, `cancel(id)`. |
-| `grants` and `hints` | Privileged channels the spec grants (`gt_localization`, `known_map`, `object_targets`, `scene_hints`); every use is audited and listed in the report. |
-| `finish(reason)` | Ends the episode. The World then cancels everything, keeps the grip, settles and evaluates. |
-| `step(name)`, `log(topic, record, images)` | The agent's own account: named steps of its plan on the run's timeline, and records it keeps in the recording (a model's request and reply, with the images it sent). Neither is a call: no time passes and neither is counted. |
-
-The skills that walk and then move the arm are the composite skills (`phygs.skills.composite`, which imports the session only), given explicit affordances: `skills = CompositeSkills(session)`, then `skills.open_drawer(part)`, `skills.pick(center, size)`, `skills.place(point)`, `skills.place_upright(point)`, `skills.close_drawer(part)`. Each walks to where the arm reaches (stowing first), tries its listed options in order and returns the option that worked and what the robot measured; the robot tests' plans and ForageBench's reference agents use them.
-
-Everything the agent does goes into the episode's recording, `episode.rrd`: a [Rerun](https://rerun.io) file with the robot, the scene, Nav2, the arm plans and their requests, the agent's calls and the episode's phases on one timeline (`rerun episode.rrd` opens it; `phygs replay` renders videos from it; `examples/replay_plans.py` plans the arm plans again). The report (`report.json`) has the status (`completed`; `setup_error` when the settled world failed the check before the agent started, so the agent never ran; `error` when the simulator broke), the outcome, the conduct (contacts, drawers left open), the usage of time and grants, the commands and the provenance. The session and its calls: [docs/world.md](docs/world.md) and [docs/manipulation_skills.md](docs/manipulation_skills.md).
-
-## 🤖 Robots
-
-| Robot | Base | Status |
-| --- | --- | --- |
-| [Spot with arm](phygs/robots/spot/README.md) | Legs, learned walking policy (deployed 2026-10-22) | Reference robot: every robot test |
-| [Ridgeback-Franka](phygs/robots/ridgeback_franka/README.md) | Planar joints (omnidirectional) | Bring-up, footprint and navigation pass; arm tests next |
-
-Adding a robot is one folder with a `robot.yaml` ([docs/adding_a_robot.md](docs/adding_a_robot.md)): copy `phygs/robots/_template/`, fill it, run the description test, then bring it up with `components/check_bring_up.py --robot <name>`. Framework code never names a robot's parts; a test enforces it.
-
-## 🏠 Scenes
-
-- **Built-in** in `phygs/scene/builtin/`: grid storage (a drawer unit and a table), the navigation course, the dynamic course, as files.
-- **Released scenes** (the scene dataset on Hugging Face, `mandmlabresearch/ForageBench`): a catalog of immutable releases, one scene id at one version each. `phygs.scene.fetch` downloads, verifies (SHA-256, every dependency inside the archive) and installs a release under `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`) with a record the scene registry reads; a spec pins it with `scene: {id: bear_loop_house, version: 1.1.0}`. The release format is in [docs/scenes.md](docs/scenes.md).
-- **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says `scene: {id: <folder>, ground: true|false}`; no spec holds a file path.
-- **The scene contract** the framework reads from a USD: rigid bodies by name, prismatic joints as drawers, colliders for the known map, the robot's start on the floor. The reader is `phygs/scene/reader.py`.
-
-## 🧪 Robot tests
-
-Every robot test spawns a scene and has the robot do one thing, measures it against thresholds and writes `check.json`; `run_suite.py --record` adds a video of each (an agent test's: `phygs replay` of its recording). They form a ladder in the order the framework is built; after a change, run it up to the rung you touched. Full table and commands: [tests/robot_tests/README.md](tests/robot_tests/README.md).
-
-| Rung | What the robot does | Needs |
-| --- | --- | --- |
-| 1–5 | Spawns and resets; sees (RGB-D alignment, rate, permissions); walks, strafes, turns, stops; its footprint is measured; raises the arm and works the gripper | nothing beyond the container |
-| 6–7 | Walks to goals around a wall and in the house; refuses goals in walls and furniture; avoids a box moved into its route | ROS 2, Nav2 |
-| 8–10 | Plans arm moves on known boxes and on depth; picks the target next to clutter and places it | cuRobo or MoveIt |
-| 11–12 | Opens a drawer by its handle and closes it; carries the target into a drawer | ROS 2, cuRobo |
-| 13 | Explores the house kitchen until a colour detector sees the cube | explore_lite |
-| 14 | Finds the target in a closed drawer, opens it, picks the target, stows (grid and house) | ROS 2, cuRobo |
-| 15 | The template agent through `examples/run_world.py` | ROS 2, cuRobo |
+Or drive the robot yourself in a browser while the simulator runs headless:
 
 ```bash
-isaaclab -p $PHYGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest $PHYGS/tests -q -p no:cacheprovider   # Unit tests, no simulator.
+cd /workspace/isaaclab
+isaaclab -p -m phygs ui --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_ui
+# Open the printed http://127.0.0.1:8765/?token=... here; from another machine, first: ssh -L 8765:127.0.0.1:8765 <host>
+# Ctrl+C stops it.
 ```
 
-Rungs that use the house need its release fetched once: `isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0`.
+## 🧭 Where to go next
 
-## 📚 Documentation
-
-Start at the [docs index](docs/README.md): one guide per topic (observations, pipelines, locomotion, navigation, Nav2, mapping, manipulation skills and planners, adding a robot, the robot UI, scenes, the World for benchmark authors). [ARCHITECTURE.md](ARCHITECTURE.md) is the code map and the runtime tick; [CHANGELOG.md](CHANGELOG.md) records every change, including the renames of the repository split.
-
-## 📈 Status and plans
-
-After the move into this repository (2026-10-28) the retrieve, entry-point and navigation rungs were rerun here and pass with Spot; the other rungs last passed in the lab's development tree the same week. Ridgeback-Franka passes bring-up, footprint and navigation.
-
-## 🧭 Coding philosophy
-
-| Rule | Meaning |
+| I want to… | Read |
 | --- | --- |
-| Fail fast | Missing cameras, services, target geometry, CUDA backends, invalid joints and bad configs raise clear errors before a long run starts. |
-| No silent fallbacks | No switched targets, fake cameras, fake grasps, relaxed planning modes. If a dependency is required, it is required. |
-| SDK-shaped API | Spot SDK vocabulary where it fits; the runtime exposes `robot.<skill>` clients with ids, feedback and cancel. |
-| Robot-neutral framework | Every robot fact is in its `robot.yaml`; framework code asks the description and never names a part. |
-| Measurement over self-report | Evaluators and robot tests read ground truth; the report keeps outcome and conduct apart. |
+| write an agent: the session, its calls, the recording and the report | [docs/agents.md](docs/agents.md) |
+| use the composite skills: pick, place, open and close drawers | [docs/agents.md](docs/agents.md#composite-skills) |
+| run a benchmark on PhyGS, like [ForageBench](https://github.com/m-and-m-lab/ForageBench): spec, task, World, ground truth | [docs/world.md](docs/world.md) |
+| add a robot | [docs/adding_a_robot.md](docs/adding_a_robot.md) |
+| use the released scenes or my own | [docs/scenes.md](docs/scenes.md) |
+| run the robot tests (15 rungs, from spawning to retrieving) | [tests/robot_tests/README.md](tests/robot_tests/README.md) |
+| know what is simulated and what is measured | [docs/physics.md](docs/physics.md) |
+| understand the architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| browse every guide, or see what changed | [docs/README.md](docs/README.md) · [CHANGELOG.md](CHANGELOG.md) |
+| contribute (people and coding agents), or report a bug | [AGENTS.md](AGENTS.md) · [GitHub issues](https://github.com/m-and-m-lab/PhyGS/issues) |
 
-Rules for contributors and coding agents: [AGENTS.md](AGENTS.md).
+## 🗂️ Repository layout
+
+| Path | Purpose | Docs |
+| --- | --- | --- |
+| `phygs/` | The framework: robots, runtime, skills, world, session, scenes, recording, robot UI | [README](phygs/README.md) |
+| `examples/` | `run_world.py` (runs an episode), `replay_run.py` (renders a run's video), example agents | [agents](docs/agents.md) |
+| `tests/` | Unit tests (no simulator) and the robot-test ladder (`robot_tests/`) | [README](tests/README.md) |
+| `docker/` | The container: Isaac Lab's base image with ROS 2, Nav2, MoveIt and cuRobo | [README](docker/README.md) |
+| `docs/` | Topic guides, figures and the teaser | [README](docs/README.md) |
+
+## 🧱 Scenes and data
+
+The robot tests' small scenes ship with PhyGS. The house scene, release 1.1.0, comes from the scene dataset [`mandmlabresearch/ForageBench`](https://huggingface.co/datasets/mandmlabresearch/ForageBench) on Hugging Face: published at dataset commit `37d8744`, 535.5 MB, private for now, licence to be announced. Fetching it: [docs/scenes.md](docs/scenes.md#fetching).
 
 ## 📝 Citation
 
-If you use PhyGS in your research, please cite:
-
 ```bibtex
-@misc{2026phygs,
-  title     = {PhyGS: Physically-Grounded Controllable Scene Generation},
-  author    = {Saha, Aparajito and Gan, Zhen Hao and Guo, Jinjia and
-               Skwirsk, Jacob and Acheampong, Jeremy and Arapin, Anton and
-               Ku, Chahyon and Hu, Yue and Fazeli, Nima and Bucher, Bernadette},
-  note      = {CVPR Workshop on Multi-Agent Embodied Intelligent Systems},
-  year      = {2026}
+@misc{saha2026phygs,
+  title  = {PhyGS: Physically-Grounded Controllable Scene Generation},
+  author = {Saha, Aparajito and Gan, Zhen Hao and Guo, Jinjia and
+            Skwirsk, Jacob and Acheampong, Jeremy and Arapin, Anton and
+            Ku, Chahyon and Hu, Yue and Fazeli, Nima and Bucher, Bernadette},
+  note   = {CVPR Workshop on Multi-Agent Embodied Intelligent Systems},
+  year   = {2026}
 }
 ```
 
-## 🙏 Acknowledgments
+## ⚖️ License and acknowledgments
 
-PhyGS builds on a number of open-source projects, including:
-[Infinigen / Infinigen-Indoors](https://github.com/princeton-vl/infinigen),
-[NVIDIA IsaacSim](https://developer.nvidia.com/isaac/sim),
-[IsaacLab](https://github.com/isaac-sim/IsaacLab),
-[Objaverse-XL](https://objaverse.allenai.org/),
-[cuRobo](https://curobo.org/),
-[Nav2](https://nav2.org/),
-[explore_lite (m-explore-ros2)](https://github.com/robo-friends/m-explore-ros2),
-[MoveIt 2](https://moveit.picknik.ai/),
-[spot_description](https://github.com/bdaiinstitute/spot_description).
+The licence is to be announced ([LICENSE](LICENSE)). Isaac Sim is proprietary NVIDIA software under its own licence terms.
 
-We thank the authors and maintainers of these tools. Please refer to each project's license and cite them as appropriate.
+PhyGS builds on [Isaac Sim](https://developer.nvidia.com/isaac/sim), [Isaac Lab](https://github.com/isaac-sim/IsaacLab), [Infinigen-Indoors](https://github.com/princeton-vl/infinigen), [Objaverse-XL](https://objaverse.allenai.org/), [cuRobo](https://curobo.org/), [Nav2](https://nav2.org/), [explore_lite](https://github.com/robo-friends/m-explore-ros2), [MoveIt 2](https://moveit.picknik.ai/) and [spot_description](https://github.com/bdaiinstitute/spot_description); please refer to each project's licence and cite it as its authors ask.

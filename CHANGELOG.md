@@ -21,6 +21,17 @@ Changed (2026-11-08, docs):
   the CPU-governor tip into `docker/README.md`; the two coding-philosophy rows `AGENTS.md` lacked
   (SDK-shaped API, measurement over self-report) into its core principles. The robots table and the
   robot-test ladder stayed in `docs/adding_a_robot.md` and `tests/robot_tests/README.md`.
+- `README.md` became the front door: what PhyGS is and why, the requirements, the Docker install with a
+  check and its output, a quick start that ends in a video, and a "Where to go next" table. The
+  teaser became `docs/assets/teaser.jpg` (166 KB; `teaser.png`, 7.8 MB, was removed), and the README
+  gained the "where this fits" figure, `docs/figures/where_it_fits.svg` and `where_it_fits_dark.svg`.
+- `AGENTS.md`'s documentation table gained a rule: the README stays a front door of about 150
+  lines.
+
+Added (2026-11-08):
+
+- `LICENSE`, a placeholder until the licence is chosen.
+
 ### 0.12.0 (2026-11-08)
 
 Changed (2026-11-08, docs):
