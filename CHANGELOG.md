@@ -11,7 +11,14 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
-### 0.12.0 (not tagged yet)
+### 0.12.0 (2026-11-08)
+
+Changed (2026-11-08, docs):
+
+- `phygs/robots/ridgeback_franka/README.md` records the Ridgeback's composite-skill run (2026-11-01:
+  drawer_grid, drawer_place and retrieve_grid pass; drawer_house fails, retrieve_house errors) and
+  the one-angle handle grasp run (2026-11-03: all five drawer rungs fail, the pre-grasp on the
+  shoulder line out of reach), and launches with `isaaclab -p`.
 
 Added (2026-11-08, articulated furniture; F48):
 

@@ -5,4 +5,4 @@
 
 """PhyGS: the simulation framework (robot, world, runtime, skills, measurement)."""
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
