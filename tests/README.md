@@ -28,7 +28,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest scripts/PhyGS/tests -q \
 | `test_footprint.py` | Transit footprint calibration and validation. |
 | `test_observations.py`, `test_pipeline.py` | Observation permissions, capture-time transforms, processing pipelines. |
 | `test_object_search.py`, `test_color_detection.py` | Object-search evidence and the reference color detector. |
-| `test_scene_assets.py`, `test_scene.py` | Scene spawn-area validation and USD scenes. |
+| `test_scene_assets.py`, `test_scene.py`, `test_articulations.py` | Scene spawn-area validation, USD scenes, articulated furniture (links written through their joints). |
 | `test_skill_api.py` | Public skill APIs import without manipulation planners or ROS. |
 | `test_ui_*.py` | The robot UI (see below). |
 | `fakes.py`, `ui_fakes.py` | Shared fakes (joint worlds, a scene for a real `IsaacLabWorld`, navigation, mapping, ROS transport; the UI's); test modules import only these, never each other. |
@@ -58,10 +58,10 @@ Every robot test takes `--output DIR` (a fresh folder; use `output_check/<YYYYMM
 runs automatic and headless by default (`--viz kit` to watch, `--manual` for keyboard control
 where a test has it), writes `DIR/check.json` (`test`, `status`, `error`, `checks` and the test's
 data), prints `<test>: <status>; <DIR>` and exits 0 only when it passed. A hang leaves every
-thread's stack in `DIR/stacks.txt` (`kill -USR1 <pid>`). `--record` writes `DIR/third_person.mp4`
-in the runs' one look (`phygs/recording/video.py`, the same as `phygs replay`; agent tests: a camera
-behind the robot; component tests: a camera following the robot; the world lifecycle test has no
-video). Under the scene view, the overview strip shows the simulated time, what the gripper holds,
+thread's stack in `DIR/stacks.txt` (`kill -USR1 <pid>`). An agent test's video is `phygs replay DIR`
+(`DIR/replay/replay.mp4`, from its recording); a component test's `--record` writes
+`DIR/third_person.mp4` while it runs, in the same look (`phygs/recording/video.py`; a camera
+following the robot; the world lifecycle test has no video). Under the scene view, the overview strip shows the simulated time, what the gripper holds,
 the arm's contact force, the agent's step, the test's name and the latest skill line, the floor plan
 (a grid in a component test) and the timeline of steps, commands, grips and bumps with a playhead.
 Beside the scene view, a grid of panels (`phygs/recording/panels.py`; "no data" when the run has
@@ -110,8 +110,8 @@ Notes kept from validation:
 ## Episodes (examples/run_world.py)
 
 One entry point runs an episode spec with an agent ([docs/world.md](../docs/world.md)). Headless by default;
-`--viz kit` opens a window, `--record` writes `third_person.mp4`, `--clock realtime` keeps time
-running while the agent thinks.
+`--viz kit` opens a window, `--clock realtime` keeps time running while the agent thinks;
+`phygs replay <output>` renders the run's video afterwards from its recording.
 
 ```bash
 isaaclab -p scripts/PhyGS/examples/run_world.py \

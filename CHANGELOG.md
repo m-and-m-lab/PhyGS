@@ -13,6 +13,23 @@ When you commit a batch, move its lines under a new dated heading.
 
 ### 0.12.0 (not tagged yet)
 
+Added (2026-11-08, articulated furniture; F48):
+
+- Scenes whose furniture is articulated (a cabinet and its doors and drawers in one PhysX
+  articulation, `bear_loop_house` 1.2.0 and later) run: `register_scene_bodies` no longer rejects
+  them, and `phygs.scene.articulations` reads them from the stage. `SceneBodies.write_all` (a
+  world's restore, a replayed sample) sets the links' joint positions, found from the written link
+  poses, through one articulation view; `SceneBodies.write_pose` and `write_velocity` raise for a
+  link. `apply_openings` also authors an articulated slide's joint state, which PhysX starts it at
+  (it ignores a link's authored pose). On 1.3.0, drawers, doors, held forces, restores and replays
+  behave as on 1.1.0 ([docs/scenes.md](docs/scenes.md#articulated-furniture)).
+
+Fixed (2026-11-08):
+
+- `apply_openings` and `apply_initial_state` move bodies authored with one `xformOp:transform` (the
+  scene settle tool writes those: 111 of the house's 181 supported contents in 1.2.0, 133 in 1.3.0);
+  they raised "has no xformOp:translate to move".
+
 Added (2026-11-07, logging):
 
 - Every episode writes a Rerun recording, `episode.rrd` (`phygs.recording.log.EpisodeLog`, layout
@@ -79,6 +96,18 @@ Removed (2026-11-07, logging):
 - The robot UI's own recording and replay page (`phygs/ui/recording.py`, `replay.py`,
   `replay_cli.py`, `phygs ui replay`, the page's replay bar; decision D33): the person's episode is in
   `episode.rrd` like any agent's; `rerun episode.rrd` shows it and `phygs replay` renders its videos.
+
+Removed (2026-11-08, the live video; decision D32):
+
+- The World's live video: `World(record=)`, `run_world.py --record`, ForageBench's `run.py --record`,
+  the run folder's `third_person.mp4` and the third-person camera it rendered every frame
+  (`build.third_person_camera`, `build.look_rotation`), `phygs.recording.state_log` (`StateLog`),
+  and `Recorder`'s video and state (`Recorder(video=, fps=, state=, plan=)`, `.frame`,
+  `.contacts_so_far`, `.close`). A run's video is `phygs replay <run>` from its recording (`replay/replay.mp4`); a side by
+  side of one house run showed the same frames, except the live status line lagging and the live
+  timeline drawn only up to that time. `run_suite.py --record` and ForageBench's `suite.py --record`
+  replay each episode after its test. Component tests keep their own `--record` video (they have no
+  recording).
 
 Fixed (2026-11-07, logging):
 

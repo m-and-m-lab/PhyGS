@@ -7,10 +7,10 @@
 (``examples/agents/template.py``) on a skills-tier spec (``dev_grid_table``: walk, stow) and a
 locomotion-only spec (``motion_grid``: a body velocity). Each run is its own process
 with its own simulator; this test starts none itself and reads only what a user gets: the exit code,
-``report.json``, the recording ``episode.rrd`` (complete, of this run, holding no secret from the
-environment, with every observation and camera image the agent received) and the video with
-``--record``. A third run (``motion_grid``) is killed with SIGKILL a
-second into its episode: its report still says it ran and its recording still reads back.
+``report.json`` and the recording ``episode.rrd`` (complete, of this run, holding no secret from
+the environment, with every observation and camera image the agent received). A third run
+(``motion_grid``) is killed with SIGKILL a second into its episode: its report still says it ran and
+its recording still reads back.
 
     isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_entry_point.py \
         --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_entry_point
@@ -57,18 +57,18 @@ REPORT_KEYS = (
 KILL_AFTER = 1.0  # [s wall] into the killed run's episode (motion_grid's agent runs for about 3 s).
 
 
-def entry_point(spec: str, output: Path, record: bool, kit_args: str | None) -> list[str]:
+def entry_point(spec: str, output: Path, kit_args: str | None) -> list[str]:
     """The command line of one episode through the public entry point."""
     command = [sys.executable, str(PROJECT / "examples" / "run_world.py"), "--spec", str(SPECS / f"{spec}.yaml")]
     command += ["--agent", "template", "--task_loader", "phygs_robot_tests.tasks:load_task"]
-    command += ["--output", str(output), *(["--record"] if record else [])]
+    command += ["--output", str(output)]
     return command + ([f"--kit_args={kit_args}"] if kit_args else [])
 
 
-def run(spec: str, output: Path, record: bool, kit_args: str | None = None) -> tuple[int, dict]:
+def run(spec: str, output: Path, kit_args: str | None = None) -> tuple[int, dict]:
     """One episode through the public entry point; its exit code and report (empty if none)."""
     with (output.parent / f"{output.name}.log").open("w") as log:
-        command = entry_point(spec, output, record, kit_args)
+        command = entry_point(spec, output, kit_args)
         code = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=1800).returncode
     path = output / "report.json"
     return code, json.loads(path.read_text()) if path.exists() else {}
@@ -79,7 +79,7 @@ def killed(spec: str, output: Path, kit_args: str | None) -> dict:
     its report says it runs; the report it left (empty if none)."""
     path = output / "report.json"
     with (output.parent / f"{output.name}.log").open("w") as log:
-        command = entry_point(spec, output, False, kit_args)
+        command = entry_point(spec, output, kit_args)
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         deadline = time.monotonic() + 900
         while process.poll() is None and time.monotonic() < deadline:
@@ -96,7 +96,6 @@ def killed(spec: str, output: Path, kit_args: str | None) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--output", type=Path, required=True, help="Fresh folder for check.json and the runs")
-    parser.add_argument("--record", action="store_true", help="Each run's video (third_person.mp4)")
     parser.add_argument("--kit_args", default=None, help="Kit arguments for each run (one string)")
     args, _ = parser.parse_known_args()  # The suite's other app flags have no use here: no simulator in this process.
     if (args.output / "check.json").exists():
@@ -110,7 +109,7 @@ def main() -> int:
 
     try:
         for spec, (levels, clients) in RUNS.items():
-            code, report = run(spec, args.output / spec, args.record, args.kit_args)
+            code, report = run(spec, args.output / spec, args.kit_args)
             measure(f"{spec}_exit", code, code == 0)
             missing = [key for key in REPORT_KEYS if key not in report]
             measure(f"{spec}_report", missing or "complete", not missing)
@@ -141,9 +140,6 @@ def main() -> int:
                 # Skills end "succeeded"; a velocity or joint command that ran its duration ends "done".
                 ok = bool(waits) and all(status in {"succeeded", "done"} for status in waits)
                 measure(f"{spec}_{client}_commands", waits, ok)
-            if args.record:
-                video = args.output / spec / "third_person.mp4"
-                measure(f"{spec}_video", video.exists(), video.exists())
         stub = killed("motion_grid", args.output / "killed", args.kit_args)
         measure("killed_report", (stub.get("status"), bool(stub.get("run_id"))), stub.get("status") == "running")
         recording = episode.recording(args.output / "killed")

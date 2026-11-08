@@ -89,7 +89,8 @@ Run the commands from `/workspace/isaaclab`. `R` is your robot's name (a folder 
    ```bash
    isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_navigation.py \
      --spec scripts/PhyGS/tests/robot_tests/configs/episodes/nav_course.yaml \
-     --robot R --record --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
+     --robot R --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_navigation
+   phygs replay scripts/PhyGS/output_check/<that folder>   # Its video, from the recording: replay/replay.mp4.
    ```
 
 8. **Arm tasks.** The rest of the robot-test ladder takes `--robot` too

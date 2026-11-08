@@ -32,7 +32,7 @@ isaaclab -p scripts/PhyGS/tests/robot_tests/components/check_nav2_pipeline.py --
 
 The search saves Nav2's costmap (`costmap.png`: grey unknown, white free, black obstacles, inflation
 shaded) next to `check.json` in `<output>/simulation`; the obstacle-avoidance test's video shows it
-in the NAVIGATION panel (`--record`).
+in the NAVIGATION panel (`phygs replay` of its recording).
 
 An agent that wants its own map builds it from its camera stream (`session.stream()`, depth and the
 capture-time transforms; see the [agent code chapter](advisor_review/agent_code.html)); Nav2 does not

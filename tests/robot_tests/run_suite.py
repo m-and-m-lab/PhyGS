@@ -14,8 +14,10 @@ cuRobo's dependencies) is skipped, not failed.
 
 Each test writes ``<folder>/<name>/check.json`` and its log ``<folder>/<name>.log``; the summary is
 ``<folder>/summary.json`` (each test's measured values too) and ``<folder>/index.html`` (results, with
-``--record`` the videos). The folder is ``output_check/<YYYYMMDD-HHMM>_<label>``. The last line names
-the first failing rung.
+``--record`` the videos). With ``--record`` a component test films itself (``third_person.mp4``) and
+each episode of an agent test is rendered again from its recording afterwards (``phygs replay``:
+``replay/replay.mp4`` beside its ``episode.rrd``). The folder is
+``output_check/<YYYYMMDD-HHMM>_<label>``. The last line names the first failing rung.
 
     isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
     isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pick_place_known
@@ -123,7 +125,7 @@ def main() -> int:
     parser.add_argument("--upto", type=int, default=15, help="Last rung to run")
     parser.add_argument("--label", default=None, help="Folder label (default: the groups)")
     parser.add_argument("--timeout", type=float, default=3600.0, help="Per test [s wall]")
-    parser.add_argument("--record", action="store_true", help="Each test's video (third_person.mp4)")
+    parser.add_argument("--record", action="store_true", help="Each test's video (components: live; episodes: replay)")
     parser.add_argument("--kit_args", default=None, help="Kit arguments for every test (one string)")
     args = parser.parse_args()
     rungs = {rung for group in args.groups for rung in GROUPS[group] if args.first <= rung <= args.upto}
@@ -141,8 +143,9 @@ def main() -> int:
             )
             print(f"{rung} {name}: skipped (needs {', '.join(lacking)})", flush=True)
             continue
+        episodes = script.startswith("episodes/")  # Agent tests: their videos come from their recordings.
         command = [sys.executable, str(ROOT / script), *map(str, extra), "--output", str(folder / name)]
-        command += ["--record"] if args.record else []
+        command += ["--record"] if args.record and not episodes else []
         command += [f"--kit_args={args.kit_args}"] if args.kit_args else []
         started = time.monotonic()
         with (folder / f"{name}.log").open("w") as log:
@@ -150,6 +153,8 @@ def main() -> int:
                 code = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=args.timeout).returncode
             except subprocess.TimeoutExpired:
                 code = "timeout"
+        if args.record and episodes:
+            replay(folder / name, folder / f"{name}.replay.log", args.kit_args)
         result = folder / name / "check.json"
         record = json.loads(result.read_text()) if result.exists() else {}
         status = record.get("status", "no result")
@@ -171,6 +176,15 @@ def main() -> int:
     return 0 if not failed else 1
 
 
+def replay(folder: Path, log: Path, kit_args: str | None) -> None:
+    """Render every episode recorded under ``folder`` again (``phygs replay``), into ``replay/`` beside it."""
+    with log.open("w") as out:
+        for recording in sorted(folder.rglob("episode.rrd")):
+            command = [sys.executable, str(PROJECT / "examples" / "replay_run.py"), str(recording.parent)]
+            command += [f"--kit_args={kit_args}"] if kit_args else []
+            subprocess.run(command, stdout=out, stderr=subprocess.STDOUT)
+
+
 def index(folder: Path, summary: list[dict]) -> str:
     """A local page with each test's result and video (opened from the folder; no network)."""
     rows = []
@@ -180,7 +194,8 @@ def index(folder: Path, summary: list[dict]) -> str:
             title = f"{entry['rung']} {name}: skipped"
             rows.append(f'<section class="skipped"><h2>{title}</h2><p>needs {entry["error"]}</p></section>')
             continue
-        videos = sorted(path.relative_to(folder) for path in (folder / name).glob("**/third_person.mp4"))
+        found = [*(folder / name).glob("**/third_person.mp4"), *(folder / name).glob("**/replay/replay.mp4")]
+        videos = sorted(path.relative_to(folder) for path in found)
         video = "".join(f'<video src="{path}" controls preload="metadata"></video>' for path in videos) or "no video"
         rows.append(
             f'<section class="{status}"><h2>{entry["rung"]} {name}: {status}</h2>'

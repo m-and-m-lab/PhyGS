@@ -20,7 +20,6 @@ import numpy as np
 import yaml
 
 from phygs.observations.types import CameraPermission, ObservationAccess, ObservationConfig
-from phygs.recording.panels import PanelFeed
 from phygs.robots.description import RobotDescription
 from phygs.runtime.pipeline import PipelineConfig, ServiceDeclaration
 from phygs.skills.navigation.execution.footprint import transit_footprint
@@ -75,11 +74,9 @@ def captured_cameras(
     observed: tuple[str, ...],
     *,
     viewer_cameras: tuple[str, ...] | None = None,
-    record: bool = False,
 ) -> tuple[str, ...]:
     """The cameras the simulation renders: the agent's (``observed``), plus the skills' look camera
-    and, without known_map, the arm planner's and navigation's; when recording, also the video
-    panels' (the robot's front and look cameras); with a viewer, also the viewer's."""
+    and, without known_map, the arm planner's and navigation's; with a viewer, also the viewer's."""
     known_map = "known_map" in spec.grants
     cameras = list(observed)
     if viewer_cameras is not None:
@@ -87,8 +84,6 @@ def captured_cameras(
         if unknown:
             raise ValueError(f"The viewer asks for unknown cameras {sorted(unknown)}")
         cameras += [name for name in viewer_cameras if name not in cameras]
-    if record:
-        cameras += [name for name in PanelFeed.cameras(robot) if name not in cameras]
     if "manipulation" in spec.actions:
         planner = () if known_map else robot.cameras_for("planning")
         cameras += [name for name in (robot.look_camera, *planner) if name not in cameras]
@@ -105,22 +100,20 @@ def observation_pipeline(
     *,
     dt: float,
     period: float,
-    record: bool = False,
     viewer_cameras: tuple[str, ...] | None = None,
 ) -> tuple[PipelineConfig, tuple[ServiceDeclaration, ...]]:
     """What is captured (every ``dt`` [s] for state, every ``period`` [s] for cameras), what the
     agent may read (the spec's observations and grants), and the other consumers: the skills (joints,
-    the base pose, every captured camera), the viewer and the video (the cameras each shows)."""
+    the base pose, every captured camera) and the viewer (the cameras it shows)."""
     observed_permissions = tuple(CameraPermission(name) for name in observed)
     captured_permissions = tuple(CameraPermission(name) for name in captured)
-    third_person = (CameraPermission("third_person", depth=False),) if record else ()
     capture = ObservationConfig(
         joint_state=True,
         imu=spec.observations.imu,
         localization="ground_truth",
         state_period=dt,
         camera_period=period,
-        cameras=captured_permissions + third_person,
+        cameras=captured_permissions,
     )
     agent = ObservationAccess(
         joint_state=spec.observations.joint_state,
@@ -138,11 +131,6 @@ def observation_pipeline(
         shown = tuple(item for item in captured_permissions if item.name in viewer_cameras)
         access = ObservationAccess(joint_state=True, localization="ground_truth", cameras=shown)
         consumers.append(ServiceDeclaration("viewer", access))
-    if record:  # The video and its panels: the cameras it shows and the base pose (recording.panels).
-        panel_cameras = PanelFeed.cameras(robot)
-        shown = tuple(item for item in captured_permissions if item.name in panel_cameras)
-        access = ObservationAccess(localization="ground_truth", cameras=third_person + shown)
-        consumers.append(ServiceDeclaration("recorder", access))
     known_boxes = "navigation" in spec.actions and "known_map" in spec.grants
     privileged_sources = ("privileged_known_box_geometry",) if known_boxes else ()
     config = PipelineConfig(capture, agent, ObservationAccess.from_config(capture), privileged_sources)
@@ -150,37 +138,14 @@ def observation_pipeline(
 
 
 def record_view(spec: EpisodeSpec) -> tuple[np.ndarray, np.ndarray]:
-    """The third-person camera (eye, target) [m]: the spec's, else behind and above the robot's
-    start, looking ahead of it."""
+    """The third-person view (eye, target) [m] (``phygs replay --camera fixed``): the spec's, else
+    behind and above the robot's start, looking ahead of it."""
     if spec.record_view is not None:
         return tuple(np.array(spec.record_view[key], dtype=float) for key in ("eye", "target"))
     x, y, heading = spec.robot.start
     c, s = math.cos(heading), math.sin(heading)
     eye = np.array([x - 2.5 * c + 1.5 * s, y - 2.5 * s - 1.5 * c, 2.3])
     return eye, np.array([x + 1.0 * c, y + 1.0 * s, 0.4])
-
-
-def third_person_camera(record: dict, view: tuple[np.ndarray, np.ndarray]) -> dict:
-    """The video's camera config: the settings' ``record`` block (resolution) at ``view``."""
-    eye, target = view
-    return dict(
-        prim_path="{ENV_REGEX_NS}/ThirdPerson",
-        **record,
-        data_types=["rgb"],
-        offset=dict(pos=eye.tolist(), rot=look_rotation(eye, target), convention="world"),
-        pinhole=dict(focal_length=20.0, horizontal_aperture=20.955, clipping_range=[0.05, 30.0]),
-    )
-
-
-def look_rotation(eye: np.ndarray, target: np.ndarray) -> list[float]:
-    """Camera orientation [qx, qy, qz, qw] (world convention: x forward) looking from eye at target."""
-    from scipy.spatial.transform import Rotation
-
-    forward = np.asarray(target) - eye
-    forward /= np.linalg.norm(forward)
-    left = np.cross([0, 0, 1], forward)
-    left /= np.linalg.norm(left)
-    return Rotation.from_matrix(np.column_stack((forward, left, np.cross(forward, left)))).as_quat().tolist()
 
 
 def transit_outline(robot: RobotDescription) -> np.ndarray | None:

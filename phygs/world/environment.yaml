@@ -29,7 +29,7 @@ start_check:
 # wall, so reading every tick cost ~0.03 RTF; a contact shorter than this can be missed.
 contact_read_ticks: 5
 light: {intensity: 2500.0, color: [0.85, 0.85, 0.85]}  # The dome light.
-record: {width: 800, height: 450}  # Third-person video (--record), from the scene's record view.
+record: {width: 800, height: 450}  # The outside view of phygs replay's video [px].
 # The episode's recording (phygs.recording.log, episode.rrd): level full, all_frames (also every
 # camera capture as the cameras gave it, about 5 GB per simulated minute with 3 cameras; phygs
 # replay then shows those) or report_only; live: also stream it to a Rerun viewer you started at

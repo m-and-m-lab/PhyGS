@@ -120,7 +120,7 @@ class EpisodeSpec:
     objects: dict
     # Drawers open at the start: {name: {opening: m}}; what lies inside rides along. Others start closed.
     parts: dict
-    # The third-person video camera {eye, target} [m] (--record), or None.
+    # The replay video's fixed outside camera {eye, target} [m] (phygs replay), or None.
     record_view: dict | None
     # The task block as written; the framework does not read it (the caller's task loader does).
     task: dict

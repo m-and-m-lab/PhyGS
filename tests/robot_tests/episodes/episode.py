@@ -30,11 +30,12 @@ SETTINGS = yaml.safe_load((CONFIGS / "episodes.yaml").read_text())
 
 
 def start(description: str, default_spec: str, extra=None):
-    """Parse ``--spec``, ``--clock`` and the shared flags (``--record`` among them), plus the test's own
-    (``extra(flags)`` adds them); start the app. Returns (check, arguments, spec)."""
+    """Parse ``--spec``, ``--clock`` and the shared flags, plus the test's own (``extra(flags)`` adds
+    them); start the app. Returns (check, arguments, spec). The episode's video: ``phygs replay`` of
+    its recording."""
     from phygs.world.spec import EpisodeSpec
 
-    flags = parser(description)
+    flags = parser(description, record=False)
     flags.add_argument("--spec", type=Path, default=CONFIGS / "episodes" / f"{default_spec}.yaml")
     flags.add_argument("--clock", choices=("charged", "realtime"), default="charged")
     flags.set_defaults(enable_cameras=True)
@@ -59,7 +60,6 @@ def world(args, spec, planner: str | None = None):
         spec,
         args.output,
         clock=args.clock,
-        record=args.record,
         device=args.device,
         overrides=None if planner is None else {"planner": {"backend": planner}},
         robot=args.robot,

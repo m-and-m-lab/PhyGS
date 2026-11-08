@@ -144,7 +144,7 @@ clients, and the World (`world/world.py`) binds those to the scene and the agent
 | `scene/registry.py` | Scenes by id: `scene_file(id, version)` looks under `$PHYGS_SCENES`, `~/.cache/phygs/scenes` (fetched releases, version checked), then the built-in scenes (`phygs/scene/builtin`); no spec holds a file path. |
 | `scene/fetch.py` | Scene releases from the dataset: download, verify, install with a record (`phygs scenes`). |
 | `scene/reader.py` | `UsdScene`: loads any scene USD from its config; objects, drawers, colliders and where an object starts are found in the file by name. |
-| `scene/parts.py`, `scene/storage_units.py`, `scene/assets.py`, `scene/types.py` | Drawers from prismatic joints; the house's storage units; USD rigid-body registration for reset; `ArticulatedPart`. |
+| `scene/parts.py`, `scene/storage_units.py`, `scene/assets.py`, `scene/articulations.py`, `scene/types.py` | Drawers from prismatic joints; the house's storage units; USD rigid-body registration for reset; articulated furniture (links placed through their joints); `ArticulatedPart`. |
 | `sim/state.py` | Single-environment Isaac Lab snapshot restoration and one actuator-write/physics-step boundary (`IsaacLabWorld`). |
 | `sim/observations.py`, `sim/cameras.py` | Isaac Lab measurement capture, publication rates, and filtering before delivery to agents. |
 | `sim/base.py`, `sim/arm.py`, `sim/footprint.py`, `sim/fabric.py` | `BaseLink` (the base link's world pose and velocity); Isaac Lab differential IK for the wrist link; live collision bounds; Fabric writes for rendering. |
@@ -399,8 +399,10 @@ from the measured outline and padding. Episode IDs fence observations across res
 
 `scene/assets.py` registers existing USD rigid bodies before Spot is
 spawned, so the shared world snapshot restores the house as well as the robot.
-Ordinary joint-connected bodies retain their authored physics. Scene articulations
-require an explicit configuration and fail early in this registration path.
+Ordinary joint-connected bodies retain their authored physics. Articulated furniture (a cabinet
+and its doors and drawers in one PhysX articulation, `scene/articulations.py`) registers the same
+way; PhysX places its links from joint positions only, so a restore or a replay sets those, found
+from the written link poses, and a drawer opened before the start gets its slide's joint state.
 
 `navigation.explore()` (`phygs/skills/navigation/api.py`) is one command on the Nav2 backend:
 the bridge starts explore_lite on Nav2's global costmap and serves its `NavigateToPose` goals, each a
@@ -521,8 +523,8 @@ of the same: [docs/world.md](docs/world.md).
 | IsaacLab robot checks | `tests/robot_tests/{episodes,components}/check_*.py` | Require Isaac Sim, Isaac Lab, GPU, assets, and camera support. |
 
 Robot tests form a ladder in the order the framework is built ([tests/robot_tests/README.md](tests/robot_tests/README.md);
-`run_suite.py ladder --upto N`). Each spawns a scene, has the robot do one thing, and shows (`--record`),
-checks (`DIR/check.json`) and serves as the reference for using that part. A test takes the shape its
+`run_suite.py ladder --upto N`). Each spawns a scene, has the robot do one thing, and shows (`--record`; an agent test's
+video is `phygs replay` of its recording), checks (`DIR/check.json`) and serves as the reference for using that part. A test takes the shape its
 subject's real user would write: what an agent asks for (navigation, arm planning, pick and place,
 drawers, retrieve, the entry point) is an agent test, `episodes/check_*.py`: an episode spec, a plan
 through the agent session only, and checks on the test side from ground truth after the run

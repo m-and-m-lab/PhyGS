@@ -20,10 +20,10 @@ From the repository root, with ROS Jazzy sourced (MoveIt only):
 source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=47
 isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
-  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_arm_planning_moveit
 isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
-  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit --record \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml --planner moveit \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place_moveit
 ```
 
@@ -45,7 +45,8 @@ held object would hit (known boxes only: on depth the clutter's top is unseen wh
 below), carries it over the clutter and back, places it on a free spot and stows. Both read the
 target pose and every arm contact on the test side (ground truth, never the agent's). Outputs:
 `check.json`, the episode's `report.json` and `episode.rrd` (with every plan request; `examples/replay_plans.py`
-plans them again), the planner's log, and `third_person.mp4` with `--record` (simulation time).
+plans them again) and the planner's log. `phygs replay <output>` renders the run's video from the
+recording (`replay/replay.mp4`, simulation time).
 
 ## Dependencies
 
@@ -450,7 +451,7 @@ recent failures. The shared validator keeps its `require_observed` option.
 ```bash
 source /opt/ros/jazzy/setup.bash
 ROS_DOMAIN_ID=47 isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_arm_planning.py \
-  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach_depth.yaml --planner moveit --record \
+  --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach_depth.yaml --planner moveit \
   --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_depth_reach
 ```
 

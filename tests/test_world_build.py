@@ -11,7 +11,6 @@ from __future__ import annotations
 import pytest
 import yaml
 
-from phygs.recording.panels import PanelFeed
 from phygs.robots.description import load_robot
 from phygs.world import build
 from phygs.world.build import SETTINGS
@@ -63,13 +62,11 @@ def test_unbuildable_combinations_are_refused_before_the_simulator_starts(spot):
         build.check_supported(spec(grants=["known_map"]), spot)
 
 
-def test_the_captured_cameras_are_the_agents_then_what_skills_video_and_viewer_need(spot):
+def test_the_captured_cameras_are_the_agents_then_what_skills_and_viewer_need(spot):
     known = build.captured_cameras(spec(), spot, ("hand",))
     assert known[0] == "hand" and spot.look_camera in known and len(set(known)) == len(known)
     depth = build.captured_cameras(spec(grants=["gt_localization"]), spot, ("hand",))
     assert set(spot.cameras_for("planning")) | set(spot.cameras_for("navigation")) <= set(depth)
-    recorded = build.captured_cameras(spec(), spot, ("hand",), record=True)
-    assert set(PanelFeed.cameras(spot)) <= set(recorded)
     with pytest.raises(ValueError, match="viewer asks for unknown cameras"):
         build.captured_cameras(spec(), spot, ("hand",), viewer_cameras=("periscope",))
 
@@ -82,12 +79,11 @@ def test_the_agent_reads_only_what_the_spec_grants_and_the_others_read_what_they
         ("hand", "frontleft"),
         dt=0.004,
         period=0.032,
-        record=True,
         viewer_cameras=("frontleft",),
     )
     assert config.agent.localization == "none" and [c.name for c in config.agent.cameras] == ["hand"]
-    assert [c.name for c in config.capture.cameras] == ["hand", "frontleft", "third_person"]
-    assert [c.name for c in consumers] == ["skills", "viewer", "recorder"]
+    assert [c.name for c in config.capture.cameras] == ["hand", "frontleft"]
+    assert [c.name for c in consumers] == ["skills", "viewer"]
     assert config.privileged_sources == ()
     config, consumers = build.observation_pipeline(spec(), spot, ("hand",), ("hand",), dt=0.004, period=0.032)
     assert config.agent.localization == "ground_truth" and [c.name for c in consumers] == ["skills"]
@@ -99,5 +95,3 @@ def test_the_third_person_view_is_the_specs_or_behind_the_start(spot):
     assert eye.tolist() == [1, 2, 3] and target.tolist() == [0, 0, 0]
     eye, target = build.record_view(spec())
     assert eye[0] < -1.6 < target[0] and eye[2] > target[2]  # Behind and above, looking ahead.
-    camera = build.third_person_camera(dict(width=640, height=360), (eye, target))
-    assert camera["width"] == 640 and len(camera["offset"]["rot"]) == 4

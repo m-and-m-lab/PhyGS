@@ -138,14 +138,17 @@ def config_scene(robot, config: dict) -> dict:
     )
 
 
-def parser(description: str, manual: bool = False) -> argparse.ArgumentParser:
-    """The shared flags: ``--output`` (a fresh folder), ``--manual`` (keyboard control in the Kit
-    window instead of the checks) when the test has it, and the app flags (``--viz kit`` to watch)."""
+def parser(description: str, manual: bool = False, record: bool = True) -> argparse.ArgumentParser:
+    """The shared flags: ``--output`` (a fresh folder), ``--record`` (a component test's video; an
+    episode test's comes from ``phygs replay`` of its recording), ``--manual`` (keyboard control in
+    the Kit window instead of the checks) when the test has it, and the app flags (``--viz kit`` to
+    watch)."""
     from isaaclab.app import AppLauncher
 
     result = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
     result.add_argument("--output", type=Path, required=True, help="Fresh folder for check.json and the test's files")
-    result.add_argument("--record", action="store_true", help="Video with the command timeline: third_person.mp4")
+    if record:
+        result.add_argument("--record", action="store_true", help="Video with the command timeline: third_person.mp4")
     result.add_argument(
         "--robot",
         default=None,
@@ -167,8 +170,8 @@ class Check:
             raise SystemExit(f"{args.output} holds a finished check; choose a fresh output folder")
         args.output.mkdir(parents=True, exist_ok=True)
         self.name, self.output, self.checks, self.data = name, args.output, {}, {}
-        self._record, self._video, self._panels = args.record, None, None
-        if args.record:
+        self._record, self._video, self._panels = getattr(args, "record", False), None, None
+        if self._record:
             args.enable_cameras = True
         stacks = (args.output / "stacks.txt").open("w")
         faulthandler.enable(file=stacks, all_threads=True)

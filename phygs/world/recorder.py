@@ -3,19 +3,12 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""An episode's output folder: ``report.json``, the live third-person video and the contact records."""
+"""An episode's output folder: ``report.json`` and the arm contact records."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-
-import numpy as np
-
-from phygs.recording.panels import PanelSources
-from phygs.recording.state_log import StateLog
-from phygs.recording.video import Video
-from phygs.scene.plan import Plan
 
 
 def pinched_bodies(contacts: list[tuple[str, str, float]], jaw_links: tuple[str, ...]) -> set[str]:
@@ -27,8 +20,7 @@ def pinched_bodies(contacts: list[tuple[str, str, float]], jaw_links: tuple[str,
 
 
 class Recorder:
-    """Writes the report and, with ``video``, ``third_person.mp4`` (recording.video: the outside view,
-    the panels and the overview strip, with the scene's floor ``plan``).
+    """Writes the report (``report.json``) and records the arm contacts.
 
     Arm contacts are recorded apart as the grasp when, from the gripper's close command to its
     opening (one hold), a jaw link touches a body both jaws pinched at some tick of that hold: the
@@ -37,43 +29,22 @@ class Recorder:
     both jaws on a surface, is a ``contact``.
 
     Contacts are read every ``read_ticks`` physics ticks; a record's ``ticks`` counts each read as
-    that many ticks. ``state`` holds the states the live video's strip draws
-    (:mod:`phygs.recording.state_log`), sampled by the World.
+    that many ticks.
     """
 
     def __init__(
         self,
         output: Path,
         *,
-        video: bool,
-        fps: float,
         jaw_links: tuple[str, ...] = (),
         read_ticks: int = 1,
-        state: StateLog | None = None,
-        plan: Plan | None = None,
     ) -> None:
         self.output = output
-        self.state = state
-        self._video = Video(output / "third_person.mp4", fps=fps, plan=plan) if video else None
         self._jaw_links = tuple(jaw_links)
         self._read_ticks = read_ticks
         self.contacts: dict[tuple[str, str, bool], dict] = {}
         self._hold: dict[tuple[str, str], dict] = {}  # Jaw contacts of the current hold, not yet sorted.
         self._pinched: set[str] = set()  # Bodies both jaws pinched in the current hold.
-
-    def frame(
-        self,
-        outside: np.ndarray,
-        *,
-        sources: PanelSources | None,
-        trace: dict,
-        sim_time: float,
-        duration: float | None = None,
-    ) -> None:
-        """One video frame: the ``outside`` image with the panels (cameras, costmap, arm plan) from
-        ``sources`` beside it and the overview strip of ``trace`` under both (recording.video)."""
-        if self._video is not None:
-            self._video.frame(outside, sources=sources, trace=trace, sim_time=sim_time, duration=duration)
 
     def contacts_tick(
         self, time_seconds: float, contacts: list[tuple[str, str, float]], step: str, *, gripper_closed: bool
@@ -109,10 +80,6 @@ class Recorder:
         self._end_hold()
         return _report(self.contacts)
 
-    def contacts_so_far(self) -> dict[str, list[dict]]:
-        """:meth:`contact_report` now, as if the current hold ended (copies; the hold goes on)."""
-        return _report(_sorted({key: dict(record) for key, record in self.contacts.items()}, self._hold, self._pinched))
-
     def write_stub(self, stub: dict) -> Path:
         """Write ``report.json`` at the episode's start (:func:`phygs.world.report.stub`): a run that
         dies before its report still says what ran and where its recording is."""
@@ -125,11 +92,6 @@ class Recorder:
         path = self.output / "report.json"
         path.write_text(json.dumps(report, indent=2) + "\n")
         return path
-
-    def close(self) -> None:
-        if self._video is not None:
-            self._video.close()
-            self._video = None
 
 
 def _sorted(contacts: dict, hold: dict, pinched: set[str]) -> dict:

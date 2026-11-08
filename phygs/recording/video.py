@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Videos of robot runs, one look for the recording (``--record``) and the replay (``phygs replay``).
+"""Videos of robot runs, one look for a component test's ``--record`` and the replay (``phygs replay``).
 
 A frame is the outside view (a camera following the robot, :class:`Chase`), the panels to its right
 (:mod:`phygs.recording.panels`: the front and hand cameras, their depth, navigation and the arm

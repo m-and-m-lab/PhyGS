@@ -298,7 +298,7 @@ def aim_camera(path: str, eye, target, near: float | None = None) -> None:
     """Point the USD camera at ``path`` from ``eye`` at ``target`` (world [m]); straight down, image
     up is +y. ``near`` [m] moves the near clip (the far one goes to 200 m). The camera's pose becomes
     one transform op (``xformOp:transform:aim``), replacing the ops it was spawned with, so a scene
-    camera such as the recording's ``third_person`` can follow the robot too."""
+    camera such as the replay's outside view can follow the robot too."""
     import numpy as np
     import omni.usd
     from pxr import Gf, UsdGeom

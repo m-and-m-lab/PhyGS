@@ -432,7 +432,7 @@ class Route:
 
 
 class States:
-    """A run's states (:meth:`Recording.states`, or the live video's, :mod:`.state_log`): the samples
+    """A run's states (:meth:`Recording.states`): the samples
     every camera period, the scene at any sample, Nav2's routes and costmaps and the arm plans at any
     time, the command spans and ``meta`` (what replay needs to build the scene again)."""
 

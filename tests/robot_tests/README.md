@@ -3,7 +3,9 @@
 Each robot test spawns a scene and has the robot do one thing: walk, plan an arm move, pick and
 place, open a drawer, search, retrieve. A test does three jobs at once:
 
-- **Show.** `--record` writes a video of the run; `--viz kit` opens the simulator window.
+- **Show.** `--viz kit` opens the simulator window. A component test's `--record` films it
+  (`third_person.mp4`); an agent test's video is `phygs replay <output>` of its recording
+  (`replay/replay.mp4`); `run_suite.py --record` does both for every test.
 - **Check.** It measures named values against thresholds and writes `check.json`, so a person or a
   coding agent can see what broke without watching.
 - **Teach.** Its code is the reference for using that part of the framework.
@@ -74,7 +76,8 @@ isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pic
 # One test directly.
 isaaclab -p scripts/PhyGS/tests/robot_tests/episodes/check_pick_place.py \
   --spec scripts/PhyGS/tests/robot_tests/configs/episodes/table_reach.yaml \
-  --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place --record
+  --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)_pick_place
+phygs replay scripts/PhyGS/output_check/<that folder>   # Its video, from the recording.
 ```
 
 The suite writes `output_check/<YYYYMMDD-HHMM>_<label>/` with one folder and log per test,

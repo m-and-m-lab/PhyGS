@@ -63,7 +63,7 @@ class Replay:
     ``robot`` replaces the run's robot (a description, a name or a ``robot.yaml``); it must have the
     same joints. ``views`` are the robot's views to render (:data:`VIEWS`; the cameras are rendered
     for the ``front`` and ``hand`` ones); ``outside`` the size (width, height) [px] of the outside
-    camera (default: the settings' ``record`` size, as the recording's), None for none; ``fixed``
+    camera (default: the settings' ``record`` size), None for none; ``fixed``
     keeps it at the run's record view instead of behind the robot (recording.video's ``Chase``).
     """
 

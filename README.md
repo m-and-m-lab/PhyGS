@@ -157,7 +157,7 @@ Adding a robot is one folder with a `robot.yaml` ([docs/adding_a_robot.md](docs/
 
 ## 🧪 Robot tests
 
-Every robot test spawns a scene and has the robot do one thing, measures it against thresholds and writes `check.json` and, with `--record`, a video. They form a ladder in the order the framework is built; after a change, run it up to the rung you touched. Full table and commands: [tests/robot_tests/README.md](tests/robot_tests/README.md).
+Every robot test spawns a scene and has the robot do one thing, measures it against thresholds and writes `check.json`; `run_suite.py --record` adds a video of each (an agent test's: `phygs replay` of its recording). They form a ladder in the order the framework is built; after a change, run it up to the rung you touched. Full table and commands: [tests/robot_tests/README.md](tests/robot_tests/README.md).
 
 | Rung | What the robot does | Needs |
 | --- | --- | --- |
