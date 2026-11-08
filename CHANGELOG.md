@@ -25,12 +25,12 @@ Changed (2026-11-08, docs):
   check and its output, a quick start that ends in a video, and a "Where to go next" table. The
   teaser became `docs/assets/teaser.jpg` (166 KB; `teaser.png`, 7.8 MB, was removed), and the README
   gained the "where this fits" figure, `docs/figures/where_it_fits.svg` and `where_it_fits_dark.svg`.
-- `AGENTS.md`'s documentation table gained a rule: the README stays a front door of about 150
-  lines.
+- `AGENTS.md`'s documentation table gained two rules: the README stays a front door of about 150
+  lines, and a release updates `CITATION.cff`.
 
 Added (2026-11-08):
 
-- `LICENSE`, a placeholder until the licence is chosen.
+- `LICENSE`, a placeholder until the licence is chosen; `CITATION.cff`.
 
 ### 0.12.0 (2026-11-08)
 

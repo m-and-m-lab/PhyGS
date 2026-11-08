@@ -106,6 +106,7 @@ When changing architecture or workflow, update:
 | `README.md` | User-facing setup, quick start, or major capability changes. It is the front door (about 150 lines): reference material goes in `docs/` and gets a row in its "Where to go next" table. |
 | `ARCHITECTURE.md` | Pipeline, API, backend, or data-flow changes. |
 | `CHANGELOG.md` | Any user-visible change: one past-tense line under Unreleased. |
+| `CITATION.cff` | A release: its `version` and `date-released`, as in `pyproject.toml`. |
 | `docs/README.md` | A guide is added, renamed, or superseded. Follow its "Keeping the docs tidy" rules. |
 | Local directory README | Large directory ownership or launch commands change. |
 
