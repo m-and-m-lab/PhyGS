@@ -8,9 +8,11 @@
 The ladder is every robot test in the order the framework is built: scene, sensors, locomotion,
 footprint, arm (component tests, below the episode harness), then navigation, obstacle avoidance,
 arm planning, pick and place, drawers, search, retrieve and the public entry point (agent tests:
-an episode spec and a scripted plan through the agent session). ``tests/robot_tests/README.md``
-has the table. A test whose requirement is missing (ROS 2 Jazzy sourced, explore_lite's overlay,
-cuRobo's dependencies) is skipped, not failed.
+an episode spec and a scripted plan through the agent session). ``ladder.json`` holds the
+entries (rung, script, spec, requirements, groups, criteria file and last evidence); this runner
+reads it and never writes it. ``tests/robot_tests/README.md`` describes each rung. A test whose
+requirement is missing (ROS 2 Jazzy sourced, explore_lite's overlay, cuRobo's dependencies) is
+skipped, not failed.
 
 Each test writes ``<folder>/<name>/check.json`` and its log ``<folder>/<name>.log``; the summary is
 ``<folder>/summary.json`` (each test's measured values too) and ``<folder>/index.html`` (results, with
@@ -43,58 +45,30 @@ import yaml
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parents[1]  # The PhyGS checkout.
 SPECS = ROOT / "configs" / "episodes"
-ARM, PICK = "episodes/check_arm_planning.py", "episodes/check_pick_place.py"
-NAVIGATION, RETRIEVE, STROKE, LOOK = (
-    "episodes/check_navigation.py",
-    "episodes/check_retrieve.py",
-    "episodes/check_drawer_stroke.py",
-    "episodes/check_look.py",
-)
+LADDER = ROOT / "ladder.json"  # The ladder: every robot test in build order; read here, never written.
 
 
-def spec(name: str) -> list:
-    return ["--spec", SPECS / f"{name}.yaml"]
+def ladder(path: Path = LADDER) -> list[dict]:
+    """The ladder's entries, in build order: each one's rung, suite name, script, spec, arguments,
+    requirements and groups, its criteria file and its last evidence (``ladder.json``)."""
+    return json.loads(path.read_text())["rungs"]
 
 
-# (rung, name, script, arguments, requirements), in build order.
-LADDER = [
-    (1, "scene_reset", "components/check_world_lifecycle.py", [], ()),
-    (2, "sensors", "components/check_observations.py", [], ()),
-    (3, "locomotion", "components/check_locomotion.py", [], ()),
-    (4, "footprint", "components/check_footprint.py", [], ()),
-    (5, "arm", "components/check_manipulation.py", [], ()),
-    (6, "navigation_course", NAVIGATION, spec("nav_course"), ("ros2",)),
-    (6, "navigation_house", NAVIGATION, spec("nav_house"), ("ros2",)),
-    (7, "obstacle_avoidance", "episodes/check_dynamic_obstacle.py", spec("nav_dynamic"), ("ros2",)),
-    (8, "arm_planning_known", ARM, spec("table_reach"), ("curobo",)),
-    (8, "arm_planning_known_moveit", ARM, [*spec("table_reach"), "--planner", "moveit"], ("ros2",)),
-    (9, "arm_planning_depth", ARM, spec("table_reach_depth"), ("curobo",)),
-    (9, "arm_planning_depth_moveit", ARM, [*spec("table_reach_depth"), "--planner", "moveit"], ("ros2",)),
-    (10, "pick_place_known", PICK, spec("table_reach"), ("curobo",)),
-    (10, "pick_place_known_moveit", PICK, [*spec("table_reach"), "--planner", "moveit"], ("ros2",)),
-    (10, "pick_place_depth", PICK, spec("table_reach_depth"), ("curobo",)),
-    (10, "pick_place_depth_moveit", PICK, [*spec("table_reach_depth"), "--planner", "moveit"], ("ros2",)),
-    (11, "drawer_grid", STROKE, spec("dev_grid_drawer"), ("ros2", "curobo")),
-    (11, "drawer_house", STROKE, spec("dev_house_drawer"), ("ros2", "curobo")),
-    (11, "look_table", LOOK, spec("table_reach_depth"), ("curobo",)),
-    (11, "look_grid", LOOK, spec("dev_grid_drawer"), ("ros2", "curobo")),
-    (11, "look_house", LOOK, spec("dev_house_drawer"), ("ros2", "curobo")),
-    (12, "drawer_place", "episodes/check_drawer_place.py", [], ("ros2", "curobo")),
-    (13, "search_house", "components/check_nav2_pipeline.py", [], ("explore",)),
-    (14, "retrieve_grid", RETRIEVE, spec("dev_grid_drawer"), ("ros2", "curobo")),
-    (14, "retrieve_house", RETRIEVE, spec("dev_house_drawer"), ("ros2", "curobo")),
-    # Three episodes in one World: each repeat starts from the same checked state (World.next_episode).
-    (14, "retrieve_repeat", RETRIEVE, [*spec("dev_grid_drawer"), "--repeats", "3"], ("ros2", "curobo")),
-    (15, "entry_point", "episodes/check_entry_point.py", [], ("ros2", "curobo")),
-]
-# Groups by subsystem, as before the ladder (2026-10-28): rungs of the ladder.
-GROUPS = {
-    "ladder": range(1, 16),
-    "base": (1, 2, 3, 4),
-    "nav2": (6, 7, 13),
-    "manipulation": (5, 8, 9, 10),
-    "episodes": (11, 12, 14, 15),
-}
+def select(entries: list[dict], groups: list[str], first: int = 1, upto: int | None = None, only=None) -> list[dict]:
+    """The entries of ``groups`` whose rung is in [``first``, ``upto``] (None: the top rung), in ladder
+    order; with ``only``, just those suite names."""
+    return [
+        entry
+        for entry in entries
+        if set(groups) & set(entry["groups"])
+        and first <= entry["rung"] <= (entry["rung"] if upto is None else upto)
+        and (not only or entry["name"] in only)
+    ]
+
+
+def arguments(entry: dict) -> list:
+    """The test script's arguments: its spec (``configs/episodes/<spec>.yaml``) and flags."""
+    return [*(["--spec", SPECS / f"{entry['spec']}.yaml"] if entry["spec"] else []), *entry["args"]]
 
 
 def missing(requirements: tuple[str, ...]) -> list[str]:
@@ -119,24 +93,25 @@ def missing(requirements: tuple[str, ...]) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("groups", nargs="+", choices=sorted(GROUPS))
+    entries = ladder()
+    parser.add_argument("groups", nargs="+", choices=sorted({group for entry in entries for group in entry["groups"]}))
     parser.add_argument("--only", nargs="+", help="Run only these test names of the groups")
     parser.add_argument("--from", dest="first", type=int, default=1, help="First rung to run")
-    parser.add_argument("--upto", type=int, default=15, help="Last rung to run")
+    parser.add_argument("--upto", type=int, default=None, help="Last rung to run (default: the top rung)")
     parser.add_argument("--label", default=None, help="Folder label (default: the groups)")
     parser.add_argument("--timeout", type=float, default=3600.0, help="Per test [s wall]")
     parser.add_argument("--record", action="store_true", help="Each test's video (components: live; episodes: replay)")
     parser.add_argument("--kit_args", default=None, help="Kit arguments for every test (one string)")
     args = parser.parse_args()
-    rungs = {rung for group in args.groups for rung in GROUPS[group] if args.first <= rung <= args.upto}
-    tests = [test for test in LADDER if test[0] in rungs and (not args.only or test[1] in args.only)]
+    tests = select(entries, args.groups, args.first, args.upto, args.only)
     label = args.label or "_".join(args.groups)
     folder = PROJECT / "output_check" / f"{datetime.now():%Y%m%d-%H%M}_{label}"
     folder.mkdir(parents=True, exist_ok=False)
     print(f"{len(tests)} robot tests into {folder}", flush=True)
     summary = []
-    for rung, name, script, extra, requirements in tests:
-        lacking = missing(requirements)
+    for test in tests:
+        rung, name, script, extra = test["rung"], test["name"], test["test"], arguments(test)
+        lacking = missing(tuple(test["requires"]))
         if lacking:
             summary.append(
                 dict(rung=rung, name=name, status="skipped", exit=None, minutes=0.0, error=", ".join(lacking))

@@ -11,6 +11,14 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+Changed (2026-11-09, robot tests):
+
+- The robot-test ladder moved from `LADDER` and `GROUPS` in `run_suite.py` to
+  `tests/robot_tests/ladder.json`: each suite test's rung, script, spec, arguments, requirements,
+  groups, criteria file (`configs/<name>.yaml`, never a copy of its thresholds) and last evidence
+  (`passes`, `last_run`, `passed_at_commit`). `run_suite.py` reads it and selects the same tests as
+  before; it never writes it.
+
 Added (2026-11-08, composite pick):
 
 - `Tuning.pick_tilts_deg` (15, 30, 45, 60 deg from straight down) and `Tuning.pick_side_step_deg`

@@ -65,7 +65,7 @@ packages = [
 "phygs.ui" = ["web/*.html", "web/*.js", "web/*.css", "configs/*.yaml"]
 "phygs.scene" = ["builtin/*/scene.usda"]
 "phygs.skills.navigation.execution.launch" = ["*.py", "*.yaml", "*.rviz"]
-"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "tasks/*.yaml", "*.npz"]
+"phygs_robot_tests" = ["configs/*.yaml", "configs/**/*.yaml", "tasks/*.yaml", "*.npz", "ladder.json"]
 
 [tool.ruff]
 line-length = 120

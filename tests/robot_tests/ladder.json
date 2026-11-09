@@ -1,0 +1,775 @@
+{
+  "about": "PhyGS's robot-test ladder (research-playbook robot-test-ladder): one entry per suite entry, in build order; run_suite.py reads it and never writes it. Paths are relative to tests/robot_tests (last_run: to the PhyGS checkout). criteria names the thresholds' file (and keys), never a copy. depends_on names the rung below in build order (the ladder's order), not a merge gate. passes, last_run and passed_at_commit change only from a run folder's evidence: the newest run of the entry among those the ladder's status page cites and those whose tree is a known commit; passed_at_commit is that commit (the run's clean HEAD, or the commit whose diff from the run's HEAD equals the run's recorded dirty diff), else null. passes does not yet require a video.",
+  "rungs": [
+    {
+      "id": "R1.scene_reset",
+      "rung": 1,
+      "name": "scene_reset",
+      "level": "component",
+      "test": "components/check_world_lifecycle.py",
+      "spec": null,
+      "args": [],
+      "requires": [],
+      "groups": [
+        "base",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "components/check_world_lifecycle.py"
+      },
+      "video_required": false,
+      "depends_on": [],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R2.sensors",
+      "rung": 2,
+      "name": "sensors",
+      "level": "component",
+      "test": "components/check_observations.py",
+      "spec": null,
+      "args": [],
+      "requires": [],
+      "groups": [
+        "base",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/observations.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R1.scene_reset"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R3.locomotion",
+      "rung": 3,
+      "name": "locomotion",
+      "level": "component",
+      "test": "components/check_locomotion.py",
+      "spec": null,
+      "args": [],
+      "requires": [],
+      "groups": [
+        "base",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/locomotion.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R2.sensors"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261108-0125_live_video_removed_smoke",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R4.footprint",
+      "rung": 4,
+      "name": "footprint",
+      "level": "component",
+      "test": "components/check_footprint.py",
+      "spec": null,
+      "args": [],
+      "requires": [],
+      "groups": [
+        "base",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/footprint.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R3.locomotion"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R5.arm",
+      "rung": 5,
+      "name": "arm",
+      "level": "component",
+      "test": "components/check_manipulation.py",
+      "spec": null,
+      "args": [],
+      "requires": [],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/manipulation.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R4.footprint"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R6.navigation_course",
+      "rung": 6,
+      "name": "navigation_course",
+      "level": "agent",
+      "test": "episodes/check_navigation.py",
+      "spec": "nav_course",
+      "args": [],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "nav2"
+      ],
+      "criteria": {
+        "file": "configs/navigation.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R5.arm"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R6.navigation_house",
+      "rung": 6,
+      "name": "navigation_house",
+      "level": "agent",
+      "test": "episodes/check_navigation.py",
+      "spec": "nav_house",
+      "args": [],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "nav2"
+      ],
+      "criteria": {
+        "file": "configs/navigation.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R5.arm"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R7.obstacle_avoidance",
+      "rung": 7,
+      "name": "obstacle_avoidance",
+      "level": "agent",
+      "test": "episodes/check_dynamic_obstacle.py",
+      "spec": "nav_dynamic",
+      "args": [],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "nav2"
+      ],
+      "criteria": {
+        "file": "configs/dynamic_obstacle.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R6.navigation_course",
+        "R6.navigation_house"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R8.arm_planning_known",
+      "rung": 8,
+      "name": "arm_planning_known",
+      "level": "agent",
+      "test": "episodes/check_arm_planning.py",
+      "spec": "table_reach",
+      "args": [],
+      "requires": [
+        "curobo"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/arm_planning.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R7.obstacle_avoidance"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R8.arm_planning_known_moveit",
+      "rung": 8,
+      "name": "arm_planning_known_moveit",
+      "level": "agent",
+      "test": "episodes/check_arm_planning.py",
+      "spec": "table_reach",
+      "args": [
+        "--planner",
+        "moveit"
+      ],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/arm_planning.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R7.obstacle_avoidance"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R9.arm_planning_depth",
+      "rung": 9,
+      "name": "arm_planning_depth",
+      "level": "agent",
+      "test": "episodes/check_arm_planning.py",
+      "spec": "table_reach_depth",
+      "args": [],
+      "requires": [
+        "curobo"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/arm_planning.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R8.arm_planning_known",
+        "R8.arm_planning_known_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R9.arm_planning_depth_moveit",
+      "rung": 9,
+      "name": "arm_planning_depth_moveit",
+      "level": "agent",
+      "test": "episodes/check_arm_planning.py",
+      "spec": "table_reach_depth",
+      "args": [
+        "--planner",
+        "moveit"
+      ],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/arm_planning.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R8.arm_planning_known",
+        "R8.arm_planning_known_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R10.pick_place_known",
+      "rung": 10,
+      "name": "pick_place_known",
+      "level": "agent",
+      "test": "episodes/check_pick_place.py",
+      "spec": "table_reach",
+      "args": [],
+      "requires": [
+        "curobo"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/pick_place.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R9.arm_planning_depth",
+        "R9.arm_planning_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261108-1821_d26s1_baseline",
+      "passed_at_commit": "28713bc3c082a7bcc77ba0e42973571abf7afcc8"
+    },
+    {
+      "id": "R10.pick_place_known_moveit",
+      "rung": 10,
+      "name": "pick_place_known_moveit",
+      "level": "agent",
+      "test": "episodes/check_pick_place.py",
+      "spec": "table_reach",
+      "args": [
+        "--planner",
+        "moveit"
+      ],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/pick_place.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R9.arm_planning_depth",
+        "R9.arm_planning_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R10.pick_place_depth",
+      "rung": 10,
+      "name": "pick_place_depth",
+      "level": "agent",
+      "test": "episodes/check_pick_place.py",
+      "spec": "table_reach_depth",
+      "args": [],
+      "requires": [
+        "curobo"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/pick_place.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R9.arm_planning_depth",
+        "R9.arm_planning_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R10.pick_place_depth_moveit",
+      "rung": 10,
+      "name": "pick_place_depth_moveit",
+      "level": "agent",
+      "test": "episodes/check_pick_place.py",
+      "spec": "table_reach_depth",
+      "args": [
+        "--planner",
+        "moveit"
+      ],
+      "requires": [
+        "ros2"
+      ],
+      "groups": [
+        "ladder",
+        "manipulation"
+      ],
+      "criteria": {
+        "file": "configs/pick_place.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R9.arm_planning_depth",
+        "R9.arm_planning_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R11.drawer_grid",
+      "rung": 11,
+      "name": "drawer_grid",
+      "level": "agent",
+      "test": "episodes/check_drawer_stroke.py",
+      "spec": "dev_grid_drawer",
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/episodes.yaml",
+        "keys": [
+          "stroke_min_opening_m",
+          "opening_tolerance_m",
+          "closed_max_m"
+        ]
+      },
+      "video_required": true,
+      "depends_on": [
+        "R10.pick_place_known",
+        "R10.pick_place_known_moveit",
+        "R10.pick_place_depth",
+        "R10.pick_place_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261108-1512_readme_check_quickstart",
+      "passed_at_commit": "67fddf15b94f7b99e82be2257b89d83fefdcb4ac"
+    },
+    {
+      "id": "R11.drawer_house",
+      "rung": 11,
+      "name": "drawer_house",
+      "level": "agent",
+      "test": "episodes/check_drawer_stroke.py",
+      "spec": "dev_house_drawer",
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/episodes.yaml",
+        "keys": [
+          "stroke_min_opening_m",
+          "opening_tolerance_m",
+          "closed_max_m"
+        ]
+      },
+      "video_required": true,
+      "depends_on": [
+        "R10.pick_place_known",
+        "R10.pick_place_known_moveit",
+        "R10.pick_place_depth",
+        "R10.pick_place_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R11.look_table",
+      "rung": 11,
+      "name": "look_table",
+      "level": "agent",
+      "test": "episodes/check_look.py",
+      "spec": "table_reach_depth",
+      "args": [],
+      "requires": [
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/episodes.yaml",
+        "keys": [
+          "look_min_views",
+          "look_min_points",
+          "look_depth_tolerance_m"
+        ]
+      },
+      "video_required": true,
+      "depends_on": [
+        "R10.pick_place_known",
+        "R10.pick_place_known_moveit",
+        "R10.pick_place_depth",
+        "R10.pick_place_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R11.look_grid",
+      "rung": 11,
+      "name": "look_grid",
+      "level": "agent",
+      "test": "episodes/check_look.py",
+      "spec": "dev_grid_drawer",
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/episodes.yaml",
+        "keys": [
+          "look_min_views",
+          "look_min_points",
+          "look_depth_tolerance_m"
+        ]
+      },
+      "video_required": true,
+      "depends_on": [
+        "R10.pick_place_known",
+        "R10.pick_place_known_moveit",
+        "R10.pick_place_depth",
+        "R10.pick_place_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R11.look_house",
+      "rung": 11,
+      "name": "look_house",
+      "level": "agent",
+      "test": "episodes/check_look.py",
+      "spec": "dev_house_drawer",
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/episodes.yaml",
+        "keys": [
+          "look_min_views",
+          "look_min_points",
+          "look_depth_tolerance_m"
+        ]
+      },
+      "video_required": true,
+      "depends_on": [
+        "R10.pick_place_known",
+        "R10.pick_place_known_moveit",
+        "R10.pick_place_depth",
+        "R10.pick_place_depth_moveit"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R12.drawer_place",
+      "rung": 12,
+      "name": "drawer_place",
+      "level": "agent",
+      "test": "episodes/check_drawer_place.py",
+      "spec": null,
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "configs/episodes.yaml",
+        "keys": [
+          "closed_max_m"
+        ]
+      },
+      "video_required": true,
+      "depends_on": [
+        "R11.drawer_grid",
+        "R11.drawer_house",
+        "R11.look_table",
+        "R11.look_grid",
+        "R11.look_house"
+      ],
+      "passes": false,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R13.search_house",
+      "rung": 13,
+      "name": "search_house",
+      "level": "component",
+      "test": "components/check_nav2_pipeline.py",
+      "spec": null,
+      "args": [],
+      "requires": [
+        "explore"
+      ],
+      "groups": [
+        "ladder",
+        "nav2"
+      ],
+      "criteria": {
+        "file": "configs/house.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R12.drawer_place"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R14.retrieve_grid",
+      "rung": 14,
+      "name": "retrieve_grid",
+      "level": "agent",
+      "test": "episodes/check_retrieve.py",
+      "spec": "dev_grid_drawer",
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "tasks/retrieve.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R13.search_house"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R14.retrieve_house",
+      "rung": 14,
+      "name": "retrieve_house",
+      "level": "agent",
+      "test": "episodes/check_retrieve.py",
+      "spec": "dev_house_drawer",
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "tasks/retrieve.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R13.search_house"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261108-1821_d26s1_baseline",
+      "passed_at_commit": "28713bc3c082a7bcc77ba0e42973571abf7afcc8"
+    },
+    {
+      "id": "R14.retrieve_repeat",
+      "rung": 14,
+      "name": "retrieve_repeat",
+      "level": "agent",
+      "test": "episodes/check_retrieve.py",
+      "spec": "dev_grid_drawer",
+      "args": [
+        "--repeats",
+        "3"
+      ],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "tasks/retrieve.yaml"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R13.search_house"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261107-2310_flowed_logging",
+      "passed_at_commit": null
+    },
+    {
+      "id": "R15.entry_point",
+      "rung": 15,
+      "name": "entry_point",
+      "level": "agent",
+      "test": "episodes/check_entry_point.py",
+      "spec": null,
+      "args": [],
+      "requires": [
+        "ros2",
+        "curobo"
+      ],
+      "groups": [
+        "episodes",
+        "ladder"
+      ],
+      "criteria": {
+        "file": "episodes/check_entry_point.py"
+      },
+      "video_required": true,
+      "depends_on": [
+        "R14.retrieve_grid",
+        "R14.retrieve_house",
+        "R14.retrieve_repeat"
+      ],
+      "passes": true,
+      "last_run": "output_check/20261108-1807_t84_entry_point_commit",
+      "passed_at_commit": "28713bc3c082a7bcc77ba0e42973571abf7afcc8"
+    }
+  ]
+}

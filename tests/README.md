@@ -41,9 +41,10 @@ it and how to add a rung: [tests/robot_tests/README.md](../tests/robot_tests/REA
 
 ```
 robot_tests/
-  README.md        the ladder: every robot test in build order
+  README.md        the ladder described: every robot test in build order, how to run and add one
   common.py        shared start and result of every robot test; the robot as episodes build it
   physical.py      the robot's ground-truth state for the navigation evaluators
+  ladder.json      the ladder: each robot test's rung, script, requirements, criteria file and last evidence
   run_suite.py     runs the ladder or a group of it, with a summary and the first failing rung
   episodes/        agent tests: an episode spec and a plan through the agent session (episode.py: their test side)
   components/      component tests: the machinery under the agent session (RobotControl or the runtime)

@@ -35,6 +35,12 @@ test side.
 
 ## The ladder
 
+[`ladder.json`](ladder.json) is the ladder: one entry per suite test, in build order, with its rung,
+script, spec and arguments, requirements, groups, the thresholds file it is checked against
+(`criteria`) and its last evidence (`passes`, `last_run`, `passed_at_commit`). `run_suite.py`
+reads it and never writes it; the evidence fields change only from a passing run's folder, and a
+threshold only with the maintainer's yes. The table describes each rung.
+
 | Rung | Test (suite name) | Shape | What the robot does | Needs |
 | --- | --- | --- | --- | --- |
 | 1 | `scene_reset` | component | Spawns, resets several times, takes and loses ownership, e-stops (`check_world_lifecycle.py`) | |
@@ -94,5 +100,6 @@ it passed. Agent tests also leave the episode's `report.json` and `episode.rrd`.
    only, steps named with `episode.Steps`) and its checks, thresholds in `configs/<name>.yaml`
    with where each value came from. Component test: a script in `components/` that builds the
    robot with `common.robot_scene()`.
-2. An entry in `LADDER` in `run_suite.py` with its rung and requirements.
+2. An entry in `ladder.json` with its rung, script, spec, requirements, groups and criteria file,
+   `passes: false` until a run passes it.
 3. A row in the table above.
