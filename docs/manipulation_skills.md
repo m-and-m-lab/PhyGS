@@ -165,7 +165,8 @@ measured. Their steps:
   Execution refuses it before moving when it leaves the arm's reach or needs another arm
   configuration (`TrajectoryRefused`), and fails it while moving when the tool leaves its path by
   more than 2 cm or 0.05 rad. How far a pull got is the agent's to measure: a drawer may stop it.
-- **Pick** (`pick`): open; for each approach and grasp yaw, a straight approach to the
+- **Pick** (`pick`): open the gripper, once (nothing between options closes it); for each
+  approach and grasp yaw, a straight approach to the
   grasp wrist pose (`grasp_wrist_pose`: the robot's `grasp` tool frame on the point where the
   approach line enters the object, its x along the approach; Spot's is 0.183 m along the wrist x,
   in the middle of the jaw gap at 0.029 m; an option refused before moving tries the next); close;
@@ -174,6 +175,22 @@ measured. Their steps:
   when both jaws close), measured after the close (closing moves the wrist, 2.8 cm on Spot); lift
   straight back out; succeed if `holding`. The `HeldObject` is the skills' `held`, which their
   later stows, looks and places carry; pass it to the session's `stow` (`held=skills.held`).
+  The default approaches (`Tuning.pick_approaches`, made by rule:
+  `approach_set(pick_tilts_deg, pick_side_step_deg)`) are straight down, then each side the hand
+  travels toward, in the robot's frame counterclockwise from its forward every
+  `pick_side_step_deg` (30 deg: 0, +30, -30, ..., +150, -150, 180), each tilted from straight down
+  by each of `pick_tilts_deg` (15, 30, 45, 60 deg) in turn: 49 approaches, each at the 4 grasp
+  yaws (`grasp_yaws_deg`), 196 options, tried in that order until one is not refused. Another
+  robot sets the two fields in its `Tuning`; `approaches=` (world unit vectors, `None` straight
+  down) replaces the set (rung 10 picks straight down only). Until 2026-11-08 the default was
+  straight down and 30 and 45 deg tilted away from the robot (12 options); none reached into the
+  bottom drawer of the house scene's island on its release 1.3.0 (the contents 0.30 m behind the
+  handle front), which 15 deg straight ahead cleared from the same stance. With the set,
+  `retrieve_house` passed there: 4 straight-down options were refused, then the 5th, 15 deg
+  straight ahead, planned and picked (2026-11-08). A refused option cost about 0.22-0.25 s of sim
+  time on cuRobo, so a pick where nothing plans takes about 45-50 s of sim time, where the 12 took
+  about 3 s; the MoveIt backend was not measured. The straight line in from the pre-grasp is still
+  not checked against obstacles, and approaches now also come from the sides.
 - **Place** (`place`): keep the wrist orientation (the object keeps its yaw), a straight
   approach down along the gripper axis to where the object's bottom is `place_clearance_m`
   (0.04 m) above the point (the planner keeps 1 cm clearance and a 2 cm map cell can hold the

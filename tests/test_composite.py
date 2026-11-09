@@ -24,6 +24,7 @@ from phygs.session import AgentFailed, ArticulatedPart, SkillFailure, TargetHint
 from phygs.skills.composite import TUNING, CompositeSkills
 from phygs.skills.composite.geometry import quaternion
 from phygs.skills.composite.skills import DOWN
+from phygs.skills.composite.tuning import Tuning, approach_set
 
 DRAWER = ArticulatedPart(
     handle_center=(0.0, 2.56, 0.465),
@@ -342,6 +343,96 @@ def test_refused_pick_options_move_on_in_order():
     pick_in = session.lines()[-2]
     forward, side, down = TUNING.pick_approaches[1]  # In the robot's frame; the robot heads +y.
     assert pick_in[1] == pytest.approx((-side, forward, down), abs=1e-3)
+
+
+def test_the_pick_approaches_are_straight_down_then_each_side_nearest_forward_first_at_each_tilt():
+    """The former 12 options (straight down, 30 and 45 deg away from the robot) found no approach into the
+    house island's bottom drawer on scene 1.3.0: 9 met the drawer fronts at the pre-grasp, 3 were out of
+    reach; from the same stance a 15 deg tilt and skewed 30 and 45 deg approaches clear it (offline,
+    2026-11-08). So the pick tries a set made by rule: straight down, then
+    each side (the direction the hand travels, counterclockwise from the robot's forward) every
+    pick_side_step_deg, nearest forward first and + before -, at each of pick_tilts_deg from straight
+    down, ascending. With a set too narrow a reachable drawer reads as one the arm cannot reach."""
+    approaches = TUNING.pick_approaches
+    sides = (0.0, 30.0, -30.0, 60.0, -60.0, 90.0, -90.0, 120.0, -120.0, 150.0, -150.0, 180.0)
+    tilts = (15.0, 30.0, 45.0, 60.0)
+    assert isinstance(approaches, tuple)
+    assert len(approaches) == 1 + len(sides) * len(tilts)  # 49.
+    assert TUNING.pick_tilts_deg == tilts and TUNING.pick_side_step_deg == 30.0
+    s15, c15 = math.sin(math.radians(15.0)), math.cos(math.radians(15.0))
+    assert approaches[0] is None  # Straight down first.
+    assert approaches[1] == pytest.approx((s15, 0.0, -c15), abs=1e-9)  # 15 deg away from the robot.
+    today = np.array([[0.5, 0.0, -0.866], [0.7071, 0.0, -0.7071]])  # 30 and 45 deg away, in today's order.
+    assert np.asarray(approaches[2:4]) == pytest.approx(today, abs=1e-4)
+    vectors = np.asarray(approaches[1:], dtype=float)
+    assert np.linalg.norm(vectors, axis=1) == pytest.approx(1.0, abs=1e-9)
+    # Each one's (side, tilt) [deg], the side in (-180, 180].
+    found = [
+        ((round(math.degrees(math.atan2(y, x))) + 179) % 360 - 179, round(math.degrees(math.acos(-z))))
+        for x, y, z in vectors
+    ]
+    assert found == [(side, tilt) for side in sides for tilt in tilts]
+    rule = [
+        (math.sin(t) * math.cos(s), math.sin(t) * math.sin(s), -math.cos(t))
+        for s in map(math.radians, sides)
+        for t in map(math.radians, tilts)
+    ]
+    assert vectors == pytest.approx(np.array(rule), abs=1e-9)
+
+
+def test_the_pick_opens_the_gripper_once_before_its_options_not_for_each_approach():
+    """Nothing between options closes the gripper, so it opens once: with 49 approaches an open per
+    approach would repeat a command that changes nothing up to 48 times."""
+    yaws = len(TUNING.grasp_yaws_deg)
+    session = FakeSession(inside=None, approach=[REFUSED] * yaws)  # Straight down refused at every roll.
+    picked = CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    names = session.names()
+    assert names[names.index("look_at") :] == [
+        "look_at", "open_gripper",  # Once, before the first option.
+        *["approach"] * (yaws + 1), "line", "close_gripper", "line", "sleep",  # Down at each roll; the next works.
+    ]  # fmt: skip
+    assert names.count("open_gripper") == 1 and picked.refused == yaws
+
+
+def test_a_pick_with_every_option_refused_says_how_many_it_tried():
+    """Every approach at every roll: 49 x 4 options, each refused before moving."""
+    session = FakeSession(inside=None, approach=[REFUSED] * 196)
+    with pytest.raises(AgentFailed, match=r"pick: every approach was refused \(196 options\)"):
+        CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    assert session.names().count("approach") == 196
+
+
+def test_a_pick_whose_line_in_is_refused_tries_the_next_option_without_opening_again():
+    """The planned move to an option's pre-grasp worked, the straight line in was refused before moving:
+    the next option plans from there with the gripper still open."""
+    session = FakeSession(inside=None, line=[LINE_REFUSED])
+    picked = CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12))
+    names = session.names()
+    assert names[names.index("look_at") :] == [
+        "look_at", "open_gripper", "approach", "line", "approach", "line", "close_gripper", "line", "sleep",
+    ]  # fmt: skip
+    assert picked.refused == 1
+
+
+def test_the_approach_set_follows_its_tilts_and_side_step():
+    """Another robot passes its own Tuning, or replaces a field of TUNING: the set follows it."""
+    assert len(approach_set((30.0,), 45.0)) == 1 + 8  # 0, +-45, +-90, +-135, 180.
+    assert len(approach_set((30.0,), 40.0)) == 1 + 9  # 0, +-40, +-80, +-120, +-160: 180 is off the step.
+    assert len(approach_set((30.0, 60.0), 180.0)) == 1 + 2 * 2  # Straight ahead and straight back.
+    assert len(Tuning(pick_tilts_deg=(30.0,), pick_side_step_deg=90.0).pick_approaches) == 1 + 4
+    assert len(replace(TUNING, pick_tilts_deg=(30.0,), pick_side_step_deg=90.0).pick_approaches) == 1 + 4
+    for tilts, step in (((30.0,), 0.0), ((30.0,), -30.0), ((0.0,), 30.0)):
+        with pytest.raises(ValueError):
+            approach_set(tilts, step)
+
+
+def test_approaches_passed_to_the_pick_are_tried_as_given():
+    """Rung 10 picks straight down only (approaches=[None]): each roll of it, no default approach after."""
+    yaws = len(TUNING.grasp_yaws_deg)  # 4.
+    session = FakeSession(inside=None, approach=[REFUSED] * yaws)
+    with pytest.raises(AgentFailed, match=rf"pick: every approach was refused \({yaws} options\)"):
+        CompositeSkills(session).pick((0.0, 2.4, 0.1), (0.04, 0.04, 0.12), approaches=[None])
+    assert session.names().count("approach") == yaws
 
 
 def test_a_refused_handle_approach_stands_again_one_tolerance_nearer():

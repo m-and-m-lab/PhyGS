@@ -11,6 +11,27 @@ When you commit a batch, move its lines under a new dated heading.
 
 ## [Unreleased]
 
+Added (2026-11-08, composite pick):
+
+- `Tuning.pick_tilts_deg` (15, 30, 45, 60 deg from straight down) and `Tuning.pick_side_step_deg`
+  (30 deg), which set the composite pick's default approaches, and
+  `phygs.skills.composite.tuning.approach_set(tilts_deg, side_step_deg)`, which makes them: straight
+  down, then each side the hand travels toward, counterclockwise from the robot's forward (0, +step,
+  -step, ..., and 180 deg when the step divides it), at each tilt in order.
+
+Changed (2026-11-08, composite pick):
+
+- `Tuning.pick_approaches` became a property, `approach_set(pick_tilts_deg, pick_side_step_deg)`,
+  and its default grew from straight down and 30 and 45 deg tilted away from the robot (3
+  approaches, 12 options with the 4 grasp yaws) to 49 approaches (196 options), tried in order until
+  one is not refused. It is no longer a `Tuning` constructor field: set `pick_tilts_deg` and
+  `pick_side_step_deg`, or pass `approaches=` to `CompositeSkills.pick`. On the house scene's
+  release 1.3.0, `retrieve_house` picked from the island's bottom drawer with the 5th option (15 deg
+  straight ahead, after straight down at each grasp yaw), which the 12 did not include; a pick where
+  nothing plans took about 45-50 s of sim time instead of about 3 s (cuRobo;
+  `docs/manipulation_skills.md`).
+- `CompositeSkills.pick` opened the gripper once before its options, not once per approach.
+
 Added (2026-11-08, recording):
 
 - The recording kept the base link's measured velocity at every state sample

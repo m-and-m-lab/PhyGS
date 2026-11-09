@@ -393,10 +393,10 @@ class CompositeSkills:
             approaches = [a if a is None else tuple(turn @ np.asarray(a)) for a in tuning.pick_approaches]
         center, size = np.asarray(center, dtype=float), tuple(map(float, size))
         refused, last = 0, "no approach"
+        self.gripper(close=False)  # Once: nothing between options closes the gripper.
         for approach in approaches:
             direction = DOWN if approach is None else unit_approach(tuple(map(float, approach)))
             entry = center - direction * entry_depth(size, direction)
-            self.gripper(close=False)
             for yaw in tuning.grasp_yaws_deg:
                 wrist = self.grasp_wrist_pose(entry, direction, math.radians(yaw))
                 reached = self.approach_straight(wrist, direction, tuning.approach_m)

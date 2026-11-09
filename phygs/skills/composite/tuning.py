@@ -12,6 +12,7 @@ when), the same for every scene. Robot facts (tool frames, arm joints, stow post
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 
@@ -74,13 +75,20 @@ class Tuning:
     # Closing pushes with the closed gripper, stopped this far short of the bar [m], then backs off.
     push_back_m: float = 0.04
     push_release: tuple[tuple[str, float], ...] = (("gripper_back", 0.03), ("up", 0.10))
-    # Pick approaches tried in order: None is straight down; vectors are in the robot's frame (x
-    # forward, z up), tilted away from the robot.
-    pick_approaches: tuple[tuple[float, float, float] | None, ...] = (
-        None,
-        (0.5, 0.0, -0.866),
-        (0.7071, 0.0, -0.7071),
-    )
+    # Pick approaches (the pick_approaches property, approach_set(pick_tilts_deg, pick_side_step_deg)),
+    # tried in order until one plans, each with every grasp yaw: straight down, then each side the hand
+    # may travel toward, nearest straight ahead (away from the robot) first, every pick_side_step_deg
+    # around, each tilted pick_tilts_deg from straight down in turn. Robot frame (x forward, y left,
+    # z up), the direction the hand travels; None is straight down. Straight down and 30 and 45 deg
+    # straight ahead alone (12 options until 2026-11-08) found no approach to a bottle 0.22 m behind an
+    # open drawer's 0.42 m front with a closed drawer above it: straight down met the drawer above,
+    # 30 deg the front's top edge, 45 deg the front, and one roll was out of reach. Offline, against the
+    # scene's collider boxes (2026-11-08): from that stance 16 options of a set like this one cleared
+    # it, 15 deg straight ahead among them; over all stances whose padded outline was free, the 12
+    # reached it from 79 of 9071 and the set from 1566 (in four states of the scene's earlier release,
+    # 0 and 11-72). Retrieve then took the 5th, 15 deg straight ahead, and picked it (2026-11-08).
+    pick_tilts_deg: tuple[float, ...] = (15.0, 30.0, 45.0, 60.0)
+    pick_side_step_deg: float = 30.0
     grasp_yaws_deg: tuple[float, ...] = (0.0, -90.0, 90.0, 180.0)  # Rolls about the approach, tried in order.
     approach_m: float = 0.19  # Straight in to a grasp or a place, and back out [m].
     hold_seconds: float = 1.0  # Hold after the pick's lift before stowing [s].
@@ -119,6 +127,32 @@ class Tuning:
             "place": ((0.6, 75.0), (0.7, 60.0), (0.6, 60.0), (0.7, 45.0)),
         }
     )
+
+    @property
+    def pick_approaches(self) -> tuple[tuple[float, float, float] | None, ...]:
+        """The pick's approaches in order: approach_set(pick_tilts_deg, pick_side_step_deg)."""
+        return approach_set(self.pick_tilts_deg, self.pick_side_step_deg)
+
+
+def approach_set(tilts_deg: tuple[float, ...], side_step_deg: float) -> tuple[tuple[float, float, float] | None, ...]:
+    """Straight down (None), then for each side the hand travels toward, counterclockwise from the
+    robot's forward [deg] (0, +step, -step, +2 step, -2 step, ..., and 180 when the step divides it),
+    each tilt from straight down in ``tilts_deg`` [deg] in its order: unit vectors in the robot's frame."""
+    if side_step_deg <= 0:
+        raise ValueError(f"The side step must be positive; got {side_step_deg} deg.")
+    if not all(0.0 < tilt <= 90.0 for tilt in tilts_deg):
+        raise ValueError(f"Tilts must be in (0, 90] deg (straight down always comes first); got {tilts_deg}.")
+    sides, k = [0.0], 1
+    while k * side_step_deg < 180.0 - 1e-9:
+        sides += [k * side_step_deg, -k * side_step_deg]
+        k += 1
+    if abs(k * side_step_deg - 180.0) < 1e-9:
+        sides.append(180.0)
+    approaches: list[tuple[float, float, float] | None] = [None]
+    for side in map(math.radians, sides):
+        for tilt in map(math.radians, tilts_deg):
+            approaches.append((math.sin(tilt) * math.cos(side), math.sin(tilt) * math.sin(side), -math.cos(tilt)))
+    return tuple(approaches)
 
 
 TUNING = Tuning()
