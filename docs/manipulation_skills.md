@@ -187,10 +187,16 @@ measured. Their steps:
   bottom drawer of the house scene's island on its release 1.3.0 (the contents 0.30 m behind the
   handle front), which 15 deg straight ahead cleared from the same stance. With the set,
   `retrieve_house` passed there: 4 straight-down options were refused, then the 5th, 15 deg
-  straight ahead, planned and picked (2026-11-08). A refused option cost about 0.22-0.25 s of sim
-  time on cuRobo, so a pick where nothing plans takes about 45-50 s of sim time, where the 12 took
-  about 3 s; the MoveIt backend was not measured. The straight line in from the pre-grasp is still
-  not checked against obstacles, and approaches now also come from the sides.
+  straight ahead, planned and picked (2026-11-08). Each option is its own plan request, tried one
+  after another (the cuRobo backend accepts a goal set of up to 8 poses per request; the pick does
+  not use it yet). A refused option cost 0.19-0.25 s of sim time on cuRobo (0.06 s of it planning, wall clock), so
+  a pick where nothing plans takes about 40-50 s of sim time, where the 12 took about 7 s (12
+  refusals and two reopenings of the gripper, 2026-11-08). On MoveIt a refused goal that inverse
+  kinematics reaches can use the whole `planning_time_seconds` (30.2 s wall clock, 2026-11-07), so a
+  pick with the default set where nothing plans can take many minutes there; the robot tests' and
+  the benchmark's picks with the default set run on cuRobo, and rung 10 on MoveIt picks straight down
+  only. The straight line in from the pre-grasp is still not checked against obstacles, and
+  approaches now also come from the sides.
 - **Place** (`place`): keep the wrist orientation (the object keeps its yaw), a straight
   approach down along the gripper axis to where the object's bottom is `place_clearance_m`
   (0.04 m) above the point (the planner keeps 1 cm clearance and a 2 cm map cell can hold the

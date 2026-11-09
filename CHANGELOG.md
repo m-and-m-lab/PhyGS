@@ -27,9 +27,10 @@ Changed (2026-11-08, composite pick):
   one is not refused. It is no longer a `Tuning` constructor field: set `pick_tilts_deg` and
   `pick_side_step_deg`, or pass `approaches=` to `CompositeSkills.pick`. On the house scene's
   release 1.3.0, `retrieve_house` picked from the island's bottom drawer with the 5th option (15 deg
-  straight ahead, after straight down at each grasp yaw), which the 12 did not include; a pick where
-  nothing plans took about 45-50 s of sim time instead of about 3 s (cuRobo;
-  `docs/manipulation_skills.md`).
+  straight ahead, after straight down at each grasp yaw), which the 12 did not include. Each option
+  is its own plan request, one after another (no goal set yet): a pick where nothing plans took about
+  40-50 s of sim time on cuRobo instead of about 7 s, and on MoveIt, where a refused reachable goal
+  can use the whole 30 s planning time, it can take many minutes (`docs/manipulation_skills.md`).
 - `CompositeSkills.pick` opened the gripper once before its options, not once per approach.
 
 Added (2026-11-08, recording):
