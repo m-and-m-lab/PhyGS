@@ -1,15 +1,26 @@
 # Changelog
 
-All notable changes to Interactive Search. Newest first.
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project has no
-version tags yet, so entries are grouped by date.
+All notable changes to PhyGS. Newest first.
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are tagged `vX.Y.Z`;
+each has a `### X.Y.Z` heading under **Unreleased**, above the entries it shipped (dated, except
+0.6.0-0.8.0, which still say "unreleased", written before their tags), so the entries above the first such
+heading are not released yet. Entries from before the tags (the repository split and the history
+before it) are dated instead.
 
-How to add an entry: put one line under **Unreleased** in the right group
-(Added, Changed, Deprecated, Removed, Fixed). Use past tense and name the public
+How to add an entry: put one line under **Unreleased**, above the latest release heading, in a
+dated group (Added, Changed, Deprecated, Removed, Fixed). Use past tense and name the public
 symbol or file. For Changed, Deprecated and Removed, say what to use instead.
-When you commit a batch, move its lines under a new dated heading.
+A release adds its heading above the entries made since the last one
+([AGENTS.md, "Releasing"](AGENTS.md#releasing)).
 
 ## [Unreleased]
+
+Changed (2026-11-09, versions):
+
+- `phygs.__version__` and `pyproject.toml` said 0.13.0.dev0 after the v0.12.0 tag, so a commit after a
+  release no longer claims to be it (ForageBench marks a run on it unpinned); `AGENTS.md` gained the
+  release steps ("Releasing"), and `tests/test_packaging.py` fails when a release version is left on
+  the commits after its tag.
 
 Changed (2026-11-09, robot tests):
 

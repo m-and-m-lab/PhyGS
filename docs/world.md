@@ -101,7 +101,9 @@ between two processes: compare repeats by their outcomes and times, not plan by 
 
 ## Versions
 
-A benchmark pins a PhyGS version (`phygs.__version__`, a tag). That version promises the spec schema
+A benchmark pins a PhyGS version (`phygs.__version__`, a tag). Only the tagged commit carries a
+release version; the commits after it say the next `.dev0` ([AGENTS.md, Releasing](../AGENTS.md#releasing)).
+A release version promises the spec schema
 (`SCHEMA`) and the report schema (`REPORT_SCHEMA`); every report records both under `schemas`. A
 change to either is at least a minor PhyGS release and a benchmark version change. 0.4.0 renamed the
 modules a benchmark imports ([layout.md](layout.md#renamed-in-040) has the old and new paths).

@@ -106,9 +106,25 @@ When changing architecture or workflow, update:
 | `README.md` | User-facing setup, quick start, or major capability changes. It is the front door (about 150 lines): reference material goes in `docs/` and gets a row in its "Where to go next" table. |
 | `ARCHITECTURE.md` | Pipeline, API, backend, or data-flow changes. |
 | `CHANGELOG.md` | Any user-visible change: one past-tense line under Unreleased. |
-| `CITATION.cff` | A release: its `version` and `date-released`, as in `pyproject.toml`. |
+| `CITATION.cff` | A release: its `version` and `date-released` ([Releasing](#releasing), step 1). |
 | `docs/README.md` | A guide is added, renamed, or superseded. Follow its "Keeping the docs tidy" rules. |
 | Local directory README | Large directory ownership or launch commands change. |
+
+## Releasing
+
+The maintainer tags and pushes.
+
+1. Set the version `X.Y.Z` in `pyproject.toml`, `phygs/__init__.py` and `CITATION.cff` (with
+   `date-released`), and point the README's docs badge and docs link at `vX.Y.Z`.
+2. In `CHANGELOG.md`, put a `### X.Y.Z (YYYY-MM-DD)` heading above the Unreleased entries made since
+   the last release.
+3. Run the unit tests, commit "Release X.Y.Z" and tag that commit `vX.Y.Z`.
+4. Right after the tag, commit "Start X.Y+1.0.dev0": `pyproject.toml` and `phygs/__init__.py` say the
+   next minor version's `.dev0` (`CITATION.cff` and the README keep naming the release). A commit after
+   a tag never says it is the release; `tests/test_packaging.py` checks it.
+5. The maintainer pushes `develop` and the tag. ForageBench then pins the release in its own commit,
+   "Pin PhyGS X.Y.Z", with both `phygs_version` and `phygs_commit` (ForageBench's `docs/install.md`,
+   "The PhyGS pin").
 
 ## What Agents Must Not Do
 

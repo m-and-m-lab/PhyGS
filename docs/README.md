@@ -14,7 +14,7 @@ Start here. Each topic has **one** guide. Other files link to that guide; they d
 | Driving the framework from a benchmark: spec, task, World, ground truth, report, versions | [world.md](world.md) |
 | What changed and when (including every rename of the repository split) | [CHANGELOG.md](../CHANGELOG.md) |
 | Exact test and robot-test commands | [tests/README.md](../tests/README.md) · [tests/robot_tests/README.md](../tests/robot_tests/README.md) |
-| Rules for coding agents and contributors | [AGENTS.md](../AGENTS.md) |
+| Rules for coding agents and contributors; how a release is made | [AGENTS.md](../AGENTS.md) · [Releasing](../AGENTS.md#releasing) |
 
 ## Topic guides
 
