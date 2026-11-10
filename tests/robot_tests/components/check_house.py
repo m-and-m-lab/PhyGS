@@ -6,8 +6,10 @@
 """Bear house under Nav2: search for a magenta cube with RGB-D while a colour detector watches the
 camera: ``navigation.explore()`` (explore_lite on Nav2's costmap of the unexplored kitchen), then,
 when the map is complete but the cube unseen, a coverage pass (viewpoints spread over the free floor,
-a turn at each). Run it through ``check_nav2_pipeline.py``, which starts the ROS servers. Navigation
-in the house is the agent test ``episodes/check_navigation.py`` (spec ``nav_house``).
+a turn at each). The search starts unseen: a cube seen in the start scan (the turn in place before
+exploring) fails the test as an invalid setup. Run it through ``check_nav2_pipeline.py``, which starts
+the ROS servers. Navigation in the house is the agent test ``episodes/check_navigation.py`` (spec
+``nav_house``).
 """
 
 from __future__ import annotations
@@ -323,6 +325,14 @@ def run(report: dict) -> None:
         step(settings["scan_seconds"])
         control.locomotion.command_velocity(0.0, 0.0, 0.0)
         step(1.0)
+        # The search starts unseen: a target in view of the start's scan is an invalid setup (a moved start
+        # or target, a changed scene), not a search that passed without exploring.
+        check.measure(
+            "target_unseen_in_start_scan",
+            not found,
+            not found,
+            "invalid setup: the target is in view during the start scan; place search.target out of its view",
+        )
         records = []
         report["current_navigation"] = records
         exploring = control.navigation.explore(timeout=config["exploration"]["time_budget"])

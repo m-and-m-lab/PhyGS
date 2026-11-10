@@ -128,7 +128,7 @@ isaaclab -p -m phygs ui --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)
 
 ## 🧱 Scenes and data
 
-The robot tests' small scenes ship with PhyGS. The house scene, release 1.1.0, comes from the scene dataset [`mandmlabresearch/ForageBench`](https://huggingface.co/datasets/mandmlabresearch/ForageBench) on Hugging Face: published at dataset commit `37d8744`, 535.5 MB, private for now, licence to be announced. Fetching it: [docs/scenes.md](docs/scenes.md#fetching).
+The robot tests' small scenes ship with PhyGS. The house scene, release 1.3.0, comes from the scene dataset [`mandmlabresearch/ForageBench`](https://huggingface.co/datasets/mandmlabresearch/ForageBench) on Hugging Face (3.7 GB, private for now, licence to be announced). Fetching it: [docs/scenes.md](docs/scenes.md#fetching).
 
 ## 📝 Citation
 

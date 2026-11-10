@@ -26,7 +26,8 @@ The house search check uses a magenta cube and a colour detector
 (`helpers/color_detection.py`). That detector validates the lifecycle; it is not a general
 object-recognition module and does not use the target pose. The evaluator does not trust the
 detector's classification or a navigation success flag. Localization is ground truth; this is
-recorded in the report.
+recorded in the report. The search starts unseen: the robot's turn in place at the start must not
+see the cube (`target_unseen_in_start_scan`); if it does, the check fails as an invalid setup.
 
 From `/workspace/isaaclab`:
 

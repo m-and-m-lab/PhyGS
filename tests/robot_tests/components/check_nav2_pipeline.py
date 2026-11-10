@@ -168,15 +168,20 @@ def main(argv: list[str] | None = None) -> int:
                 if time.monotonic() - progress >= 30:
                     print(f"Spot/Nav2 running; inspect {args.output / 'simulation.log'}", flush=True)
                     progress = time.monotonic()
+            # The simulation's checks and error go into this report, which the suite's summary reads.
+            physical = json.loads(physical_report.read_text()) if physical_report.exists() else {}
+            report["checks"] = physical.get("checks", {})
             if sim.returncode:
                 raise RuntimeError(
-                    f"Spot diagnostic exited ({sim.returncode}); inspect {args.output / 'simulation.log'}"
+                    f"Spot diagnostic exited ({sim.returncode}): {physical.get('error')}; "
+                    f"inspect {args.output / 'simulation.log'}"
                 )
             if nav2.poll() is not None:
                 raise RuntimeError("Nav2 exited before the diagnostic completed")
-            physical = json.loads(physical_report.read_text())
-            if physical["status"] != "passed" or physical["backend"] != "nav2":
-                raise RuntimeError(f"Unexpected physical report: {physical['status']}; backend={physical['backend']}")
+            if physical.get("status") != "passed" or physical.get("backend") != "nav2":
+                raise RuntimeError(
+                    f"Unexpected physical report: {physical.get('status')}; backend={physical.get('backend')}"
+                )
             report["status"] = "passed"
     except KeyboardInterrupt:
         report["status"] = "interrupted"

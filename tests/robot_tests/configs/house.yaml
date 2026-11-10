@@ -1,10 +1,10 @@
 # Ground-truth localization; native Nav2 point-cloud costmaps.
 robot:  # The robot is --robot (default spot); this is where it spawns.
-  position: [10.2, 6.0, 0.6]  # The storage revision's robot start (configs/episodes/dev_house_drawer.yaml).
+  position: [10.14, 5.59, 0.6]  # The house episodes' robot start (configs/episodes/dev_house_drawer.yaml).
   rotation_wxyz: [1.0, 0.0, 0.0, 0.0]
 scene:
-  id: bear_loop_house  # Release 1.1.0 of the scene dataset, found by phygs.scene.registry.
-  version: 1.1.0
+  id: bear_loop_house  # Release 1.3.0 of the scene dataset, found by phygs.scene.registry.
+  version: 1.3.0
   dome_light_intensity: 2500.0
   dome_light_color: [0.75, 0.75, 0.75]
 sensors:
@@ -75,6 +75,11 @@ exploration:
 search:
   target_description: magenta diagnostic cube
   target:
-    center: [13.0, 7.0, 0.45]
+    # Out of the start scan's view, so the search must explore (check_house.py checks it): the point on the
+    # world's 5 cm grid nearest the earlier (13.0, 7.0), same height, inside exploration.bounds, where the
+    # cube is 0.05 m clear of every collider spanning 0.02-1.2 m and the cube grown by 0.10 m on every side
+    # (about twice the scan's run-to-run spread: base 3.5 cm, height 4 cm) is visible, not hidden in depth,
+    # in no frame of the start scan.
+    center: [12.95, 7.2, 0.45]
     size: [0.25, 0.25, 0.25]
     color: [0.95, 0.05, 0.95]

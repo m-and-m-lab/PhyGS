@@ -5,7 +5,7 @@ A spec names a scene by id and never by file path:
 ```yaml
 scene:
   id: bear_loop_house      # a scene folder, or a release of the scene dataset
-  version: 1.1.0           # optional: pins a release; a plain folder accepts any pin
+  version: 1.3.0           # optional: pins a release; a plain folder accepts any pin
   name: house              # optional label for reports and the robot tests' stances (default: the id)
   ground: false            # true adds a ground plane (the file has no floor)
 ```
@@ -24,7 +24,7 @@ used, so a spec validates without the scene, and the report's provenance holds t
   of immutable releases, one scene id at one version each. `phygs.scene.fetch` downloads, verifies
   (SHA-256, every dependency inside the archive) and installs a release under
   `~/.cache/phygs/scenes` (or `--cache_dir`) with a record the scene registry reads; a spec pins it with
-  `scene: {id: bear_loop_house, version: 1.1.0}`. The release format is below.
+  `scene: {id: bear_loop_house, version: 1.3.0}`. The release format is below.
 - **Your own**: any folder `<id>/scene.usd[a|c]` under `$PHYGS_SCENES`. A spec says
   `scene: {id: <folder>, ground: true|false}`; no spec holds a file path.
 
@@ -45,22 +45,23 @@ scenes/<id>/<version>/<folder>.zip             # the scene: <folder>/scene.usdc,
 ```
 
 A release is immutable: a changed scene is a new version of the same id (`bear_loop_house` 1.0.0 is
-the first house; 1.1.0 is the storage revision). A benchmark's episode manifest records
-`scene_id@version` and the archive's SHA-256; a report's provenance records the USD's hash, so a
-result names the exact scene it ran in.
+the first house; 1.1.0 is the storage revision; 1.2.0 has SimReady kitchen models and a different
+model for every loose object; 1.3.0 moves the contents forward to 0.30 m behind the drawer and door
+fronts). A benchmark's episode manifest records `scene_id@version` and the archive's SHA-256; a
+report's provenance records the USD's hash, so a result names the exact scene it ran in.
 
 ## Fetching
 
 ```bash
 isaaclab -p -m huggingface_hub.cli.hf auth login                      # once; the dataset is private
 isaaclab -p -m phygs.scene.fetch list --repo_id mandmlabresearch/ForageBench     # ids, versions, sizes, the commit
-isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0 \
-  --revision 37d8744874b151c529b3823424ea4727a404a427   # optional: the dataset commit of that release
+isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.3.0 \
+  --revision <commit>   # optional: a full dataset commit, e.g. the Revision that fetch list prints
 isaaclab -p -m phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --all  # every catalogued release
 ```
 
-The robot tests' configs pin the house scene's release 1.1.0 (535.5 MB). It was published in the
-dataset commit `37d8744874b151c529b3823424ea4727a404a427`; `--revision` fetches from exactly that commit.
+The robot tests' configs pin the house scene's release 1.3.0 (3.7 GB); `--revision` fetches from
+exactly the commit you give.
 
 The fetcher resolves the dataset's `main` to a commit (or takes `--revision`), downloads the
 manifest and the ZIP, verifies the archive's SHA-256, refuses unsafe paths and symlinks inside it,

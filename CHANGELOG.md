@@ -36,6 +36,34 @@ Changed (2026-11-09, robot tests):
   groups, criteria file (`configs/<name>.yaml`, never a copy of its thresholds) and last evidence
   (`passes`, `last_run`, `passed_at_commit`). `run_suite.py` reads it and selects the same tests as
   before; it never writes it.
+- The house rungs (paths below under `tests/robot_tests/`) and the robot UI's house config moved to the
+  house scene's release 1.3.0 (was 1.1.0; 1.2.0 brought SimReady kitchen models and a different model
+  for every loose object, 1.3.0 moved the contents forward to 0.30 m behind the drawer and door
+  fronts): `configs/episodes/nav_house.yaml`, `configs/episodes/dev_house_drawer.yaml`,
+  `configs/house.yaml` and `phygs/ui/configs/house_drawer.yaml` (which mirrors `dev_house_drawer`). To
+  run them, fetch release 1.3.0 (`phygs.scene.fetch fetch ... --scene_version 1.3.0`, as
+  [docs/scenes.md](docs/scenes.md#fetching) shows).
+- The house start in those files moved from (10.2, 6.0) to (10.14, 5.59), heading 0, clear of the
+  dishwasher, which 1.2.0's kitchen models put 0.54 m from the old start. It is the point nearest the
+  old start, on a 5 cm grid from (8.94, 4.94) (the kitchen's corner (8, 4) plus the disk's radius),
+  whose 0.94 m disk (`transit.initial_free_radius` in `configs/house.yaml`: Spot's ~0.73 m
+  half-diagonal plus a margin) is clear of every collider spanning the robot's heights (0.02-1.2 m),
+  inside the kitchen. `nav_house`'s `goal_2` in `configs/navigation.yaml` is now the start (was
+  (10.2, 6.1), heading -pi/2).
+- Rung 13 (`search_house`): `search.target.center` in `configs/house.yaml` moved from (13.0, 7.0, 0.45)
+  to (12.95, 7.2, 0.45), because from the new start the start scan saw the cube, so the search would
+  pass without exploring. It is the point on the world's 5 cm grid nearest (13.0, 7.0), at the same
+  height and inside `exploration.bounds`, where the cube is 0.05 m clear of every collider spanning
+  0.02-1.2 m and the cube grown by 0.10 m on every side (about twice the scan's run-to-run spread: base
+  3.5 cm, height 4 cm) is visible (not hidden in depth) in no frame of the start scan. The rung's
+  thresholds are unchanged.
+- `components/check_house.py` measured `target_unseen_in_start_scan` after the start scan and its
+  settle second: a target the scan sees fails the test as an invalid setup (a moved start or target,
+  a changed scene) instead of passing a search that never explored.
+- `components/check_nav2_pipeline.py` copied the simulation's checks into its own report and named the
+  simulation's error when it failed, so the suite's `summary.json`, and the `check.json` its index page
+  links, carry them; its report had `"checks": {}` and the error said only "Spot diagnostic exited
+  (1)".
 
 Added (2026-11-08, composite pick):
 

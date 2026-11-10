@@ -56,7 +56,7 @@ threshold only with the maintainer's yes. The table describes each rung.
 | 11 | `drawer_grid`, `drawer_house` | agent | Opens the target's drawer by its handle and pushes it shut (`check_drawer_stroke.py`) | ROS 2, cuRobo |
 | 11 | `look_table`, `look_grid`, `look_house` | agent | Opens the target's drawer (on the table: stays), looks at the target from look_at's sweep views; the hand camera sees it with depth in a view, the arm ends stowed (`check_look.py`) | cuRobo (the drawers: ROS 2) |
 | 12 | `drawer_place` | agent | Carries the target from the table into a drawer and closes it (`check_drawer_place.py`) | ROS 2, cuRobo |
-| 13 | `search_house` | component | Explores the house kitchen until a colour detector sees the cube (`check_nav2_pipeline.py`, which runs `check_house.py`) | explore_lite overlay |
+| 13 | `search_house` | component | Explores the house kitchen until a colour detector sees the cube, which its start scan must not see (`check_nav2_pipeline.py`, which runs `check_house.py`) | explore_lite overlay |
 | 14 | `retrieve_grid`, `retrieve_house`, `retrieve_repeat` | agent | Finds the target in a closed drawer, opens it, picks the target, stows (`check_retrieve.py`); `retrieve_repeat` runs the grid episode three times in one World (`--repeats 3`), each from the same checked start | ROS 2, cuRobo |
 | 15 | `entry_point` | agent | The template agent through `examples/run_world.py` on a skills-tier spec and a locomotion-only spec, with their recordings (complete, of the run, no secrets, the joints' and base's velocities), and a run killed mid-episode whose report and recording still read (`check_entry_point.py`) | ROS 2, cuRobo |
 
@@ -71,7 +71,7 @@ Rung 13 stays a component test until the episode harness has a search goal: spec
 
 ```bash
 source /opt/explore_ws/install/setup.bash  # ROS 2 Jazzy plus explore_lite, for rungs 6, 7, 11-15.
-# The house rungs need its release fetched once: phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.1.0
+# The house rungs need its release fetched once: phygs.scene.fetch fetch --repo_id mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.3.0
 
 # The ladder up to a rung, with videos; open <folder>/index.html for results and videos.
 isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
