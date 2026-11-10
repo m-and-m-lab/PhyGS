@@ -15,6 +15,13 @@ A release adds its heading above the entries made since the last one
 
 ## [Unreleased]
 
+Fixed (2026-11-10, navigation):
+
+- `Nav2NavigationBackend` (`phygs/skills/navigation/execution/backends/nav2.py`): cancelling an
+  `explore` while no leg was being followed (before explore_lite sent its first frontier, or right
+  after a leg ended) raised an `AttributeError` reading the absent goal when the controlled stop
+  finished; it now ends the exploration as cancelled ("Cancelled by agent") and stops explore_lite.
+
 Changed (2026-11-09, versions):
 
 - `phygs.__version__` and `pyproject.toml` said 0.13.0.dev0 after the v0.12.0 tag, so a commit after a

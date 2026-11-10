@@ -661,6 +661,27 @@ def test_cancelling_or_the_budget_ends_the_whole_exploration():
     assert (nav.feedback(command).status, nav.feedback(command).reason) == ("failed", "explore_lite exited")
 
 
+@pytest.mark.parametrize("legs", [0, 1], ids=["before_the_first_frontier", "between_legs"])
+def test_cancelling_an_exploration_with_no_leg_ends_it_cancelled(legs):
+    """A cancel while no leg is followed (explore_lite has sent no frontier yet, or a leg has just ended)
+    stops the robot; with no goal to settle on, the stop ends the exploration as cancelled. It raised an
+    AttributeError reading the absent goal (seen in the house search check, 2026-11-09)."""
+    nav, runtime, motion, transport = exploring_backend()
+    command = nav.explore()
+    nav.update()  # No frontier yet: the robot stands.
+    if legs:
+        transport.explore_events = [ExploreEvent(goal=(1.5, 0.0))]
+        runtime.tick = 1
+        nav.update()
+        finish_leg(nav, runtime, transport, 1.3)
+    nav.cancel(command)
+    runtime.tick += 8
+    nav.update()
+    feedback = nav.feedback(command)
+    assert (feedback.status, feedback.reason) == ("cancelled", "Cancelled by agent")
+    assert transport.explore_stops == 1 and len(transport.explore_answers) == legs and not nav.active
+
+
 def test_a_fine_approach_without_a_nav2_route_skips_the_camera_path_check():
     """An occupied goal close by is finished by fine moves alone, with no Nav2 route. After a correction,
     the periodic check of the route against the camera costmap ran on that empty route and raised ("A

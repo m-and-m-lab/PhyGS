@@ -725,6 +725,9 @@ class Nav2NavigationBackend:
                     return
                 fine_move, self._fine_move = self._fine_move, None
                 goal = self._goal
+                if goal is None:  # An exploration stopped with no leg (none yet, or between legs).
+                    self._set(self._finish, self.feedback(self._current).reason)
+                    return
                 distance = math.hypot(state.x - goal.x, state.y - goal.y)
                 arrived = distance <= goal.position_tolerance and (
                     goal.heading is None or abs(angle_error(goal.heading, state.yaw)) <= goal.heading_tolerance
