@@ -5,8 +5,8 @@ type: software
 repository-code: "https://github.com/m-and-m-lab/PhyGS"
 url: "https://m-and-m-lab.github.io/PhyGS/"
 # license: to be announced
-version: "0.12.0"
-date-released: "2026-11-08"
+version: "0.13.0"
+date-released: "2026-11-10"
 authors:
   - family-names: "Saha"
     given-names: "Aparajito"

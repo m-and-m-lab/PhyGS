@@ -11,13 +11,13 @@
 
 [![Paper](https://img.shields.io/badge/paper-CVPR%202026%20MEIS%20Workshop-b31b1b.svg)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
 [![Project Page](https://img.shields.io/badge/project-page-1f6feb)](https://m-and-m-lab.github.io/PhyGS/)
-[![Docs](https://img.shields.io/badge/docs-0.12.0-informational)](https://github.com/m-and-m-lab/PhyGS/blob/v0.12.0/docs/README.md)
+[![Docs](https://img.shields.io/badge/docs-0.13.0-informational)](https://github.com/m-and-m-lab/PhyGS/blob/v0.13.0/docs/README.md)
 [![HF Dataset](https://img.shields.io/badge/dataset-scenes-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/datasets/mandmlabresearch/ForageBench)
 
 [Aparajito Saha](https://aparajitosaha.github.io)<sup>1</sup>, [Zhen Hao Gan](https://ganzh6880.github.io)<sup>1</sup>, Jinjia Guo<sup>1</sup>, Jacob Skwirsk<sup>1</sup>, Jeremy Acheampong<sup>1</sup>, [Anton Arapin](https://anton-arapin.github.io)<sup>1</sup>, [Chahyon Ku](https://chahyon-ku.github.io)<sup>1</sup>, [Yue Hu](https://phyllish.github.io)<sup>1</sup>, [Nima Fazeli](https://www.mmintlab.com/people/nima-fazeli/)<sup>1</sup>, [Bernadette Bucher](https://bucherb.github.io)<sup>1</sup>
 <br><sup>1</sup>[Mapping and Motion Lab](https://sites.google.com/umich.edu/mandmlab/), University of Michigan, Ann Arbor
 
-**[🌐 Project page](https://m-and-m-lab.github.io/PhyGS/)** · **[📄 Paper](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)** · **[📚 Docs](https://github.com/m-and-m-lab/PhyGS/blob/v0.12.0/docs/README.md)** · **[🤗 Dataset](https://huggingface.co/datasets/mandmlabresearch/ForageBench)**
+**[🌐 Project page](https://m-and-m-lab.github.io/PhyGS/)** · **[📄 Paper](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)** · **[📚 Docs](https://github.com/m-and-m-lab/PhyGS/blob/v0.13.0/docs/README.md)** · **[🤗 Dataset](https://huggingface.co/datasets/mandmlabresearch/ForageBench)**
 
 <p align="center"><img src="docs/assets/teaser.jpg" alt="Scenes rendered in Isaac Sim, and Spot with an arm in simulation and in the real world" width="85%"></p>
 

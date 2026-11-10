@@ -15,6 +15,17 @@ A release adds its heading above the entries made since the last one
 
 ## [Unreleased]
 
+### 0.13.0 (2026-11-10)
+
+Known issue:
+
+- The composite pick's stow with the object held can be refused after a successful pick from a
+  drawer: in 1 of 8 pointing-oracle runs of ForageBench's house drawer episode (the house scene's
+  release 1.3.0), both stow requests ended `no_plan_within_budget` and the run failed with the bottle
+  in the hand. That run had the least-open drawer (0.24 m; the others 0.25-0.30 m) and the closest
+  stance (0.92 m from the bottle; the others 0.94-0.99 m). A stow that backs the hand out along its
+  approach and steps the base back before trying again is the next pick work.
+
 Changed (2026-11-10, robot tests):
 
 - `tests/robot_tests/ladder.json` recorded the full ladder run on commit 33543b3 (2026-11-09): all
