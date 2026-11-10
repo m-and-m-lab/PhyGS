@@ -20,8 +20,8 @@
       "video_required": false,
       "depends_on": [],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R2.sensors",
@@ -44,8 +44,8 @@
         "R1.scene_reset"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R3.locomotion",
@@ -68,8 +68,8 @@
         "R2.sensors"
       ],
       "passes": true,
-      "last_run": "output_check/20261108-0125_live_video_removed_smoke",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R4.footprint",
@@ -92,8 +92,8 @@
         "R3.locomotion"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R5.arm",
@@ -116,8 +116,8 @@
         "R4.footprint"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R6.navigation_course",
@@ -142,8 +142,8 @@
         "R5.arm"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R6.navigation_house",
@@ -168,8 +168,8 @@
         "R5.arm"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R7.obstacle_avoidance",
@@ -195,8 +195,8 @@
         "R6.navigation_house"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R8.arm_planning_known",
@@ -221,8 +221,8 @@
         "R7.obstacle_avoidance"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R8.arm_planning_known_moveit",
@@ -250,8 +250,8 @@
         "R7.obstacle_avoidance"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R9.arm_planning_depth",
@@ -277,8 +277,8 @@
         "R8.arm_planning_known_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R9.arm_planning_depth_moveit",
@@ -307,8 +307,8 @@
         "R8.arm_planning_known_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R10.pick_place_known",
@@ -334,8 +334,8 @@
         "R9.arm_planning_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261108-1821_d26s1_baseline",
-      "passed_at_commit": "28713bc3c082a7bcc77ba0e42973571abf7afcc8"
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R10.pick_place_known_moveit",
@@ -364,8 +364,8 @@
         "R9.arm_planning_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R10.pick_place_depth",
@@ -391,8 +391,8 @@
         "R9.arm_planning_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R10.pick_place_depth_moveit",
@@ -421,8 +421,8 @@
         "R9.arm_planning_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R11.drawer_grid",
@@ -456,8 +456,8 @@
         "R10.pick_place_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261108-1512_readme_check_quickstart",
-      "passed_at_commit": "67fddf15b94f7b99e82be2257b89d83fefdcb4ac"
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R11.drawer_house",
@@ -491,8 +491,8 @@
         "R10.pick_place_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R11.look_table",
@@ -525,8 +525,8 @@
         "R10.pick_place_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R11.look_grid",
@@ -560,8 +560,8 @@
         "R10.pick_place_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R11.look_house",
@@ -595,8 +595,8 @@
         "R10.pick_place_depth_moveit"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R12.drawer_place",
@@ -628,9 +628,9 @@
         "R11.look_grid",
         "R11.look_house"
       ],
-      "passes": false,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "passes": true,
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R13.search_house",
@@ -655,8 +655,8 @@
         "R12.drawer_place"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R14.retrieve_grid",
@@ -682,8 +682,8 @@
         "R13.search_house"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R14.retrieve_house",
@@ -709,8 +709,8 @@
         "R13.search_house"
       ],
       "passes": true,
-      "last_run": "output_check/20261108-1821_d26s1_baseline",
-      "passed_at_commit": "28713bc3c082a7bcc77ba0e42973571abf7afcc8"
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R14.retrieve_repeat",
@@ -739,8 +739,8 @@
         "R13.search_house"
       ],
       "passes": true,
-      "last_run": "output_check/20261107-2310_flowed_logging",
-      "passed_at_commit": null
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     },
     {
       "id": "R15.entry_point",
@@ -768,8 +768,8 @@
         "R14.retrieve_repeat"
       ],
       "passes": true,
-      "last_run": "output_check/20261108-1807_t84_entry_point_commit",
-      "passed_at_commit": "28713bc3c082a7bcc77ba0e42973571abf7afcc8"
+      "last_run": "output_check/20261109-2117_rc_0.13.0_ladder",
+      "passed_at_commit": "33543b3c4e508bfc08eb6799749c6fdb3848b400"
     }
   ]
 }

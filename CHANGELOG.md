@@ -15,6 +15,13 @@ A release adds its heading above the entries made since the last one
 
 ## [Unreleased]
 
+Changed (2026-11-10, robot tests):
+
+- `tests/robot_tests/ladder.json` recorded the full ladder run on commit 33543b3 (2026-11-09): all
+  27 suite tests passed, so every entry has `passes: true`, that run as `last_run` and that commit as
+  `passed_at_commit`. Before, rung 12 (`drawer_place`) was marked failing and 23 entries had no
+  `passed_at_commit`. `phygs/robots/spot/README.md` gives this run as Spot's ladder status.
+
 Fixed (2026-11-10, navigation):
 
 - `Nav2NavigationBackend` (`phygs/skills/navigation/execution/backends/nav2.py`): cancelling an
