@@ -36,7 +36,7 @@ stop_id = control.locomotion.command_velocity(0.0, 0.0, 0.0)
   Standing, PhysX joint drives hold the legs (implicit PD, 2000 / 80 hips, 2500 / 80 knees,
   `stand_drive`; no actuator delay) where they are, not at the default posture. With every leg on a
   PhysX drive, TGS needs 8 position iterations (Spot's `robot.yaml` `articulation`, was 4) and gravity
-  applied in every iteration (`robots.scene.simulation_cfg`): with 4 and once per step the arm sat 6-8 mrad off target and
+  applied in every iteration (`phygs.sim.robot_scene.simulation_cfg`): with 4 and once per step the arm sat 6-8 mrad off target and
   joints reported 0.04 rad/s while still (2026-10-22). Ownership then releases; the legs keep the standing targets
   (`LocomotionController.hold_targets`), or measured positions if the policy did not stand.
   Holding the measured, load-deflected positions dropped the stance preload: the base sank by

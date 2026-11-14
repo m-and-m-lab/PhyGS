@@ -66,7 +66,7 @@ def robot(args: argparse.Namespace, default: str = "spot"):
 
 
 def robot_scene(robot, position=None, cameras: tuple[str, ...] = (), imu: bool = False) -> dict:
-    """``robots.scene.make_scene_cfg`` arguments for a component test, as episodes build the scene:
+    """``phygs.sim.robot_scene.make_scene_cfg`` arguments for a component test, as episodes build the scene:
     ``robot`` (a description) at ``position`` [m] (default: its spawn height at the origin), its
     ``cameras`` by name (RGB and depth), the IMU with ``imu``, the dome light of
     ``phygs/world/environment.yaml`` and the project's physics step. A test adds only its own props and
@@ -120,7 +120,7 @@ class Keyboard:
 
 
 def config_scene(robot, config: dict) -> dict:
-    """``robots.scene.make_scene_cfg`` arguments from a component test's own scene settings: the
+    """``phygs.sim.robot_scene.make_scene_cfg`` arguments from a component test's own scene settings: the
     ``robot`` (a description) at ``config["robot"]`` ``position`` [m] and ``rotation_wxyz`` (a turn
     about z), the ``scene``'s dome light and the ``sensors`` (render cameras by name, ``imu``)."""
     import math
