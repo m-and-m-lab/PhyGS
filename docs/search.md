@@ -23,7 +23,7 @@ an uncaptured, expired, or cross-episode stamp is rejected. The agent never
 receives the target bounds through this task endpoint.
 
 The house search check uses a magenta cube and a colour detector
-(`helpers/color_detection.py`). That detector validates the lifecycle; it is not a general
+(`phygs/observations/color_detection.py`). That detector validates the lifecycle; it is not a general
 object-recognition module and does not use the target pose. The evaluator does not trust the
 detector's classification or a navigation success flag. Localization is ground truth; this is
 recorded in the report. The search starts unseen: the robot's turn in place at the start must not
