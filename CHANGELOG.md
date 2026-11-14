@@ -15,6 +15,17 @@ A release adds its heading above the entries made since the last one
 
 ## [Unreleased]
 
+Changed (2026-11-14, house scene):
+
+- The house rungs (`tests/robot_tests/configs/house.yaml`, `episodes/dev_house_drawer.yaml`,
+  `episodes/nav_house.yaml`), the robot UI's house config (`phygs/ui/configs/house_drawer.yaml`) and the
+  docs moved to the house scene's release 1.3.1 (was 1.3.0). Only its provenance metadata changed: the
+  layout reference in `ATTRIBUTION.md`, two provenance keys of the USD layer's `customLayerData` (one
+  reworded, one removed) and a release note in the archive's `README.md`. Every prim, joint, body,
+  texture and material is 1.3.0's (a USD diff and the files' SHA-256), so results on 1.3.0 and 1.3.1
+  compare; no house rung has run on 1.3.1 yet. Fetch it once: `phygs.scene.fetch fetch --repo_id
+  mandmlabresearch/ForageBench --scene_id bear_loop_house --scene_version 1.3.1`.
+
 ### 0.13.0 (2026-11-10)
 
 Known issue:
