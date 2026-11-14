@@ -3,4 +3,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""PhyGS: the simulation framework (robot, world, runtime, skills, measurement)."""
+"""Runtime: what owns time and joints in an episode: the integer clock, exclusive joint ownership,
+command bookkeeping, reset and emergency stop (:mod:`.episode`, :mod:`.commands`, :mod:`.timing`),
+and the observation pipeline (:mod:`.pipeline`)."""

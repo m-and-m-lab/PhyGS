@@ -7,7 +7,7 @@ a grasping or articulated-object opening implementation.
 
 **Changed 2026-10-13.** The independent trajectory guard, its hook on `JointTrajectory` and
 `skills/manipulation/execution/validation.py` were removed: nothing checks or stops a planned motion
-while it runs; the evaluator records contact and judges the outcome. Skills solve IK with
+while it runs; the evaluator records contact and evaluates the outcome. Skills solve IK with
 `skills/manipulation/execution/kinematics.py` (multi-start least squares, joint limits only) instead
 of the planners' IK (MoveIt's single-seed KDL with 0.05 s and cuRobo's inflated self-collision
 model both refused poses the arm reaches). Mentions of the guard below are history.

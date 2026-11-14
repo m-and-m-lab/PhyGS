@@ -35,7 +35,7 @@ What is simulated and what is measured: [docs/physics.md](docs/physics.md).
 
 **Robot capability ends where agent strategy begins.** PhyGS provides what the robot can do:
 observations, motion, navigation, arm skills, feedback, cancellation, timing. Deciding what to look
-for, where to go and which object answers an instruction is the agent's. Judging whether a task was
+for, where to go and which object answers an instruction is the agent's. Evaluating whether a task was
 done is the benchmark's.
 
 **Two entry points, and the composite skills over the agent's.**
@@ -61,7 +61,7 @@ is internal and may move between releases.
 - *Runtime information.* The task's answer belongs to its evaluator. The World never reads it: the
   caller passes `World(target=...)`, the object the privileged channels (hints, known map, arm
   planner) treat as the target, and the spec's grants decide what the agent learns.
-- *Evidence and judgement.* `Truth` measures (poses, openings, contacts with their forces and the
+- *Evidence and evaluation.* `Truth` measures (poses, openings, contacts with their forces and the
   jaws' contact, how far an object was lifted near the wrist); the evaluator decides what counts.
   The evaluator receives every recorded contact, the unintended ones and the grasp's squeeze, each
   labelled; which ones a benchmark penalizes is its rule.
@@ -383,7 +383,7 @@ publication, timestamps and velocity reception. External commands pass through t
 locomotion client, resource ownership, expiry and runtime clock. A goal is finished with
 `skills/navigation/execution/fine_approach.py` (single-axis moves from settled poses; internal to
 `navigate_to`, not a skill). Reset awaits external cancellation. Transport timeout prevents
-connection reuse. The simulator still owns emergency termination and the evaluator judges
+connection reuse. The simulator still owns emergency termination and the evaluator checks
 physical arrival.
 
 `sim/footprint.py` projects live enabled collision bounds;

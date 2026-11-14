@@ -39,7 +39,7 @@ planner's depth map); the simulator never sees it.
 | Planned move | `move_to_pose(pose, *, held=None, tool="hand")` | The environment's planner, around the obstacles in permitted observations, with `held` as part of the robot. |
 | Plan only | `plan(*, goal=None, pose_xyzw=None, tool="hand", held=None)` | The same planner, to every arm joint's position (`goal`) or a tool pose; returns a Future of the `JointTrajectory` and moves nothing (previews). Execute it with `execute_trajectory`, or drop it. It is planned while the simulation runs: with the charged clock, `session.sleep` until it is done. |
 | Skills | `stow`, `unstow`, `look_at` | The selected backend. `collision_avoidance_planner` avoids furniture and clutter in permitted observations; `direct` avoids nothing. |
-| Evaluator | (not visible to agents) | Measures and records robot contact with everything except objects the task allows; it judges the task outcome. Nothing checks or stops a motion while it runs (the trajectory guard was removed on 2026-10-13). |
+| Evaluator | (not visible to agents) | Measures and records robot contact with everything except objects the task allows; it evaluates the task outcome. Nothing checks or stops a motion while it runs (the trajectory guard was removed on 2026-10-13). |
 
 Within a planned move (`move_to_pose`, and the planned parts of `stow` and `look_at`):
 
@@ -403,7 +403,7 @@ if result.failure == SkillFailure.OUT_OF_REACH:  # No view was reachable.
 | 6 | `place` relations | `"on"` first; `"in"` with drawers. |
 | 7 | Internal retries | None (2026-10-09): retrying is the agent's decision. |
 | 8 | Contact with the part being opened, outside the grasp | Tolerated (2026-10-12): the planners could touch the handle region during the whole grasp plan. Superseded 2026-10-13: the move to the start pose is planned around everything, the handle included; only the straight line may end in contact. |
-| 9 | Guards and in-skill heuristics | Removed (2026-10-13): no trajectory guard and no "hand off the line" stop. Contact and base movement are recorded by the evaluator, not limited; the task outcome is judged. The arm controller's own limits (tracking error, timeouts) stay. |
+| 9 | Guards and in-skill heuristics | Removed (2026-10-13): no trajectory guard and no "hand off the line" stop. Contact and base movement are recorded by the evaluator, not limited; the task outcome is evaluated. The arm controller's own limits (tracking error, timeouts) stay. |
 | 10 | Straight motions | `move_along_axis` (2026-10-13): one skill for an approach (with an end pose) and a reach back (from the current pose), refused before moving when the start pose or the line is out of reach or would change the arm configuration. The straight part is position-controlled and not checked against obstacles. `open`/`close` removed 2026-10-16; `move_along_axis`, `pick` and `place` removed 2026-10-18 (row 11). |
 | 11 | Fixed recipes | Removed (2026-10-18): `pick`, `place` and `move_along_axis` were recipes an agent should compose; the manipulation contract replaces them with `move_to_pose` (plan and move in one call, `held` explicit) and end-effector trajectories. `stow` and `look_at` stay skills. |
 
