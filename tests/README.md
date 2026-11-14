@@ -44,6 +44,7 @@ The ruff hooks (`ruff check`, `ruff format`) are in `.pre-commit-config.yaml`; G
 | `test_observations.py`, `test_pipeline.py` | Observation permissions, capture-time transforms, processing pipelines. |
 | `test_object_search.py`, `test_color_detection.py` | Object-search evidence and the reference color detector. |
 | `test_scene_assets.py`, `test_scene.py`, `test_articulations.py` | Scene spawn-area validation, USD scenes, articulated furniture (links written through their joints). |
+| `test_run_suite.py` | `run_suite.py`'s order and `--replay` choices, with the test and replay processes replaced. |
 | `test_skill_api.py` | Public skill APIs import without manipulation planners or ROS. |
 | `test_ui_*.py` | The robot UI (see below). |
 | `fakes.py`, `ui_fakes.py` | Shared fakes (joint worlds, a scene for a real `IsaacLabWorld`, navigation, mapping, ROS transport; the UI's); test modules import only these, never each other. |
@@ -97,7 +98,8 @@ them. Component tests show the cameras the control observes, and the planner whe
 
 ```bash
 # The ladder up to a rung (ROS 2 Jazzy and explore_lite sourced for rungs 6, 7, 11-15). --record adds
-# the videos; open <folder>/index.html for the results and every video.
+# the videos (agent tests' replays render after the verdict; `--replay {all,failed,none}`); open
+# <folder>/index.html for the results and every video.
 isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
 
 # One test.

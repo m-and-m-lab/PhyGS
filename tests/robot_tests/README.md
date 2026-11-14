@@ -5,7 +5,8 @@ place, open a drawer, search, retrieve. A test does three jobs at once:
 
 - **Show.** `--viz kit` opens the simulator window. A component test's `--record` films it
   (`third_person.mp4`); an agent test's video is `phygs replay <output>` of its recording
-  (`replay/replay.mp4`); `run_suite.py --record` does both for every test.
+  (`replay/replay.mp4`); `run_suite.py --record` does both for every test, rendering the agent
+  tests' videos after the verdict (`--replay`).
 - **Check.** It measures named values against thresholds and writes `check.json`, so a person or a
   coding agent can see what broke without watching.
 - **Teach.** Its code is the reference for using that part of the framework.
@@ -88,7 +89,15 @@ phygs replay scripts/PhyGS/output_check/<that folder>   # Its video, from the re
 
 The suite writes `output_check/<YYYYMMDD-HHMM>_<label>/` with one folder and log per test,
 `summary.json` (status and every measured value) and `index.html`. A test whose requirement is
-missing is skipped, not failed. The last line names the first failing rung.
+missing is skipped, not failed. The verdict line names the first failing rung.
+
+With `--record`, every rung runs first, then `summary.json` and `index.html` are written and the
+verdict is printed, and only then are the agent tests' replays rendered; the verdict is printed again
+last. `--replay {all,failed,none}` picks which: `all` is the default with `--record`, `none` without
+it, `failed` renders only agent tests that did not pass. For a recording that was not rendered, the
+page gives the `phygs replay` command (absolute path, with the run's `--kit_args`). `minutes` in
+`summary.json` (a list, one entry per test) is the test alone; a rendered entry adds
+`replay_minutes`, and the total is printed ("N replays rendered in X min").
 
 Every test takes `--output DIR` (a fresh folder), runs headless by default, writes
 `DIR/check.json` (`test`, `status`, `error`, `checks` and the test's data) and exits 0 only when

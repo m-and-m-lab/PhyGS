@@ -15,6 +15,19 @@ A release adds its heading above the entries made since the last one
 
 ## [Unreleased]
 
+Added (2026-11-14, robot tests):
+
+- `tests/robot_tests/run_suite.py --replay {all,failed,none}` picks which agent tests' recordings are
+  rendered (default `all` with `--record`, `none` without it; `failed` renders those that did not pass).
+  `index.html` gives the `phygs replay` command for a recording left unrendered.
+
+Changed (2026-11-14, robot tests):
+
+- `run_suite.py --record` renders the agent tests' replays after every rung has run and the verdict is
+  printed (it was after each test); the verdict is printed again last.
+- `minutes` in `summary.json` is the test alone, without the replay render, so rung durations are not
+  comparable with runs from before this change. Rendered entries carry `replay_minutes`.
+
 Added (2026-11-14, GitHub checks; the workflows have not run on GitHub yet):
 
 - `.github/workflows/lint.yml` (workflow "Lint") runs the pre-commit hooks over all files, and
