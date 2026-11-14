@@ -23,7 +23,7 @@ Start here. Each topic has **one** guide. Other files link to that guide; they d
 | What is simulated and what is measured: friction grasps, physical drawers, the legged base, contacts, task evaluators | [physics.md](physics.md) | — |
 | Adding a robot: one folder with a `robot.yaml`, plugin points (base controller, actuators), camera roles, the bring-up ladder with `--robot` | [adding_a_robot.md](adding_a_robot.md) | — |
 | Observations, frames, timing | [observations.md](observations.md) | — |
-| Who sees what: pipelines and permissions | [pipelines.md](pipelines.md) | — |
+| Who sees what: observation pipelines and permissions (one episode step by step: [PIPELINE.md](../PIPELINE.md); terms: [GLOSSARY.md](../GLOSSARY.md)) | [pipelines.md](pipelines.md) | — |
 | Locomotion contract | [locomotion.md](locomotion.md) | Runtime tick diagram in [ARCHITECTURE.md](../ARCHITECTURE.md#runtime-tick-ownership-and-reset) |
 | Point navigation (Nav2) | [navigation.md](navigation.md) | Navigation diagram in [ARCHITECTURE.md](../ARCHITECTURE.md#navigation) |
 | Nav2 backend, installation (ROS 2 Jazzy, Nav2, explore_lite) and the measured transit envelope | [nav2.md](nav2.md) | Navigation diagram in [ARCHITECTURE.md](../ARCHITECTURE.md#navigation) |

@@ -143,6 +143,7 @@ flowchart TB
 | Robot descriptions and assembly | `phygs/robots/` (`RobotDescription`; one folder per robot), `phygs/world/robot.py` (`RobotControl`) |
 | Simulation adapters, recording | `phygs/sim/`, `phygs/recording/` |
 | Scenes, runtime and observation pipeline | `phygs/scene/`, `phygs/runtime/`, `phygs/observations/` |
+| The robot UI: a person as the agent, in a browser | `phygs/ui/` ([docs/ui.md](docs/ui.md)) |
 | Tasks and evaluators | A benchmark's; the robot tests' own in `tests/robot_tests/tasks/` |
 
 The packages are layers that import downward only; the order, the rule and its test are in
@@ -156,7 +157,7 @@ through `LocomotionClient.bind_navigation()`. This one-time binding prevents dir
 motion while navigation is active or stopping. Agents continue to use the existing
 velocity, stop, and `navigate_to` commands. Nav2 terminal feedback preserves the
 original completion, cancellation, or failure reason after physical stopping.
-Execution lives in `phygs/execution`; robot assembly (`world/robot.py`) binds it to the public
+Execution lives in `phygs/skills/*/execution`; robot assembly (`world/robot.py`) binds it to the public
 clients, and the World (`world/world.py`) binds those to the scene and the agent.
 
 | Module | Responsibility |
@@ -190,6 +191,7 @@ clients, and the World (`world/world.py`) binds those to the scene and the agent
 | `world/navigation.py` | Nav2 for the World: the live footprint check, the map source (known boxes or cameras), the servers. |
 | `world/report.py`, `world/recorder.py`, `world/provenance.py` | The report schema and its keys; the episode folder (`report.json`, arm `contacts` apart from the grasp's `grasp_contacts`, the video); robot and scene USD hashes over their layers, policy hashes, git commit. |
 | `tests/robot_tests/tasks/` | The robot tests' tasks, outside the framework: `load_task(block)` builds the task object from a spec's task block; `RetrieveTask` (brief and evaluator: held, stowed, upright, in time; conduct: unintended contact, drawers left open; thresholds in `retrieve.yaml`, hashed into provenance), point navigation and object search evaluators. A benchmark brings its own. |
+| `ui/` | The robot UI (`phygs ui`): `session.py` (`UiSession`, the person's agent and the World's viewer), `server.py` (the page and its WebSocket, in its own thread) and `bridge.py` (the thread-safe exchange of plain data with the runner thread), `translate.py`, `codecs.py`, `schema.py`, `targets.py` and `web/` (the page); `configs/` holds its episode specs. It builds no robot of its own: the World does ([docs/ui.md](docs/ui.md)). |
 | `examples/agents/` | Example agents (`run(session)`), importing only `phygs.session`: `template`, `depth_example`. |
 
 ## Runtime: tick, ownership and reset
@@ -592,7 +594,7 @@ then the robot-test ladder with `--robot` ([adding a robot](docs/adding_a_robot.
 To add a new skill:
 
 1. Add the public method to `phygs/skills/<name>/api.py`; keep request/result types small.
-2. Put execution under `phygs/execution/<name>/`; it submits joint
+2. Put execution under `phygs/skills/<name>/execution/`; it submits joint
    targets only through runtime-owned controllers.
 3. Bind it once in `world/robot.py` and gate it with an `allowed_actions` entry.
 4. Add pure unit tests for API behavior.

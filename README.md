@@ -113,6 +113,8 @@ isaaclab -p -m phygs ui --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)
 | run the robot tests (15 rungs, from spawning to retrieving) | [tests/robot_tests/README.md](tests/robot_tests/README.md) |
 | know what is simulated and what is measured | [docs/physics.md](docs/physics.md) |
 | understand the architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| follow one episode step by step, from spec to report | [PIPELINE.md](PIPELINE.md) · the observation pipeline: [docs/pipelines.md](docs/pipelines.md) |
+| look up a term (rung, ladder, track, grant, task evaluator) | [GLOSSARY.md](GLOSSARY.md) |
 | browse every guide, or see what changed | [docs/README.md](docs/README.md) · [CHANGELOG.md](CHANGELOG.md) |
 | contribute (people and coding agents), or report a bug | [AGENTS.md](AGENTS.md) · [GitHub issues](https://github.com/m-and-m-lab/PhyGS/issues) |
 
@@ -121,7 +123,7 @@ isaaclab -p -m phygs ui --output scripts/PhyGS/output_check/$(date +%Y%m%d-%H%M)
 | Path | Purpose | Docs |
 | --- | --- | --- |
 | `phygs/` | The framework: robots, runtime, skills, world, session, scenes, recording, robot UI | [README](phygs/README.md) |
-| `examples/` | `run_world.py` (runs an episode), `replay_run.py` (renders a run's video), example agents | [agents](docs/agents.md) |
+| `examples/` | `run_world.py` (runs an episode), `replay_run.py` (renders a run's video), example agents | [README](examples/README.md) · [agents](docs/agents.md) |
 | `tests/` | Unit tests (no simulator) and the robot-test ladder (`robot_tests/`) | [README](tests/README.md) |
 | `docker/` | The container: Isaac Lab's base image with ROS 2, Nav2, MoveIt and cuRobo | [README](docker/README.md) |
 | `docs/` | Topic guides, figures and the teaser | [README](docs/README.md) |

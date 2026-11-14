@@ -2,10 +2,10 @@
 
 All notable changes to PhyGS. Newest first.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are tagged `vX.Y.Z`;
-each has a `### X.Y.Z` heading under **Unreleased**, above the entries it shipped (dated, except
-0.6.0-0.8.0, which still say "unreleased", written before their tags), so the entries above the first such
-heading are not released yet. Entries from before the tags (the repository split and the history
-before it) are dated instead.
+each has a `### X.Y.Z (date)` heading under **Unreleased**, above the entries it shipped (the date
+is the tagged commit's), so the entries above the first such heading are not released yet. Entries
+from before the tags (the history before the repository split) are dated instead; the split's own
+section is under 0.3.0.
 
 How to add an entry: put one line under **Unreleased**, above the latest release heading, in a
 dated group (Added, Changed, Deprecated, Removed, Fixed). Use past tense and name the public
@@ -658,7 +658,7 @@ Changed:
   0.8.0 wrote. The outside view's size is the settings' `record` size unless `--size WIDTH HEIGHT`
   (`--width`/`--height` are gone: they are Isaac Sim's window flags).
 
-### 0.8.0 (unreleased, develop)
+### 0.8.0 (2026-10-30)
 
 Repeats without a new start-up, and a wall-clock limit (ForageBench stage 4, 2026-10-30). Additive.
 
@@ -688,7 +688,7 @@ Fixed:
   process took 15-25 s more simulated time than the same episode after a repeat (2026-10-29, the dev
   oracle with 5 repeats per process).
 
-### 0.7.0 (unreleased, develop)
+### 0.7.0 (2026-10-29)
 
 Runs leave a state log and render afterwards (2026-10-29). Additive: the spec and report schemas are
 unchanged.
@@ -715,7 +715,7 @@ Changed:
 
 - `Recorder` takes the run's `state` log and writes it in `write(report, commands)`.
 
-### 0.6.0 (unreleased, develop)
+### 0.6.0 (2026-10-29)
 
 The task evaluator samples the run (ForageBench's phase C, 2026-10-29). A change to the `Task`
 protocol, so a minor release; the report's keys are unchanged (schema 2).
@@ -860,6 +860,30 @@ Fixed:
 - `docs/world.md` (the benchmark author's page), `docs/layout.md` (the layers and the import rule) and
   the layout proposal `docs/design/framework_layout/` (step 0 of it is this entry).
 
+### 0.3.1 (2026-10-28)
+
+Reconstructed from history: this entry reads the commits between `v0.3.0` and `v0.3.1`, and the
+note below that the commits added to this file.
+
+Scenes and versions (2026-10-28): a spec may pin a fetched release, `scene: {id: bear_loop_house,
+version: 1.1.0}`; the registry checks the version against the fetch record. The house specs pin
+`bear_loop_house` 1.1.0 (the storage revision, packaged and prepared for the dataset the same day);
+`scene_generation/usd_tools/publish_scene.py` replaces the one-release publisher and adds releases to
+an existing catalog.
+
+- A spec's `scene:` block takes a `version` (`major.minor.patch`, checked when the spec loads), and the
+  report's `spec` records `scene_version` (`phygs/episodes/spec.py`, `phygs/episodes/scenes.py`). The
+  scenes guide is `docs/scenes.md`.
+- The robot tests moved from `phygs_robot_tests/` to `tests/robot_tests/`; the package is still
+  imported as `phygs_robot_tests`. Docs and the entry-point paths were updated to match.
+- `pyproject.toml` lists the packages to install, and `phygs.__version__` is set (`0.3.1`).
+
+### 0.3.0 (2026-10-28)
+
+Reconstructed from history: the first tagged state of the repository split, which the section below
+describes (what moved where, old to new). It holds the simulation framework copied from the lab's
+internal tree: the `phygs` package, the robot tests, the docs and the scene tools.
+
 ### Repository split (2026-10-28)
 
 PhyGS `develop` now holds the simulation framework copied out of the lab's internal
@@ -891,12 +915,6 @@ released. Every rename, old → new:
 Not copied: `output_check/`, `reports/`, `research_notes/`, the benchmark design pages
 (`docs/benchmark_*`, `docs/repo_split`), the presentation sites and the asset catalogs' images.
 Scenes other than the fixtures are found through `$PHYGS_SCENES` (default `~/.cache/phygs/scenes`).
-
-Scenes and versions (2026-10-28): a spec may pin a fetched release, `scene: {id: bear_loop_house,
-version: 1.1.0}`; the registry checks the version against the fetch record. The house specs pin
-`bear_loop_house` 1.1.0 (the storage revision, packaged and prepared for the dataset the same day);
-`scene_generation/usd_tools/publish_scene.py` replaces the one-release publisher and adds releases to
-an existing catalog.
 
 Later changes made in interactive-search came here by a sync script (copy and rename; never the pinned
 policy files) until 0.4.0, which removed it: PhyGS is developed here now.
