@@ -1,0 +1,8 @@
+# The ruff hooks, at the same ruff-pre-commit release as Isaac Lab's. Locally: `pre-commit run --all-files`;
+# on GitHub: .github/workflows/lint.yml. ruff's own settings are in pyproject.toml.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      - id: ruff-check
+      - id: ruff-format

@@ -9,10 +9,15 @@
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-orange.svg)](https://releases.ubuntu.com/24.04/)
 [![License](https://img.shields.io/badge/license-TBD-lightgrey.svg)](LICENSE)
 
+[![Lint](https://github.com/m-and-m-lab/PhyGS/actions/workflows/lint.yml/badge.svg?branch=develop)](https://github.com/m-and-m-lab/PhyGS/actions/workflows/lint.yml)
+[![Unit tests](https://github.com/m-and-m-lab/PhyGS/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/m-and-m-lab/PhyGS/actions/workflows/tests.yml)
+
 [![Paper](https://img.shields.io/badge/paper-CVPR%202026%20MEIS%20Workshop-b31b1b.svg)](https://m-and-m-lab.github.io/PhyGS/assets/papers/phygs.pdf)
 [![Project Page](https://img.shields.io/badge/project-page-1f6feb)](https://m-and-m-lab.github.io/PhyGS/)
 [![Docs](https://img.shields.io/badge/docs-0.13.0-informational)](https://github.com/m-and-m-lab/PhyGS/blob/v0.13.0/docs/README.md)
 [![HF Dataset](https://img.shields.io/badge/dataset-scenes-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/datasets/mandmlabresearch/ForageBench)
+
+The Lint and Unit tests badges show the latest `develop` run of those checks only: ruff, and the unit tests that need no Isaac Sim (the robot tests and the tests that need Isaac Lab or the robots' fetched assets are not run there). They do not cover simulator runs or the robot behaviour.
 
 [Aparajito Saha](https://aparajitosaha.github.io)<sup>1</sup>, [Zhen Hao Gan](https://ganzh6880.github.io)<sup>1</sup>, Jinjia Guo<sup>1</sup>, Jacob Skwirsk<sup>1</sup>, Jeremy Acheampong<sup>1</sup>, [Anton Arapin](https://anton-arapin.github.io)<sup>1</sup>, [Chahyon Ku](https://chahyon-ku.github.io)<sup>1</sup>, [Yue Hu](https://phyllish.github.io)<sup>1</sup>, [Nima Fazeli](https://www.mmintlab.com/people/nima-fazeli/)<sup>1</sup>, [Bernadette Bucher](https://bucherb.github.io)<sup>1</sup>
 <br><sup>1</sup>[Mapping and Motion Lab](https://sites.google.com/umich.edu/mandmlab/), University of Michigan, Ann Arbor

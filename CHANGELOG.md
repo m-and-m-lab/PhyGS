@@ -15,6 +15,22 @@ A release adds its heading above the entries made since the last one
 
 ## [Unreleased]
 
+Added (2026-11-14, GitHub checks; the workflows have not run on GitHub yet):
+
+- `.github/workflows/lint.yml` (workflow "Lint") runs the pre-commit hooks over all files, and
+  `.github/workflows/tests.yml` (workflow "Unit tests") runs `pytest tests --ignore=tests/robot_tests` on
+  plain Python 3.12 with CPU torch, `usd-core`, `warp-lang` and `rerun-sdk`, with no simulator.
+- `.pre-commit-config.yaml` with the `ruff-check` and `ruff-format` hooks (ruff-pre-commit v0.14.10, the
+  release Isaac Lab uses). Locally: `pre-commit run --all-files`.
+- `tests/conftest.py` hooks (`pytest_runtest_makereport`, `pytest_make_collect_report`) report a failure
+  caused by a missing `isaaclab`, `omni`, `isaacsim` or `carb` module, or by robot assets that were not
+  fetched, as a skip, only when `PHYGS_SKIP_MISSING_ENV=1` is set (only `tests.yml` sets it); without it the
+  hooks do nothing and every failure stays a failure. In the container: 940 passed, 1 skipped (Nav2 needs
+  ROS).
+- `tests/test_locomotion_launcher.py` skips without Isaac Lab (`pytest.importorskip("isaaclab")`).
+- `README.md` shows the Lint and Unit tests badges; they cover those two checks only, not simulator runs,
+  the robot tests, or tests that need Isaac Lab or fetched assets.
+
 Changed (2026-11-14, house scene):
 
 - The house rungs (`tests/robot_tests/configs/house.yaml`, `episodes/dev_house_drawer.yaml`,

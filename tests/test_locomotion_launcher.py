@@ -9,6 +9,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+pytest.importorskip("isaaclab")  # The launcher under test imports isaaclab.app.
+
 LOCOMOTION = Path(__file__).parents[1] / "tests" / "robot_tests" / "components" / "check_locomotion.py"
 
 

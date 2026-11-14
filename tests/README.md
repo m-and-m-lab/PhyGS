@@ -8,8 +8,23 @@ Two kinds of tests: pure Python unit tests (`tests/test_*.py`, no Isaac Sim) and
 
 ```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 isaaclab -p -m pytest scripts/PhyGS/tests -q \
-  --ignore=scripts/PhyGS/phygs_robot_tests -p no:cacheprovider
+  --ignore=scripts/PhyGS/tests/robot_tests -p no:cacheprovider
 ```
+
+GitHub runs the same tests in `.github/workflows/tests.yml` (workflow "Unit tests") on plain Python 3.12 with
+CPU torch, `usd-core`, `warp-lang` and `rerun-sdk`, with no simulator: `pytest tests --ignore=tests/robot_tests`.
+Two hooks in `conftest.py` turn a failure that is really a missing environment into a skip, but only when
+`PHYGS_SKIP_MISSING_ENV=1` is set, which only `tests.yml` does. They cover a module of `isaaclab`, `omni`,
+`isaacsim` or `carb` that is not installed (at collection, setup or in a test) and the "Fetch the robot's
+assets first" error. Without the variable (the container, any local run) the hooks do nothing and every
+failure stays a failure; in a clean venv without it, the missing modules show as collection errors, so
+reproduce the GitHub run on plain Python with `PHYGS_SKIP_MISSING_ENV=1 pytest tests --ignore=tests/robot_tests`.
+`test_locomotion_launcher.py` skips as a whole through `pytest.importorskip("isaaclab")`. The GitHub log
+lists every skip (`-rs`). The robot tests, tests that need Isaac Lab and tests that need fetched assets are
+therefore not covered by the GitHub check.
+
+The ruff hooks (`ruff check`, `ruff format`) are in `.pre-commit-config.yaml`; GitHub runs them in
+`.github/workflows/lint.yml` (workflow "Lint"). Locally: `pre-commit run --all-files`.
 
 | Path | Purpose |
 | --- | --- |
