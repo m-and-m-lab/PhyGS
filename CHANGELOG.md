@@ -19,6 +19,10 @@ Added (2026-11-21, recording):
 
 - The episode recording holds the task evaluator's record under `/eval`: a task's optional `trace()` state (outside the `Task` protocol) after the reset and every evaluation period (`/eval/state`, `/eval/series/<key>`, `/eval/stages`) and the evaluation with how the episode ended (`/eval/result`). A failing `trace()` is recorded once as `trace_error` and never fails the episode. `phygs.recording.reader.public_copy(run, dst)` writes a recording without any `/truth` or `/eval` entity.
 
+Added (2026-11-21, robot tests):
+
+- `tests/robot_tests/run_suite.py` writes `manifest.json` for the suite and for each test that runs, finished with the test process's exit code (124 on `--timeout`, 130 on Ctrl-C), through the receipt script named by `RP_WRITE_MANIFEST` (unset: one warning). New flag `--tag` (repeatable).
+
 Added (2026-11-14, robot tests):
 
 - `tests/robot_tests/run_suite.py --replay {all,failed,none}` picks which agent tests' recordings are

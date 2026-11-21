@@ -46,6 +46,7 @@ The ruff hooks (`ruff check`, `ruff format`) are in `.pre-commit-config.yaml`; G
 | `test_scene_assets.py`, `test_scene.py`, `test_articulations.py` | Scene spawn-area validation, USD scenes, articulated furniture (links written through their joints). |
 | `test_eval_record.py` | The task evaluator's `/eval` record (state, series, stages, result, `trace_error`) and `public_copy` leaving out `/truth` and `/eval`. |
 | `test_run_suite.py` | `run_suite.py`'s order and `--replay` choices, with the test and replay processes replaced. |
+| `test_run_suite_receipts.py` | `run_suite.py`'s `manifest.json` receipts: the suite's and each test's, exit codes 124 and 130, skipped tests, `--tag`, the unset-script warning. |
 | `test_skill_api.py` | Public skill APIs import without manipulation planners or ROS. |
 | `test_ui_*.py` | The robot UI (see below). |
 | `fakes.py`, `ui_fakes.py` | Shared fakes (joint worlds, a scene for a real `IsaacLabWorld`, navigation, mapping, ROS transport; the UI's); test modules import only these, never each other. |

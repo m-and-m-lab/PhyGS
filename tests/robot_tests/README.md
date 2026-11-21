@@ -99,6 +99,13 @@ page gives the `phygs replay` command (absolute path, with the run's `--kit_args
 `summary.json` (a list, one entry per test) is the test alone; a rendered entry adds
 `replay_minutes`, and the total is printed ("N replays rendered in X min").
 
+`run_suite.py` also writes `manifest.json` for the suite and for each test that runs; a skipped test gets
+none. Each is finished with the test process's own exit code (124 on `--timeout`, 130 on Ctrl-C), the
+suite's last. The receipt comes from a run-logging receipt script (`write_manifest.py`) named by the
+`RP_WRITE_MANIFEST` environment variable; unset, the tests run with one warning and no receipt, and a
+receipt that cannot be written is a warning, never a failure. `--tag` (repeatable) adds a tag to the
+receipts. `check.json`, `summary.json`, `index.html` and `report.json` are unchanged.
+
 Every test takes `--output DIR` (a fresh folder), runs headless by default, writes
 `DIR/check.json` (`test`, `status`, `error`, `checks` and the test's data) and exits 0 only when
 it passed. Agent tests also leave the episode's `report.json` and `episode.rrd`.

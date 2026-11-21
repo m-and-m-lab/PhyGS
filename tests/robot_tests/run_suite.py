@@ -29,6 +29,11 @@ before the replays and again as the last line.
     isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py ladder --upto 10 --record
     isaaclab -p scripts/PhyGS/tests/robot_tests/run_suite.py manipulation --only pick_place_known
 
+Each folder gets its run receipt (``manifest.json``, :mod:`.receipt`; written by a run-logging receipt
+script, ``write_manifest.py``, found through ``RP_WRITE_MANIFEST``): the suite's own and one per test that runs
+(not a skipped one), finished with the test process's real exit code (Isaac Sim can exit 0 when it
+failed; 124 for a test stopped at ``--timeout``); the suite's own is finished last.
+
 ``--kit_args`` goes to every test, for example to leave GPU 0 to another run (``phygs/sim/gpu.py``):
 ``--kit_args "--/renderer/activeGpu=1 --/physics/cudaDevice=1 --/renderer/multiGpu/enabled=false"``.
 """
@@ -48,6 +53,7 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
+from phygs_robot_tests import receipt
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parents[1]  # The PhyGS checkout.
@@ -74,9 +80,14 @@ def select(entries: list[dict], groups: list[str], first: int = 1, upto: int | N
     ]
 
 
+def spec_file(entry: dict) -> Path | None:
+    """The test's episode spec, ``configs/episodes/<spec>.yaml``; None for a test without one."""
+    return SPECS / f"{entry['spec']}.yaml" if entry["spec"] else None
+
+
 def arguments(entry: dict) -> list:
-    """The test script's arguments: its spec (``configs/episodes/<spec>.yaml``) and flags."""
-    return [*(["--spec", SPECS / f"{entry['spec']}.yaml"] if entry["spec"] else []), *entry["args"]]
+    """The test script's arguments: its spec (:func:`spec_file`) and flags."""
+    return [*(["--spec", spec_file(entry)] if entry["spec"] else []), *entry["args"]]
 
 
 def missing(requirements: tuple[str, ...]) -> list[str]:
@@ -120,12 +131,29 @@ def main() -> int:
         help="Agent tests whose recordings are rendered after the verdict (default: all with --record, else none)",
     )
     parser.add_argument("--kit_args", default=None, help="Kit arguments for every test (one string)")
+    parser.add_argument("--tag", action="append", default=[], help="A tag for the run receipts (repeatable)")
     args = parser.parse_args()
     tests = select(entries, args.groups, args.first, args.upto, args.only)
     label = args.label or "_".join(args.groups)
     folder = PROJECT / "output_check" / f"{datetime.now():%Y%m%d-%H%M}_{label}"
     folder.mkdir(parents=True, exist_ok=False)
     print(f"{len(tests)} robot tests into {folder}", flush=True)
+    receipts = dict(repos=[PROJECT], tags=args.tag)
+    command = [sys.executable, *sys.orig_argv[1:]]
+    receipt.start(folder, command, purpose=f"PhyGS robot tests: {label}", config=LADDER, **receipts)
+    code = 1
+    try:
+        code = run_tests(args, tests, folder, receipts)
+    except KeyboardInterrupt:  # Ctrl-C, or a timeout's SIGINT.
+        code = 130
+        raise
+    finally:
+        receipt.finish(folder, code)
+    return code
+
+
+def run_tests(args: argparse.Namespace, tests: list[dict], folder: Path, receipts: dict) -> int:
+    """Each test in turn, each with its receipt, then the verdict and the replays; returns the exit code."""
     summary, agent_tests = [], set()
     for test in tests:
         rung, name, script, extra = test["rung"], test["name"], test["test"], arguments(test)
@@ -143,11 +171,19 @@ def main() -> int:
         command += ["--record"] if args.record and not episodes else []
         command += [f"--kit_args={args.kit_args}"] if args.kit_args else []
         started = time.monotonic()
-        with (folder / f"{name}.log").open("w") as log:
-            try:
-                code = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=args.timeout).returncode
-            except subprocess.TimeoutExpired:
-                code = "timeout"
+        try:
+            purpose = f"PhyGS robot test {rung} {name}"
+            receipt.start(folder / name, command, purpose=purpose, config=spec_file(test), **receipts)
+            with (folder / f"{name}.log").open("w") as log:
+                try:
+                    run = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, timeout=args.timeout)
+                    code = run.returncode
+                except subprocess.TimeoutExpired:
+                    code = "timeout"
+        except BaseException as error:  # Stopped (Ctrl-C, a timeout's SIGINT: 130) or broken (1) during the test.
+            receipt.finish(folder / name, 130 if isinstance(error, KeyboardInterrupt) else 1)
+            raise
+        receipt.finish(folder / name, 124 if code == "timeout" else code)  # The test process's real exit code.
         result = folder / name / "check.json"
         record = json.loads(result.read_text()) if result.exists() else {}
         status = record.get("status", "no result")

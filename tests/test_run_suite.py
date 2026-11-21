@@ -34,6 +34,7 @@ def suite(tmp_path, monkeypatch):
     monkeypatch.setattr(run_suite, "ladder", lambda path=None: ENTRIES)
     monkeypatch.setattr(run_suite, "missing", lambda requirements: [])
     monkeypatch.setattr(run_suite, "PROJECT", tmp_path)
+    monkeypatch.delenv("RP_WRITE_MANIFEST", raising=False)  # No receipts here (tests/test_run_suite_receipts.py).
     calls = []
 
     def fake_run(command, stdout=None, stderr=None, timeout=None):
