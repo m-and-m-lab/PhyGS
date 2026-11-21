@@ -9,6 +9,7 @@ forces over time, the arm planner's requests (:meth:`Recording.plan_requests`, w
 ``examples/replay_plans.py`` plans again), what the agent received and, at level ``all_frames``,
 every camera capture (:meth:`Recording.images`, read lazily: images are not loaded with the rest), and
 the agent's own records (:meth:`Recording.agent_log`, their images :meth:`Recording.agent_images`).
+:func:`public_copy` writes a copy without what is true or scored (``/truth``, ``/eval``).
 
 Rows are put in order by their ``tick``, then by when they were logged (Rerun's row ids grow as rows
 are logged), so rows of one tick keep their order. A recording whose run died while writing ends in a
@@ -407,6 +408,23 @@ def _repaired(path: Path, folder: Path) -> Path:
     command = [sys.executable, "-m", "rerun", "rrd", "merge", "--continue-on-error", str(path), "-o", str(repaired)]
     subprocess.run(command, check=True, capture_output=True, timeout=600)
     return repaired
+
+
+def public_copy(run: Path, destination: Path) -> Path:
+    """A copy of ``run``'s recording (the file, or the run folder) at ``destination`` without its private
+    branches (:data:`~phygs.recording.log.PRIVATE`: ``/truth``, what is true, and ``/eval``, what the
+    task evaluator scored). Rerun's filter drops whole entities by exact path, so every entity under them
+    is named. The recording's properties (the spec, the provenance) are kept."""
+    import rerun as rr
+
+    recording = Recording(run)  # A recording cut short is read through its repaired copy.
+    chunks = rr.chunk.RrdReader(recording._source).stream().drop(content=list(IMAGES)).to_chunks()
+    paths = {str(chunk.entity_path) for chunk in chunks}
+    private = sorted(path for path in paths if _parts(path)[:1] and _parts(path)[0] in episode_log.PRIVATE)
+    command = [sys.executable, "-m", "rerun", "rrd", "filter", *[f"--drop-entity={path}" for path in private]]
+    command += [str(recording._source), "-o", str(destination)]
+    subprocess.run(command, check=True, capture_output=True, timeout=600)
+    return Path(destination)
 
 
 def _parts(entity_path: str) -> tuple[str, ...]:

@@ -15,8 +15,9 @@ Every row carries four timelines:
   wall time is the only one that shows thinking);
 - ``seq``: the order of rows within one instant.
 
-Entities, by branch (``/truth`` is what is true, kept apart from what the agent could know, so a
-public copy is the recording without it):
+Entities, by branch (``/truth`` is what is true and ``/eval`` what the task evaluator made of it, both
+kept apart from what the agent could know, so a public copy is the recording without them:
+:func:`phygs.recording.reader.public_copy`):
 
 - ``/truth/<robot>``: the robot's URDF, logged once: its collision geometry (what the physics
   simulates; the visual meshes are 45 times larger) and its fixed joints (``joints/<joint>``). Every
@@ -57,6 +58,12 @@ public copy is the recording without it):
   and reply, an error and where it came from), as JSON; its images under
   ``/agent/log_images/<topic>/<name>``, at the same ``seq``: encoded bytes (PNG, JPEG) exactly as the
   agent gave them, arrays lossless.
+- ``/eval/state``: the task evaluator's running state (the task's optional ``trace()``, as JSON with the
+  run id) after its reset, after every evaluation period and after its result; ``/eval/series/<key>``:
+  each flag (0 or 1) or finite number in it, one plot per key (``path_length_m``, ``progress/reached``);
+  ``/eval/stages``: the first time each flag was true (the time a progress stage was reached);
+  ``/eval/result``: at the end, the evaluation the report holds, how the episode ended and those first
+  times, as JSON.
 - ``/events/phase``, ``/events/anomaly``: the episode's phases (settling included) and anomalies.
 - ``/perf/*``: real-time factor, tick time and machine load, once per wall-clock second.
 
@@ -84,7 +91,7 @@ import math
 import os
 import time
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -97,6 +104,7 @@ POSITION_STEP = 0.001  # [m]; a body that moved this far since its last logged p
 ROTATION_STEP = math.radians(0.25)  # [rad]; likewise for its rotation.
 PERF_PERIOD = 1.0  # [s wall]; the /perf rows.
 WORLD_FRAME = "tf#/truth"  # The frame the robot's base and the scene are placed in.
+PRIVATE = ("truth", "eval")  # Branches a public copy leaves out: what is true, and what was scored.
 ROUTE_HEIGHT = 0.05  # [m]; Nav2's route is drawn this high above the floor.
 COLOR_MODELS = {2: "L", 3: "RGB", 4: "RGBA"}  # An agent's image array by its shape's rank or channels.
 MEDIA_TYPES = {b"\x89PNG": "image/png", b"\xff\xd8\xff": "image/jpeg"}  # Encoded images by their first bytes.
@@ -152,6 +160,7 @@ class EpisodeLog:
         self._route: tuple | None = None  # The last route given, and its bytes (NaN goals compare equal).
         self._costmap: tuple | None = None  # The last costmap logged: (costs, origin, cell).
         self._plan = None  # The last plan display logged.
+        self._eval_first: dict[str, float] = {}  # Each flag of the evaluator's state -> sim time first true.
         self._perf_wall, self._perf_sim, self._perf_ticks = None, 0.0, 0
         if level == "report_only":
             return
@@ -597,6 +606,34 @@ class EpisodeLog:
         self._stamp()
         self._stream.log("/events/anomaly", self._rr.TextLog(text, level="ERROR"))
 
+    # --- /eval: the task evaluator ---
+
+    @_guarded
+    def evaluation(self, state: dict) -> None:
+        """The task evaluator's running state (its ``trace()``) now: the JSON, each number or flag as a
+        series, and each flag the first time it is true."""
+        rr, stream = self._rr, self._stream
+        self._stamp()
+        text = json.dumps(dict(run_id=self.run_id, state=state), default=str)
+        stream.log("/eval/state", rr.TextLog(text[:2000], level="INFO"), rr.AnyValues(record=text))
+        for key, value in _leaves(state):
+            number = _number(value)
+            if number is not None:
+                stream.log(_path("eval", "series", *key), rr.Scalars(number))
+            name = "/".join(key)
+            if isinstance(value, (bool, np.bool_)) and value and name not in self._eval_first:
+                self._eval_first[name] = self._sim_time
+                stream.log("/eval/stages", rr.TextLog(f"{name} at {self._sim_time:.2f} s", level="INFO"))
+
+    @_guarded
+    def evaluation_result(self, result: dict, end: dict) -> None:
+        """The evaluation at the end (the report's), how the episode ended, and when each flag of the
+        running state was first true."""
+        self._stamp()
+        record = dict(run_id=self.run_id, result=result, end=end, first_true=self._eval_first)
+        text = json.dumps(record, default=str)
+        self._stream.log("/eval/result", self._rr.TextLog(text[:2000], level="INFO"), self._rr.AnyValues(record=text))
+
     # --- /perf ---
 
     @_guarded
@@ -698,6 +735,26 @@ def _path(*parts: str) -> str:
     from rerun import escape_entity_path_part
 
     return "/" + "/".join(escape_entity_path_part(part) for part in parts)
+
+
+def _leaves(value, key: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], object]]:
+    """(key path, value) of every leaf of nested dicts."""
+    if isinstance(value, dict):
+        for name, item in value.items():
+            yield from _leaves(item, (*key, str(name)))
+    elif key:
+        yield key, value
+
+
+def _number(value) -> float | None:
+    """A flag (0 or 1) or a finite number as a float, else None (text, None, NaN, out of range)."""
+    if not isinstance(value, (bool, np.bool_, int, float, np.number)):
+        return None
+    try:
+        number = float(value)
+    except (OverflowError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def _moved(logged: np.ndarray, poses: np.ndarray) -> np.ndarray:

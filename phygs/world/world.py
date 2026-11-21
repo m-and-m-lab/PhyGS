@@ -58,7 +58,7 @@ from phygs.world.recorder import Recorder
 from phygs.world.robot import RobotControl
 from phygs.world.spec import SCHEMA, EpisodeSpec, load_agent
 from phygs.world.start import check as check_start
-from phygs.world.task import EpisodeEnd, NoTask, Task
+from phygs.world.task import EpisodeEnd, Evaluation, NoTask, Task
 from phygs.world.task import summary as task_summary
 from phygs.world.truth import Truth
 from phygs.world.viewer import EpisodeView, Viewer
@@ -221,6 +221,7 @@ class World:
         self.episodes = 1  # Episodes this World has opened (next_episode adds one).
         self.start_check: dict | None = None  # The check before the agent starts (reset).
         self._evaluate_ticks: int | None = None  # While the agent runs: the task's update every this many ticks.
+        self._evaluation: Evaluation | None = None  # This episode's: calls the task and records what it reports.
         self._finished: str | None = None
         self._outcome: tuple[str, str] | None = None
         self._last_render = 0.0
@@ -456,10 +457,11 @@ class World:
         wall_limit = self.settings["agent_wall_seconds"]  # None: no limit.
         self._during = during
         ended_by = reason = None
+        self._evaluation = Evaluation(self.task, self.log)
         if self.start_check["passed"]:
-            self.task.reset(self.truth())
-            self._evaluate_ticks = max(1, round(self.settings["evaluation_period_seconds"] / runtime.physics_dt))
             self.log.at(runtime.tick, runtime.time_seconds)
+            self._evaluation.reset(self.truth())
+            self._evaluate_ticks = max(1, round(self.settings["evaluation_period_seconds"] / runtime.physics_dt))
             self.log.phase("agent")
             thread.start()
         else:
@@ -524,10 +526,11 @@ class World:
             tuple(contacts["grasp_contacts"]),
         )
         evaluation = (
-            self.task.result(self.truth(), end)
+            self._evaluation.result(self.truth(), end)
             if broken is None and runtime.status != EpisodeStatus.FAILED and ended_by != "setup_error"
             else {"outcome": "not_evaluated", "reason": f"the episode ended with {ended_by}"}
         )
+        self._evaluation.end(evaluation, end)
         self._log_spans(final=True)
         self.report = report.compose(
             schemas=dict(spec=SCHEMA, report=report.REPORT_SCHEMA),
@@ -654,7 +657,7 @@ class World:
             runtime.emergency_stop("The robot fell")
             self.log.anomaly("The robot fell")
         if self._evaluate_ticks is not None and runtime.tick % self._evaluate_ticks == 0:
-            self.task.update(self.truth())
+            self._evaluation.update(self.truth())
         if self._during is not None:
             self._during(self)
         if runtime.tick % self.render_ticks == 0:

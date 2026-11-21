@@ -17,6 +17,11 @@ before the agent starts; :meth:`Task.update` every ``evaluation_period_seconds``
 while the agent runs (for what only the run shows: how far the base walked, whether the robot ever
 reached the target); :meth:`Task.result` once, after the robot has stopped and settled. All three
 read ground truth (:class:`~phygs.world.truth.Truth`), which the agent never gets.
+
+A task may also have ``trace()``, optional and outside :class:`Task`: its running state as a JSON-able
+dict (e.g. the path so far, each progress stage seen). The World calls the task through
+:class:`Evaluation`, which records that state after the reset, every update and the result, and the
+evaluation at the end, in the episode's recording (``/eval``); the World never reads the state's fields.
 """
 
 from __future__ import annotations
@@ -91,6 +96,43 @@ class NoTask:
 
     def provenance(self) -> dict:
         return {}
+
+
+class Evaluation:
+    """The World's side of a task's evaluation in one episode: it calls the task and records what the
+    task reports in ``log`` (an :class:`~phygs.recording.log.EpisodeLog`; ``/eval``). Recording never
+    fails the episode: a ``trace()`` that raises is recorded once as ``trace_error`` and not called again."""
+
+    def __init__(self, task: Task, log: Any) -> None:
+        self.task, self.log = task, log
+        self._trace = getattr(task, "trace", None)
+
+    def reset(self, truth: Any) -> None:
+        self.task.reset(truth)
+        self._record()
+
+    def update(self, truth: Any) -> None:
+        self.task.update(truth)
+        self._record()
+
+    def result(self, truth: Any, end: EpisodeEnd) -> dict:
+        evaluation = self.task.result(truth, end)
+        self._record()  # The state the result was scored from (a task may sample once more in it).
+        return evaluation
+
+    def end(self, evaluation: dict, end: EpisodeEnd) -> None:
+        """Record the episode's evaluation (scored, or why not) and how it ended."""
+        self.log.evaluation_result(evaluation, dict(ended_by=end.ended_by, sim_seconds=end.sim_seconds))
+
+    def _record(self) -> None:
+        if self._trace is None:
+            return
+        try:
+            state = self._trace()
+        except Exception as error:  # noqa: BLE001 - the trace is a record, never the evaluation.
+            self._trace = None
+            state = dict(trace_error=f"{type(error).__name__}: {error}")
+        self.log.evaluation(state)
 
 
 def summary(task: Task) -> dict:
